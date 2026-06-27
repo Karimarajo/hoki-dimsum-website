@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
@@ -230,6 +230,7 @@
             padding: 10px !important;
             background: #f9f9f9 !important;
             -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
         }
 
         /* Atur Tabel agar Tidak Hilang */
@@ -502,7 +503,7 @@ function buildSidebar() {
     };
     const PAGES_FRONTLINE = ['dashboard.html','history.html','stok.html','restock.html','laporan_staff.html'];
     const PAGES_MGMT      = ['rekap.html','produk.html'];
-    const PAGES_EXEC      = ['laporan.html','statistik.html','bahan_baku.html','hpp_produk.html','belanja.html','warehouse.html'];
+    const PAGES_EXEC      = ['laporan.html','statistik.html','bahan_baku.html','hpp_produk.html','belanja.html','warehouse.html','salary_staff.html'];
     const PAGES_VIP       = ['user.html','login_history.html'];
     const inGroup = pages => pages.includes(cur);
     const getOpen = (id, pages) => {
@@ -544,7 +545,8 @@ function buildSidebar() {
             + navItem('🧂','Bahan Baku','bahan_baku.html')
             + navItem('💰','HPP Produk','hpp_produk.html')
             + navItem('🏭','Warehouse','warehouse.html')
-            + navItem('💸','Belanja','belanja.html');
+            + navItem('💸','Belanja','belanja.html')
+            + navItem('💵','Salary Staff','salary_staff.html');
         h += navGroup('executive', 'Executive', exec, PAGES_EXEC);
     }
     if (role === 'VIP') {
@@ -592,6 +594,7 @@ function buildMoreMenu() {
         items.push({icon:'💸',label:'Belanja',link:'belanja.html'});
         items.push({icon:'📊',label:'Keuangan',link:'laporan.html'});
         items.push({icon:'📈',label:'Statistik',link:'statistik.html'});
+        items.push({icon:'💵',label:'Salary',link:'salary_staff.html'});
     }
     if (role === 'VIP') {
         items.push({icon:'👥',label:'Users',link:'user.html'});
@@ -905,6 +908,22 @@ window.onload = async () => {
     buildSidebar();
     updateClock();
     await loadCabangDropdown();
+    
+    // Set default date range to show the last 7 days (today and the previous 6 days)
+    const today = new Date();
+    const pastDate = new Date();
+    pastDate.setDate(today.getDate() - 6); // Hari ini + 6 hari sebelumnya = 7 hari
+
+    const formatDate = (date) => {
+        const yyyy = date.getFullYear();
+        const mm = String(date.getMonth() + 1).padStart(2, '0');
+        const dd = String(date.getDate()).padStart(2, '0');
+        return `${yyyy}-${mm}-${dd}`;
+    };
+
+    document.getElementById('startDate').value = formatDate(pastDate);
+    document.getElementById('endDate').value = formatDate(today);
+    
     hitungLaporan();
 };
 </script>

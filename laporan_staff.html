@@ -1176,12 +1176,12 @@ function updateInfoBar() {
     if (el2) el2.innerText = cabangAktif;
 }
 
-/* ── AUDIT ITEM ── */
-function addAuditItem() {
+/* ── AUDIT ITEM (PERBAIKAN SINKRONISASI SERVER) ── */
+async function addAuditItem() {
     const nama = document.getElementById('auditNamaBaru').value.trim();
     if (!nama) return toast.warning('Nama item harus diisi!');
     
-    // Cek duplikasi
+    // Cek duplikasi di lokal frontend
     if (auditItems.find(x => x.nama.toLowerCase() === nama.toLowerCase())) {
         return toast.warning('Item sudah ada dalam daftar!');
     }
@@ -1196,15 +1196,36 @@ function addAuditItem() {
         isDefault: false 
     };
 
+    // ── LINK KE SERVER: Kirim transaksi bayangan agar terbaca di Warehouse Ledger ──
+    try {
+        const tglLaporan = document.getElementById('filterTanggal').value;
+        const dataLog = {
+            sku: nama,
+            tgl: tglLaporan,
+            masuk: 0, // 0 sebagai inisialisasi master barang baru di gudang
+            catatan: 'Inisialisasi Master Gudang via Laporan'
+        };
+
+        // Daftarkan nama item baru ini ke database ledger server
+        await fetch(`${API_BASE}?action=save_warehouse_masuk`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(dataLog)
+        });
+    } catch (err) {
+        console.error("Gagal sinkronisasi master item ke server gudang:", err);
+    }
+
     auditItems.push(newItem);
     
-    // Simpan ke localStorage agar jadi item tetap
+    // Simpan ke localStorage agar jadi item tetap di halaman laporan staff
     saveAuditToLocal();
     
     document.getElementById('auditNamaBaru').value = '';
     
-    // Hitung ulang laku dan render
+    // Hitung ulang laku harian dan render tabel harian
     fetchLaporanData(); 
+    toast.success(`Item "${nama}" berhasil didaftarkan ke Warehouse server!`);
 }
 
 function saveAuditToLocal() {

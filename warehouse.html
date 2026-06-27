@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
@@ -44,54 +44,71 @@
         margin-bottom: 12px;
     }
 
-    /* Produk selector row */
-    .wh-selector-row {
-        display: flex;
-        align-items: center;
+    /* Grid Layout untuk Kotak Bahan Baku */
+    .wh-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
         gap: 12px;
-        flex-wrap: wrap;
+        margin-bottom: 8px;
     }
 
-    .wh-selector-row .custom-select-wrap {
-        flex: 1;
-        min-width: 180px;
-        margin-bottom: 0;
-    }
-
-    .wh-selector-row .custom-select-btn {
-        height: 40px;
-        padding: 0 12px;
+    .wh-item-card {
+        background: var(--surface);
         border: 1.5px solid var(--border);
         border-radius: var(--r-md);
-        border-width: 1.5px;
-        font-size: 14px;
-        font-weight: 500;
+        padding: 16px;
+        box-shadow: var(--sh-sm);
+        cursor: pointer;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        transition: all 0.2s ease;
     }
 
-    .wh-sisa-badge {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        padding: 8px 14px;
-        border-radius: var(--r-md);
-        background: var(--surface-2);
-        border: 1px solid var(--border);
-        white-space: nowrap;
+    .wh-item-card:hover {
+        border-color: var(--red);
+        box-shadow: var(--sh-md);
+        transform: translateY(-2px);
     }
-    .wh-sisa-badge .lbl {
-        font-size: 11px;
-        color: var(--text-muted);
-        font-weight: 600;
+
+    .wh-item-card.active {
+        border-color: var(--red);
+        background: #fff5f5;
+        box-shadow: 0 0 0 3px rgba(211, 47, 47, 0.1);
     }
-    .wh-sisa-badge .val {
-        font-family: 'DM Mono', monospace;
-        font-size: 18px;
+
+    .wh-item-card-name {
+        font-size: 14px;
         font-weight: 700;
-        line-height: 1;
+        color: var(--text);
+        margin: 0;
+        line-height: 1.2;
     }
-    .wh-sisa-badge .val.ok     { color: #16a34a; }
-    .wh-sisa-badge .val.warn   { color: #ca8a04; }
-    .wh-sisa-badge .val.danger { color: var(--red); }
+
+    .wh-item-card-stock {
+        font-size: 12px;
+        color: var(--text-muted);
+        font-weight: 500;
+        margin: 0;
+    }
+
+    .wh-item-card-stock span {
+        font-family: 'DM Mono', monospace;
+        font-weight: 700;
+        font-size: 14px;
+    }
+
+    .wh-item-card-stock.danger span {
+        color: var(--red);
+    }
+    
+    .wh-item-card-stock.warn span {
+        color: #ca8a04;
+    }
+
+    .wh-item-card-stock.ok span {
+        color: #16a34a;
+    }
 
     /* Form input masuk */
     .wh-form-row {
@@ -192,9 +209,7 @@
     @media (max-width: 640px) {
         .wh-form-row { flex-direction: column; }
         .wh-form-group { width: 100%; }
-        .wh-selector-row { flex-direction: column; align-items: stretch; }
-        .wh-selector-row .custom-select-wrap { min-width: 0; width: 100%; }
-        .wh-sisa-badge { justify-content: space-between; }
+        .wh-grid { grid-template-columns: 1fr; }
     }
 
     </style>
@@ -244,39 +259,63 @@
 
     <div class="page-body">
 
-        <!-- PILIH PRODUK + SISA STOK -->
+        <!-- KOTAK PILIH BAHAN BAKU (GRID) -->
         <div class="wh-card">
             <div class="wh-card-title">🧂 Pilih Bahan Baku</div>
-            <div class="wh-selector-row">
-                <div class="custom-select-wrap" id="wrapProdukWH">
-                    <button class="custom-select-btn" onclick="toggleDropdownWH()">
-                        <span id="labelProdukWH">— Pilih Bahan Baku —</span>
-                        <svg width="12" height="8" viewBox="0 0 12 8" fill="none"><path d="M1 1l5 5 5-5" stroke="#d32f2f" stroke-width="1.5" stroke-linecap="round"/></svg>
-                    </button>
-                    <div class="custom-dropdown" id="dropdownProdukWH"></div>
-                </div>
-                <div class="wh-sisa-badge" id="sisaBadge" style="display:none;">
-                    <span class="lbl">Sisa Stok</span>
-                    <span class="val" id="sisaVal">—</span>
-                </div>
+            <div class="wh-grid" id="whGridContainer">
+                <div style="grid-column: 1/-1; text-align: center; padding: 20px; color: var(--text-muted);">⏳ Memuat bahan baku...</div>
+            </div>
+        </div>
+         <!-- STOK GUDANG / LOGISTIK (GRID BARU) -->
+        <div class="wh-card">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                <div class="wh-card-title" style="margin-bottom:0;">📦 Stok Gudang / Logistik</div>
+                <button class="btn-simpan" style="padding:6px 12px; font-size:11px; height:auto; margin:0;" onclick="bukaDaftarBarangModal()">📦 Daftarkan Barang Gudang</button>
+            </div>
+            <div class="wh-grid" id="whLogistikGridContainer">
+                <div style="grid-column: 1/-1; text-align: center; padding: 20px; color: var(--text-muted);">⏳ Memuat barang logistik...</div>
             </div>
         </div>
 
-        <!-- FORM TAMBAH STOK MASUK -->
+        <!-- MODAL PENDAFTARAN BARANG GUDANG -->
+        <div id="daftarBarangModal" class="sheet-overlay" style="display:none; justify-content:center; align-items:center; z-index:1000;" onclick="closeDaftarBarangModalOutside(event)">
+            <div class="wh-card" style="width:90%; max-width:400px; margin:0; padding:24px; position:relative; display:flex; flex-direction:column; gap:16px; box-shadow: var(--sh-lg);" onclick="event.stopPropagation()">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <h3 style="margin:0; font-size:15px; font-weight:700; color:var(--red);">📦 Daftarkan Barang Gudang</h3>
+                    <span onclick="tutupDaftarBarangModal()" style="font-size:24px; font-weight:bold; color:var(--text-light); cursor:pointer; line-height:1;">&times;</span>
+                </div>
+                <div class="wh-form-group">
+                    <label for="daftarSelectBarang">Pilih Barang dari Master</label>
+                    <select id="daftarSelectBarang" style="height:38px; padding:0 12px; border:1.5px solid var(--border); border-radius:var(--r-md); background:var(--surface); color:var(--text); width:100%;">
+                        <option value="">— Pilih Barang —</option>
+                    </select>
+                </div>
+                <button class="btn-simpan" onclick="simpanPendaftaranBarangGudang()" style="height:38px; width:100%;">💾 Daftarkan</button>
+            </div>
+        </div>
+
+        <!-- FORM TAMBAH STOK MASUK / KELUAR -->
         <div class="wh-card" id="formCard" style="display:none;">
-            <div class="wh-card-title">➕ Tambah Stok Masuk</div>
+            <div class="wh-card-title" id="formCardTitle">➕ Tambah Transaksi Stok</div>
             <div class="wh-form-row">
                 <div class="wh-form-group">
                     <label for="masukTgl">Tanggal</label>
                     <input type="date" id="masukTgl">
                 </div>
                 <div class="wh-form-group">
-                    <label for="masukQty">Jumlah Masuk</label>
-                    <input type="number" id="masukQty" min="1" step="1" placeholder="0" style="width:120px;">
+                    <label for="masukMode">Mode</label>
+                    <select id="masukMode" style="height:38px; padding:0 12px; border:1.5px solid var(--border); border-radius:var(--r-md); background:var(--surface); color:var(--text); width:130px;">
+                        <option value="masuk">Barang Masuk (+)</option>
+                        <option value="keluar">Barang Keluar (-)</option>
+                    </select>
+                </div>
+                <div class="wh-form-group">
+                    <label for="masukQty">Jumlah Qty</label>
+                    <input type="number" id="masukQty" min="1" step="1" placeholder="0" style="width:100px;">
                 </div>
                 <div class="wh-form-group" style="flex:1;min-width:160px;">
-                    <label for="masukCatatan">Catatan (opsional)</label>
-                    <input type="text" id="masukCatatan" placeholder="Cth: Kiriman dari pusat">
+                    <label for="masukCatatan">Catatan / Keterangan</label>
+                    <input type="text" id="masukCatatan" placeholder="Cth: Kiriman dari pusat, Barang Rusak">
                 </div>
                 <button class="btn-simpan" onclick="tambahMasuk()" style="height:38px;align-self:flex-end;white-space:nowrap;">💾 Simpan</button>
             </div>
@@ -297,19 +336,15 @@
                             <th>Masuk</th>
                             <th>Keluar</th>
                             <th>Sisa</th>
-                            <th style="width: 40px; text-align:center;">Aksi</th> <!-- Tambah kolom ini -->
+                            <th style="width: 40px; text-align:center;">Aksi</th>
                         </tr>
                     </thead>
                     <tbody id="ledgerTbody">
-                        <tr><td class="wh-empty-td" colspan="6">Pilih produk untuk melihat riwayat.</td></tr> <!-- Colspan ganti ke 6 -->
-                    </tbody>
-                    <tbody id="ledgerTbody">
-                        <tr><td class="wh-empty-td" colspan="5">Pilih produk untuk melihat riwayat.</td></tr>
+                        <tr><td class="wh-empty-td" colspan="6">Pilih produk untuk melihat riwayat.</td></tr>
                     </tbody>
                 </table>
             </div>
         </div>
-
     </div>
 </div>
 
@@ -360,7 +395,7 @@ function buildSidebar() {
     };
     const PAGES_FRONTLINE = ['dashboard.html','history.html','stok.html','restock.html','laporan_staff.html'];
     const PAGES_MGMT      = ['rekap.html','produk.html'];
-    const PAGES_EXEC      = ['laporan.html','statistik.html','bahan_baku.html','hpp_produk.html','belanja.html','warehouse.html'];
+    const PAGES_EXEC      = ['laporan.html','statistik.html','bahan_baku.html','hpp_produk.html','belanja.html','warehouse.html','salary_staff.html'];
     const PAGES_VIP       = ['user.html','login_history.html'];
     const inGroup = pages => pages.includes(cur);
     const getOpen = (id) => {
@@ -402,7 +437,8 @@ function buildSidebar() {
             + navItem('🧂','Bahan Baku','bahan_baku.html')
             + navItem('💰','HPP Produk','hpp_produk.html')
             + navItem('🏭','Warehouse','warehouse.html')
-            + navItem('💸','Belanja','belanja.html');
+            + navItem('💸','Belanja','belanja.html')
+            + navItem('💵','Salary Staff','salary_staff.html');
         h += navGroup('executive', 'Executive', exec, PAGES_EXEC);
     }
     if (role === 'VIP') {
@@ -450,6 +486,7 @@ function buildMoreMenu() {
         items.push({icon:'💸',label:'Belanja',link:'belanja.html'});
         items.push({icon:'📊',label:'Keuangan',link:'laporan.html'});
         items.push({icon:'📈',label:'Statistik',link:'statistik.html'});
+        items.push({icon:'💵',label:'Salary',link:'salary_staff.html'});
     }
     if (role === 'VIP') {
         items.push({icon:'👥',label:'Users',link:'user.html'});
@@ -472,67 +509,96 @@ function closeSheetOutside(e,id) { if(e.target===document.getElementById(id)) do
 
 let selectedSKU = null;
 
-/* ── CUSTOM DROPDOWN ── */
-function toggleDropdownWH() {
-    document.getElementById('wrapProdukWH').classList.toggle('open');
-}
-
-document.addEventListener('click', function(e) {
-    const wrap = document.getElementById('wrapProdukWH');
-    if (wrap && !wrap.contains(e.target)) wrap.classList.remove('open');
-});
-
-function pilihProdukWH(el) {
-    document.getElementById('labelProdukWH').innerText = el.textContent.trim();
-    document.querySelectorAll('#dropdownProdukWH .dropdown-item').forEach(i => i.classList.remove('active'));
-    el.classList.add('active');
-    document.getElementById('wrapProdukWH').classList.remove('open');
-    onProdukChange(el.dataset.id);
-}
-
+/* ── GRID CARD SELECTION ── */
 function sisaClass(sisa) {
     if (sisa < 0)  return 'danger';
     if (sisa < 10) return 'warn';
     return 'ok';
 }
 
+// Menyimpan cache item list gudang
+let warehouseItems = [];
+
 async function loadProdukList() {
+    const gridContainer = document.getElementById('whGridContainer');
     try {
-        // Tarik daftar item yang pernah diaudit oleh staff
+        // Tarik daftar item secara dinamis dari API get_audit_items_master (default & custom)
         const res = await fetch(`${API_BASE}?action=get_audit_items_master`);
         const list = await res.json().catch(() => []);
+        warehouseItems = list;
 
-        const dropdown = document.getElementById('dropdownProdukWH');
         if (list.length === 0) {
-            dropdown.innerHTML = `<div class="dropdown-item">Belum ada data audit dari cabang</div>`;
+            gridContainer.innerHTML = `<div style="grid-column: 1/-1; text-align: center; padding: 20px; color: var(--text-muted);">Belum ada data audit dari cabang</div>`;
             return;
         }
 
-        dropdown.innerHTML = list.map(p =>
-            `<div class="dropdown-item" data-id="${p.nama}" onclick="pilihProdukWH(this)">${p.nama}</div>`
-        ).join('');
+        gridContainer.innerHTML = '';
+        
+        // Load data stok akhir untuk masing-masing item secara paralel demi kecepatan render
+        await Promise.all(list.map(async (p) => {
+            let sisaStok = 0;
+            try {
+                // ✔️ PERBAIKAN: Menggunakan p.nama, bukan namaItem agar tidak ReferenceError
+                const resLedger = await fetch(`${API_BASE}?action=get_warehouse_ledger&sku=${encodeURIComponent(p.nama)}`);
+                const ledgerList = await resLedger.json().catch(() => []);
+                if (ledgerList && ledgerList.length > 0) {
+                    sisaStok = parseFloat(ledgerList[0].sisa) || 0; // sisa terbaru ada di index 0 karena array reversed
+                }
+            } catch(e) {
+                console.error("Gagal load stok untuk " + p.nama, e);
+            }
+
+            // Tentukan kelas warna sisa stok
+            const cSisa = sisaClass(sisaStok);
+            
+            // Format satuan (jika mengandung 'Pcs' pakai Pcs, jika tidak, tampilkan angka default atau 'satuan' jika relevan)
+            const unit = p.nama.toLowerCase().includes('pcs') ? ' Pcs' : '';
+
+            const card = document.createElement('div');
+            card.className = `wh-item-card ${selectedSKU === p.nama ? 'active' : ''}`;
+            card.id = `card-${p.nama.replace(/\s+/g, '-')}`;
+            card.onclick = () => onProdukChange(p.nama);
+
+            card.innerHTML = `
+                <h4 class="wh-item-card-name">${p.nama}</h4>
+                <p class="wh-item-card-stock ${cSisa}">Stok: <span>${sisaStok.toLocaleString('id-ID')}${unit}</span></p>
+            `;
+            gridContainer.appendChild(card);
+        }));
+
     } catch(e) {
         console.error('loadProdukList:', e);
+        gridContainer.innerHTML = `<div style="grid-column: 1/-1; text-align: center; padding: 20px; color: var(--red);">⚠️ Gagal memuat daftar bahan baku.</div>`;
     }
 }
 
 function onProdukChange(id) {
     if (!id) {
         selectedSKU = null;
-        document.getElementById('sisaBadge').style.display = 'none';
         document.getElementById('formCard').style.display  = 'none';
         document.getElementById('tableCard').style.display = 'none';
         return;
     }
 
     selectedSKU = id;
+    
+    // Perbarui status aktif pada deretan kartu (baik Bahan Baku maupun Logistik)
+    document.querySelectorAll('.wh-item-card').forEach(card => {
+        card.classList.remove('active');
+    });
+    
+    const cardId = id.replace(/\s+/g, '-');
+    const activeCard = document.getElementById(`card-${cardId}`) || document.getElementById(`card-logistik-${cardId}`);
+    if (activeCard) {
+        activeCard.classList.add('active');
+    }
+
     document.getElementById('masukTgl').value     = new Date().toISOString().split('T')[0];
     document.getElementById('masukQty').value     = '';
     document.getElementById('masukCatatan').value = '';
 
     document.getElementById('formCard').style.display  = '';
     document.getElementById('tableCard').style.display = '';
-    document.getElementById('sisaBadge').style.display = '';
 
     loadLedger(id);
 }
@@ -545,11 +611,6 @@ async function loadLedger(namaItem) {
         const res = await fetch(`${API_BASE}?action=get_warehouse_ledger&sku=${encodeURIComponent(namaItem)}`);
         const list = await res.json().catch(() => []);
 
-        const sisa = list.length > 0 ? list[0].sisa : 0;
-        const sisaEl = document.getElementById('sisaVal');
-        sisaEl.textContent = list.length > 0 ? sisa : '—';
-        sisaEl.className = `val ${sisaClass(sisa)}`;
-
         document.getElementById('ledgerCount').textContent = list.length > 0 ? `${list.length} entri` : '';
 
         if (list.length === 0) {
@@ -559,8 +620,6 @@ async function loadLedger(namaItem) {
 
         tbody.innerHTML = list.map((r, i) => {
             const isLatest = i === 0;
-            // Kita tambahkan tombol hapus di kolom terakhir
-            // Gunakan r.id (pastikan di api.php menyertakan kolom ID)
             return `<tr${isLatest ? ' class="latest"' : ''}>
                 <td><span class="mono">${r.tgl}</span></td>
                 <td><small><b>${r.catatan}</b></small></td>
@@ -599,6 +658,7 @@ async function hapusLedger(id) {
         if (hasil.status === 'success') {
             toast.success('Data berhasil dihapus');
             loadLedger(selectedSKU); // Refresh tabel
+            loadProdukList(); // Perbarui sisa stok di grid kartu secara langsung
         } else {
             toast.error('Gagal menghapus: ' + (hasil.message || 'error'));
         }
@@ -608,32 +668,155 @@ async function hapusLedger(id) {
 }
 
 async function tambahMasuk() {
-    if (!selectedSKU) return toast.warning('Pilih produk dulu!');
+    if (!selectedSKU) return toast.warning('Pilih produk / barang dulu!');
 
     const tgl     = document.getElementById('masukTgl').value;
+    const mode    = document.getElementById('masukMode').value;
     const qty     = parseFloat(document.getElementById('masukQty').value) || 0;
     const catatan = document.getElementById('masukCatatan').value.trim();
 
     if (!tgl)     return toast.warning('Tanggal wajib diisi!');
-    if (qty <= 0) return toast.warning('Jumlah masuk harus lebih dari 0!');
+    if (qty <= 0) return toast.warning('Jumlah qty harus lebih dari 0!');
 
     try {
-        const res   = await fetch(`${API_BASE}?action=save_warehouse_masuk`, {
+        const payload = {
+            sku: selectedSKU,
+            tgl: tgl,
+            masuk: mode === 'masuk' ? qty : 0,
+            keluar: mode === 'keluar' ? qty : 0,
+            catatan: catatan || `Input (${mode === 'masuk' ? 'Masuk' : 'Keluar'})`
+        };
+
+        const res = await fetch(`${API_BASE}?action=save_warehouse_masuk`, {
             method:  'POST',
             headers: {'Content-Type':'application/json'},
-            body:    JSON.stringify({ sku: selectedSKU, tgl, masuk: qty, catatan })
+            body:    JSON.stringify(payload)
         });
         const hasil = await res.json();
         if (hasil.status === 'success') {
-            toast.success(`Stok masuk +${qty} berhasil disimpan!`);
+            toast.success(`Transaksi ${mode} untuk ${selectedSKU} berhasil disimpan!`);
             document.getElementById('masukQty').value     = '';
             document.getElementById('masukCatatan').value = '';
             loadLedger(selectedSKU);
+            
+            // Refresh kedua grid list agar data terbaru ter-render
+            loadProdukList();
+            loadLogistikList();
         } else {
             toast.error('Gagal: ' + (hasil.message || 'error'));
         }
     } catch(e) {
         toast.error('Gagal koneksi server!');
+    }
+}
+
+// --- INTEGRASI STOK GUDANG / LOGISTIK MANUAL ---
+async function loadLogistikList() {
+    const gridContainer = document.getElementById('whLogistikGridContainer');
+    try {
+        const res = await fetch(`${API_BASE}?action=get_master_stok`);
+        const list = await res.json().catch(() => []);
+        
+        if (list.length === 0) {
+            gridContainer.innerHTML = `<div style="grid-column: 1/-1; text-align: center; padding: 20px; color: var(--text-muted);">Belum ada barang logistik terdaftar</div>`;
+            return;
+        }
+
+        gridContainer.innerHTML = '';
+
+        await Promise.all(list.map(async (p) => {
+            let sisaStok = 0;
+            try {
+                const resLedger = await fetch(`${API_BASE}?action=get_warehouse_ledger&sku=${encodeURIComponent(p.nama_item)}`);
+                const ledgerList = await resLedger.json().catch(() => []);
+                if (ledgerList && ledgerList.length > 0) {
+                    sisaStok = parseFloat(ledgerList[0].sisa) || 0;
+                }
+            } catch(e) {
+                console.error("Gagal load stok logistik untuk " + p.nama_item, e);
+            }
+
+            const cSisa = sisaClass(sisaStok);
+            const unit = p.nama_item.toLowerCase().includes('pcs') ? ' Pcs' : '';
+
+            const card = document.createElement('div');
+            card.className = `wh-item-card ${selectedSKU === p.nama_item ? 'active' : ''}`;
+            card.id = `card-logistik-${p.nama_item.replace(/\s+/g, '-')}`;
+            card.onclick = () => {
+                onProdukChange(p.nama_item);
+            };
+
+            card.innerHTML = `
+                <h4 class="wh-item-card-name">${p.nama_item}</h4>
+                <p class="wh-item-card-stock ${cSisa}">Stok: <span>${sisaStok.toLocaleString('id-ID')}${unit}</span></p>
+            `;
+            gridContainer.appendChild(card);
+        }));
+
+    } catch(e) {
+        console.error('loadLogistikList:', e);
+        gridContainer.innerHTML = `<div style="grid-column: 1/-1; text-align: center; padding: 20px; color: var(--red);">⚠️ Gagal memuat daftar logistik.</div>`;
+    }
+}
+
+// Modal pendaftaran barang gudang baru
+async function bukaDaftarBarangModal() {
+    const select = document.getElementById('daftarSelectBarang');
+    select.innerHTML = '<option value="">— Pilih Barang —</option>';
+    
+    try {
+        const res = await fetch(`${API_BASE}?action=get_master_stok`);
+        const list = await res.json().catch(() => []);
+        
+        list.forEach(p => {
+            select.innerHTML += `<option value="${p.nama_item}">${p.nama_item}</option>`;
+        });
+    } catch(e) {
+        console.error("Gagal load master untuk pendaftaran:", e);
+    }
+    
+    document.getElementById('daftarBarangModal').style.display = 'flex';
+}
+
+function tutupDaftarBarangModal() {
+    document.getElementById('daftarBarangModal').style.display = 'none';
+}
+
+function closeDaftarBarangModalOutside(e) {
+    if (e.target === document.getElementById('daftarBarangModal')) {
+        tutupDaftarBarangModal();
+    }
+}
+
+async function simpanPendaftaranBarangGudang() {
+    const sku = document.getElementById('daftarSelectBarang').value;
+    if (!sku) return toast.warning('Pilih barang terlebih dahulu!');
+
+    try {
+        const payload = {
+            sku: sku,
+            tgl: new Date().toISOString().split('T')[0],
+            masuk: 0,
+            keluar: 0,
+            catatan: 'Inisialisasi Master Gudang'
+        };
+
+        const res = await fetch(`${API_BASE}?action=save_warehouse_masuk`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        const hasil = await res.json();
+        if (hasil.status === 'success') {
+            toast.success(`Barang "${sku}" berhasil didaftarkan ke Gudang!`);
+            tutupDaftarBarangModal();
+            loadLogistikList();
+        } else {
+            toast.error('Gagal mendaftarkan barang: ' + (hasil.message || 'error'));
+        }
+    } catch(e) {
+        toast.error('Gagal koneksi ke server!');
     }
 }
 
@@ -650,6 +833,7 @@ window.onload = () => {
     buildSidebar();
     updateClock();
     loadProdukList();
+    loadLogistikList(); // Load daftar stok logistik/gudang manual
     setInterval(() => { if (selectedSKU) loadLedger(selectedSKU); }, 30000);
 };
 </script>
