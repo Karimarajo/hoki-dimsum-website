@@ -210,6 +210,55 @@
         width: 100%;
         margin-top: 12px;
     }
+
+    .wh-card {
+        background: #ffffff !important;
+        border: 1px solid #e2e8f0 !important;
+        border-radius: 16px !important;       /* Kotak membulat sempurna */
+        padding: 24px !important;             /* Jarak ruang dalam kotak yang lega */
+        margin-bottom: 28px !important;        /* Space jarak renggang antarkotak */
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04) !important; /* Efek bayangan tipis modern */
+        display: block !important;
+    }
+
+    .payroll-filter-card {
+        background: #ffffff !important;
+        border: 1px solid #e2e8f0 !important;
+        border-radius: 16px !important;
+        padding: 24px !important;
+        margin-bottom: 28px !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04) !important;
+        display: block !important;
+    }
+
+    .payroll-result-card {
+        background: #ffffff !important;
+        border: 1px solid #e2e8f0 !important;
+        border-radius: 16px !important;
+        padding: 24px !important;
+        margin-top: 28px !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04) !important;
+        display: block !important;
+    }
+    
+    .wh-card-title {
+        font-size: 15px !important;
+        font-weight: 700 !important;
+        margin-top: 0 !important;
+        margin-bottom: 20px !important;       /* Space pembatas ke bawah elemen form */
+        color: #1e293b !important;
+        border-bottom: 1.5px solid #e2e8f0 !important; /* Garis pembatas horizontal lembut */
+        padding-bottom: 10px !important;
+        display: block !important;
+    }
+
+    .wh-table-wrap {
+        margin-top: 20px !important;          /* Space tambahan di atas tabel */
+        border-radius: 12px !important;
+        overflow: hidden !important;
+        border: 1px solid #e2e8f0 !important;
+    }
+
     .btn-wa-slip { background: #25d366; }
     .btn-pdf-slip { background: #0284c7; }
     </style>
@@ -256,18 +305,18 @@
 
     <div class="page-body">
 
-        <div class="wh-card" style="margin-bottom:16px;">
+        <div class="payroll-filter-card">
             <div class="wh-card-title">📅 Filter & Hitung Gaji Karyawan</div>
-            <div class="wh-form-row" style="display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap;">
+            <div class="wh-form-row" style="display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap;">
                 <div class="salary-form-control">
                     <label for="filterStartDate">Mulai Tanggal</label>
-                    <input type="date" id="filterStartDate" style="width:160px;">
+                    <input type="date" id="filterStartDate" style="width: 160px;">
                 </div>
                 <div class="salary-form-control">
                     <label for="filterEndDate">Sampai Tanggal</label>
-                    <input type="date" id="filterEndDate" style="width:160px;">
+                    <input type="date" id="filterEndDate" style="width: 160px;">
                 </div>
-                <button class="btn-simpan" onclick="hitungGajiPayroll()" style="height:38px; white-space:nowrap;">💵 Hitung Payroll</button>
+                <button class="btn-simpan" onclick="hitungGajiPayroll()" style="height: 38px; white-space: nowrap; border-radius: var(--r-md); padding: 0 16px;">💵 Hitung Payroll</button>
             </div>
         </div>
 
@@ -414,7 +463,7 @@
 
         </div>
 
-        <div class="wh-card">
+        <div class="payroll-result-card">
             <div class="wh-card-title">📋 Hasil Perhitungan Penggajian Real-time</div>
             <div class="wh-table-wrap">
                 <table class="wh-tbl">
@@ -801,13 +850,18 @@ async function hitungGajiPayroll() {
         tbody.innerHTML = list.map((p, idx) => `
             <tr>
                 <td><b>${p.fullName}</b><br><small>@${p.username}</small></td>
-                <td><span class="tag-metode">${p.role}</span></td>
+                <td><span class="tag-metode" style="background:#f1f5f9; padding:4px 8px; border-radius:6px;">${p.role}</span></td>
                 <td><b>${p.cabang || '—'}</b></td>
-                <td><b>${p.total_masuk} hari</b></td>
-                <td style="font-family:'DM Mono';">Rp ${p.total_omset.toLocaleString('id-ID')}</td>
-                <td style="font-family:'DM Mono'; font-weight:700; color:green;">Rp ${p.total_gaji.toLocaleString('id-ID')}</td>
+                <td>
+                    <div style="line-height:1.4;">
+                        <b>${p.total_masuk} Hari Kerja</b><br>
+                        <small style="color:#64748b;">(${p.days_weekday} Wd / ${p.days_weekend} We)</small>
+                    </div>
+                </td>
+                <td style="font-family:'DM Mono'; font-weight: 500;">Rp ${p.total_omset.toLocaleString('id-ID')}</td>
+                <td style="font-family:'DM Mono'; font-weight:700; color:#16a34a; font-size:13px;">Rp ${p.total_gaji.toLocaleString('id-ID')}</td>
                 <td style="text-align:center;">
-                    <button class="btn-simpan" style="padding:4px 8px; font-size:11px;" onclick="bukaSlipModal(${idx})">👁️ Slip</button>
+                    <button class="btn-simpan" style="padding:6px 12px; font-size:11px; border-radius:6px; cursor:pointer;" onclick="bukaSlipModal(${idx})">👁️ Slip</button>
                 </td>
             </tr>
         `).join('');
@@ -866,9 +920,27 @@ window.onload = async () => {
     buildSidebar();
     updateClock();
     
-    const today = new Date().toISOString().split('T')[0];
-    document.getElementById('filterStartDate').value = today;
-    document.getElementById('filterEndDate').value = today;
+    // LOGIC DYNAMIC FILTER: Otomatis Senin s/d Minggu pekan ini
+    const today = new Date();
+    const dayOfWeek = today.getDay(); // 0 (Minggu) s/d 6 (Sabtu)
+    const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+    
+    const monday = new Date(today);
+    monday.setDate(today.getDate() + diffToMonday);
+    
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+
+    // Format YYYY-MM-DD local timezone
+    const formatLocalDate = (dateObj) => {
+        const year = dateObj.getFullYear();
+        const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const day = String(dateObj.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
+
+    document.getElementById('filterStartDate').value = formatLocalDate(monday);
+    document.getElementById('filterEndDate').value = formatLocalDate(sunday);
 
     // Sinkronisasi data live
     await loadUsersList();

@@ -1152,9 +1152,11 @@ switch ($action) {
             break;
         }
 
+        // 1. Ambil data user yang aktif (staf)
         $resUsers = $conn->query("SELECT username, fullName, role, cabang FROM users WHERE role != 'Owner' AND role != 'VIP' AND role != 'Investor' ORDER BY fullName ASC");
         $users = $resUsers ? $resUsers->fetch_all(MYSQLI_ASSOC) : [];
 
+        // 2. Ambil konfigurasi gaji per role
         $resSalConfig = $conn->query("SELECT * FROM hoki_salary_config");
         $salConfigs = [];
         if ($resSalConfig) {
@@ -1163,6 +1165,7 @@ switch ($action) {
             }
         }
 
+        // 3. Ambil relasi hierarki atasan - bawahan
         $resHierarchy = $conn->query("SELECT * FROM hoki_staff_hierarchy");
         $atasanMapping = [];
         if ($resHierarchy) {
@@ -1171,6 +1174,7 @@ switch ($action) {
             }
         }
 
+        // 4. Ambil data settlement untuk hitung omset & kehadiran
         $resSettlement = $conn->query("SELECT waktu, petugas, cabang, grand_total, DAYOFWEEK(waktu) as dow FROM laporan_settlement WHERE waktu >= '{$tgl_mulai} 00:00:00' AND waktu <= '{$tgl_selesai} 23:59:59'");
         $settlements = $resSettlement ? $resSettlement->fetch_all(MYSQLI_ASSOC) : [];
 
@@ -1196,74 +1200,98 @@ switch ($action) {
         $payrollResults = [];
         foreach ($users as $u) {
             $username = $u['username'];
-            $role = $u['role'];
+            $role = trim($u['role']);
             $conf = $salConfigs[$role] ?? [
-                'gaji_weekday' => 0, 'gaji_weekend' => 0, 'gaji_bulanan' => 0, 'tunjangan_jabatan' => 0,
-                'bonus_harian' => 0, 'bonus_mingguan' => 0, 'bonus_bulanan' => 0,
-                'bonus_harian_jabatan' => 0, 'bonus_mingguan_jabatan' => 0, 'bonus_bulanan_jabatan' => 0,
-                'target_omset_harian' => 450000, 'target_omset_mingguan' => 3500000,
-                'target_omset_bulanan_30' => 15000000, 'target_omset_bulanan_31' => 15500000,
-                'target_hadir_mingguan' => 5, 'target_hadir_bulanan' => 25
+                'gaji_weekday' => 0,
+                'gaji_weekend' => 0,
+                'gaji_bulanan' => 0,
+                'tunjangan_jabatan' => 0,
+                'bonus_harian' => 0,
+                'bonus_mingguan' => 0,
+                'bonus_bulanan' => 0,
+                'bonus_harian_jabatan' => 0,
+                'bonus_mingguan_jabatan' => 0,
+                'bonus_bulanan_jabatan' => 0,
+                'target_omset_harian' => 450000,
+                'target_omset_mingguan' => 3500000,
+                'target_omset_bulanan_30' => 15000000,
+                'target_omset_bulanan_31' => 15500000,
+                'target_hadir_mingguan' => 5,
+                'target_hadir_bulanan' => 25
             ];
 
             $logsKehadiran = $kehadiranStaff[$username] ?? [];
             $daysWeekday = 0;
             $daysWeekend = 0;
-            $totalGapok = 0;
+            
+            $subtotalWeekday = 0;
+            $subtotalWeekend = 0;
             $totalBonusHarian = 0;
+            $qtyBonusHarian = 0;
+            $totalOmsetStaff = 0;
             $rincian = [];
 
+            // Looping harian untuk hitung gapok & bonus harian
             foreach ($logsKehadiran as $tgl => $log) {
-                if ($log['dow'] == 1 || $log['dow'] == 7) {
+                // Hitung omset akumulasi staf selama dia berjaga
+                $cabOmset = $omsetHarianCabang[$tgl][$log['cabang']] ?? 0;
+                $totalOmsetStaff += $cabOmset;
+
+                // Hitung Gaji Pokok
+                $dow = (int)$log['dow'];
+                if ($dow === 1 || $dow === 7) { // 1 = Minggu, 7 = Sabtu -> WEEKEND
                     $daysWeekend++;
-                    $totalGapok += (int)$conf['gaji_weekend'];
-                } else {
+                    $subtotalWeekend += (int)$conf['gaji_weekend'];
+                } else if ($dow >= 2 && $dow <= 6) { // 2 s/d 6 = Senin s/d Jumat -> WEEKDAY
                     $daysWeekday++;
-                    $totalGapok += (int)$conf['gaji_weekday'];
+                    $subtotalWeekday += (int)$conf['gaji_weekday'];
                 }
 
-                $cabOmset = $omsetHarianCabang[$tgl][$log['cabang']] ?? 0;
-                if ($cabOmset >= (int)$conf['target_omset_harian']) {
+                // BONUS HARIAN: Jika omset cabang pada hari itu mencapai target harian
+                if ($cabOmset >= (int)$conf['target_omset_harian'] && (int)$conf['bonus_harian'] > 0) {
                     $totalBonusHarian += (int)$conf['bonus_harian'];
+                    $qtyBonusHarian++;
                 }
             }
 
+            // Masukkan komponen ke rincian slip
             if ($daysWeekday > 0) {
-                $rincian[] = ["kategori" => "Gaji Weekday", "nominal" => (int)$conf['gaji_weekday'], "qty" => $daysWeekday, "subtotal" => (int)$conf['gaji_weekday'] * $daysWeekday];
+                $rincian[] = ["kategori" => "Gaji Weekday", "nominal" => (int)$conf['gaji_weekday'], "qty" => $daysWeekday, "subtotal" => $subtotalWeekday];
             }
             if ($daysWeekend > 0) {
-                $rincian[] = ["kategori" => "Gaji Weekend", "nominal" => (int)$conf['gaji_weekend'], "qty" => $daysWeekend, "subtotal" => (int)$conf['gaji_weekend'] * $daysWeekend];
+                $rincian[] = ["kategori" => "Gaji Weekend", "nominal" => (int)$conf['gaji_weekend'], "qty" => $daysWeekend, "subtotal" => $subtotalWeekend];
             }
             if ((int)$conf['gaji_bulanan'] > 0) {
                 $rincian[] = ["kategori" => "Gaji Bulanan", "nominal" => (int)$conf['gaji_bulanan'], "qty" => 1, "subtotal" => (int)$conf['gaji_bulanan']];
-                $totalGapok += (int)$conf['gaji_bulanan'];
             }
             if ((int)$conf['tunjangan_jabatan'] > 0) {
                 $rincian[] = ["kategori" => "Tunjangan Jabatan", "nominal" => (int)$conf['tunjangan_jabatan'], "qty" => 1, "subtotal" => (int)$conf['tunjangan_jabatan']];
-                $totalGapok += (int)$conf['tunjangan_jabatan'];
             }
             if ($totalBonusHarian > 0) {
-                $rincian[] = ["kategori" => "Bonus Harian Cabang", "nominal" => (int)$conf['bonus_harian'], "qty" => $totalBonusHarian / (int)$conf['bonus_harian'], "subtotal" => $totalBonusHarian];
+                $rincian[] = ["kategori" => "Bonus Harian Cabang", "nominal" => (int)$conf['bonus_harian'], "qty" => $qtyBonusHarian, "subtotal" => $totalBonusHarian];
             }
 
-            $totalOmsetStaff = 0;
-            foreach ($logsKehadiran as $tgl => $log) {
-                $totalOmsetStaff += ($omsetHarianCabang[$tgl][$log['cabang']] ?? 0);
-            }
             $totalMasuk = count($logsKehadiran);
-            $winMingguan = ($totalOmsetStaff >= (int)$conf['target_omset_mingguan'] || $totalMasuk >= (int)$conf['target_hadir_mingguan']);
+
+            // LOGIC BONUS MINGGUAN: Wajib Tembus Target Omset DAN Absen minimal 6 Hari (Menggunakan &&)
+            $winMingguan = ($totalOmsetStaff >= (int)$conf['target_omset_mingguan'] && $totalMasuk >= 6);
             $totalBonusMingguan = $winMingguan ? (int)$conf['bonus_mingguan'] : 0;
             if ($totalBonusMingguan > 0) {
                 $rincian[] = ["kategori" => "Bonus Mingguan", "nominal" => $totalBonusMingguan, "qty" => 1, "subtotal" => $totalBonusMingguan];
             }
 
+            // LOGIC BONUS BULANAN: Wajib Tembus Target Omset DAN Absen minimal 25 Hari (Menggunakan &&)
             $diffDays = (strtotime($tgl_selesai) - strtotime($tgl_mulai)) / 86400 + 1;
             $targetBulan = ($diffDays >= 31) ? (int)$conf['target_omset_bulanan_31'] : (int)$conf['target_omset_bulanan_30'];
-            $winBulanan = ($totalOmsetStaff >= $targetBulan || $totalMasuk >= (int)$conf['target_hadir_bulanan']);
+            
+            $winBulanan = ($totalOmsetStaff >= $targetBulan && $totalMasuk >= 25);
             $totalBonusBulanan = $winBulanan ? (int)$conf['bonus_bulanan'] : 0;
             if ($totalBonusBulanan > 0) {
                 $rincian[] = ["kategori" => "Bonus Bulanan", "nominal" => $totalBonusBulanan, "qty" => 1, "subtotal" => $totalBonusBulanan];
             }
+
+            // Hitung total bersih sementara sebelum bonus jabatan
+            $totalGajiFix = $subtotalWeekday + $subtotalWeekend + (int)$conf['gaji_bulanan'] + (int)$conf['tunjangan_jabatan'] + $totalBonusHarian + $totalBonusMingguan + $totalBonusBulanan;
 
             $payrollResults[$username] = [
                 'username' => $username,
@@ -1274,27 +1302,41 @@ switch ($action) {
                 'days_weekend' => $daysWeekend,
                 'total_masuk' => $totalMasuk,
                 'total_omset' => $totalOmsetStaff,
-                'win_bonus_harian_qty' => ($totalBonusHarian > 0 && (int)$conf['bonus_harian'] > 0) ? ($totalBonusHarian / (int)$conf['bonus_harian']) : 0,
+                'win_bonus_harian_qty' => $qtyBonusHarian,
                 'win_bonus_mingguan' => $winMingguan,
                 'win_bonus_bulanan' => $winBulanan,
-                'total_gapok' => $totalGapok,
+                'total_gapok' => $subtotalWeekday + $subtotalWeekend + (int)$conf['gaji_bulanan'] + (int)$conf['tunjangan_jabatan'],
                 'total_bonus_harian' => $totalBonusHarian,
                 'total_bonus_mingguan' => $totalBonusMingguan,
                 'total_bonus_bulanan' => $totalBonusBulanan,
                 'total_bonus_jabatan' => 0,
                 'rincian' => $rincian,
-                'total_gaji' => $totalGapok + $totalBonusHarian + $totalBonusMingguan + $totalBonusBulanan
+                'total_gaji' => $totalGajiFix
             ];
         }
 
+        // 5. Kalkulasi Tambahan untuk Bonus Jabatan (Atasan yang memantau Bawahan)
         foreach ($payrollResults as $username => &$pData) {
             if (isset($atasanMapping[$username])) {
                 $bawahans = $atasanMapping[$username];
-                $role = $pData['role'];
+                $role = trim($pData['role']);
                 $conf = $salConfigs[$role] ?? [
+                    'gaji_weekday' => 0,
+                    'gaji_weekend' => 0,
+                    'gaji_bulanan' => 0,
+                    'tunjangan_jabatan' => 0,
+                    'bonus_harian' => 0,
+                    'bonus_mingguan' => 0,
+                    'bonus_bulanan' => 0,
                     'bonus_harian_jabatan' => 0,
                     'bonus_mingguan_jabatan' => 0,
-                    'bonus_bulanan_jabatan' => 0
+                    'bonus_bulanan_jabatan' => 0,
+                    'target_omset_harian' => 450000,
+                    'target_omset_mingguan' => 3500000,
+                    'target_omset_bulanan_30' => 15000000,
+                    'target_omset_bulanan_31' => 15500000,
+                    'target_hadir_mingguan' => 5,
+                    'target_hadir_bulanan' => 25
                 ];
 
                 $qtyJabHarian = 0;
@@ -1304,12 +1346,8 @@ switch ($action) {
                 foreach ($bawahans as $bUser) {
                     if (isset($payrollResults[$bUser])) {
                         $qtyJabHarian += $payrollResults[$bUser]['win_bonus_harian_qty'];
-                        if ($payrollResults[$bUser]['win_bonus_mingguan']) {
-                            $winJabMingguan = true;
-                        }
-                        if ($payrollResults[$bUser]['win_bonus_bulanan']) {
-                            $winJabBulanan = true;
-                        }
+                        if ($payrollResults[$bUser]['win_bonus_mingguan']) { $winJabMingguan = true; }
+                        if ($payrollResults[$bUser]['win_bonus_bulanan']) { $winJabBulanan = true; }
                     }
                 }
 
@@ -1317,41 +1355,26 @@ switch ($action) {
                 if ($qtyJabHarian > 0 && (int)$conf['bonus_harian_jabatan'] > 0) {
                     $sub = (int)$conf['bonus_harian_jabatan'] * $qtyJabHarian;
                     $bonusJabatanNominal += $sub;
-                    $pData['rincian'][] = [
-                        "kategori" => "Bonus Jabatan Harian (Bawahan Tembus Target)", 
-                        "nominal" => (int)$conf['bonus_harian_jabatan'], 
-                        "qty" => $qtyJabHarian, 
-                        "subtotal" => $sub
-                    ];
+                    $pData['rincian'][] = ["kategori" => "Bonus Jabatan Harian (Bawahan Tembus)", "nominal" => (int)$conf['bonus_harian_jabatan'], "qty" => $qtyJabHarian, "subtotal" => $sub];
                 }
                 if ($winJabMingguan && (int)$conf['bonus_mingguan_jabatan'] > 0) {
-                    $sub = (int)$conn->real_escape_string($conf['bonus_mingguan_jabatan']); // safety cast
+                    $sub = (int)$conf['bonus_mingguan_jabatan'];
                     $bonusJabatanNominal += $sub;
-                    $pData['rincian'][] = [
-                        "kategori" => "Bonus Jabatan Mingguan (Bawahan Tembus Target)", 
-                        "nominal" => $sub, 
-                        "qty" => 1, 
-                        "subtotal" => $sub
-                    ];
+                    $pData['rincian'][] = ["kategori" => "Bonus Jabatan Mingguan (Bawahan Tembus)", "nominal" => $sub, "qty" => 1, "subtotal" => $sub];
                 }
                 if ($winJabBulanan && (int)$conf['bonus_bulanan_jabatan'] > 0) {
                     $sub = (int)$conf['bonus_bulanan_jabatan'];
                     $bonusJabatanNominal += $sub;
-                    $pData['rincian'][] = [
-                        "kategori" => "Bonus Jabatan Bulanan (Bawahan Tembus Target)", 
-                        "nominal" => $sub, 
-                        "qty" => 1, 
-                        "subtotal" => $sub
-                    ];
+                    $pData['rincian'][] = ["kategori" => "Bonus Jabatan Bulanan (Bawahan Tembus)", "nominal" => $sub, "qty" => 1, "subtotal" => $sub];
                 }
 
                 $pData['total_bonus_jabatan'] = $bonusJabatanNominal;
-                $pData['total_gaji'] += $bonusJabatanNominal;
+                $pData['total_gaji'] += $bonusJabatanNominal; // Akumulasi final ke total_gaji
             }
         }
+        unset($pData);
 
-        $result = is_array($payrollResults) ? array_values($payrollResults) : [];
-        echo json_encode($result);
+        echo json_encode(array_values($payrollResults));
         break;
 
     // ─────────────────────────────────────────────────
