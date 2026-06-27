@@ -724,7 +724,7 @@ async function fetchLaporanData() {
         // 1. Tarik data secara paralel: Master HPP dan History Transaksi
         const [resHpp, resTrx] = await Promise.all([
             fetch(`${API_BASE}?action=get_hpp_produk`),
-            fetch(`${API_BASE}?action=get_history`)
+            fetch(`${API_BASE}?action=get_history&tgl_mulai=${tglDipilih}&tgl_selesai=${tglDipilih}`)
         ]);
         
         const masterHpp = await resHpp.json();

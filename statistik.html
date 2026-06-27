@@ -554,9 +554,10 @@ async function loadFilters() {
 }
 
 async function loadStatistik() {
+    
     try {
         const [resHistory, resSettlement, resKas] = await Promise.all([
-            fetch(`${API_BASE}?action=get_history`),
+            fetch(`${API_BASE}?action=get_history&tgl_mulai=${startStr}&tgl_selesai=${endStr}`),
             fetch(`${API_BASE}?action=get_laporan_history&role=Owner&cabang=Semua`),
             fetch(`${API_BASE}?action=get_kas_data&role=Owner&cabang=Semua`)
         ]);

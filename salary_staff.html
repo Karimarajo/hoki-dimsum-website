@@ -343,52 +343,52 @@
                 <div class="form-group-row-three">
                     <div class="salary-form-control">
                         <label for="gajiWeekday">Gapok Weekday</label>
-                        <input type="number" id="gajiWeekday" placeholder="0">
+                        <input type="text" id="gajiWeekday" placeholder="0">
                     </div>
                     <div class="salary-form-control">
                         <label for="gajiWeekend">Gapok Weekend</label>
-                        <input type="number" id="gajiWeekend" placeholder="0">
+                        <input type="text" id="gajiWeekend" placeholder="0">
                     </div>
                     <div class="salary-form-control">
                         <label for="gajiBulanan">Gaji Bulanan</label>
-                        <input type="number" id="gajiBulanan" placeholder="0">
+                        <input type="text" id="gajiBulanan" placeholder="0">
                     </div>
                 </div>
 
                 <div class="form-group-row">
                     <div class="salary-form-control">
                         <label for="tunjanganJabatan">Tunjangan Jabatan</label>
-                        <input type="number" id="tunjanganJabatan" placeholder="0">
+                        <input type="text" id="tunjanganJabatan" placeholder="0">
                     </div>
                     <div class="salary-form-control">
                         <label for="bonusHarian">Bonus Harian Staff</label>
-                        <input type="number" id="bonusHarian" placeholder="0">
+                        <input type="text" id="bonusHarian" placeholder="0">
                     </div>
                 </div>
 
                 <div class="form-group-row">
                     <div class="salary-form-control">
                         <label for="bonusMingguan">Bonus Mingguan Staff</label>
-                        <input type="number" id="bonusMingguan" placeholder="0">
+                        <input type="text" id="bonusMingguan" placeholder="0">
                     </div>
                     <div class="salary-form-control">
                         <label for="bonusBulanan">Bonus Bulanan Staff</label>
-                        <input type="number" id="bonusBulanan" placeholder="0">
+                        <input type="text" id="bonusBulanan" placeholder="0">
                     </div>
                 </div>
 
                 <div class="form-group-row-three">
                     <div class="salary-form-control">
                         <label for="bonusHarianJabatan">Jabatan Harian</label>
-                        <input type="number" id="bonusHarianJabatan" placeholder="0">
+                        <input type="text" id="bonusHarianJabatan" placeholder="0">
                     </div>
                     <div class="salary-form-control">
                         <label for="bonusMingguanJabatan">Jabatan Mingguan</label>
-                        <input type="number" id="bonusMingguanJabatan" placeholder="0">
+                        <input type="text" id="bonusMingguanJabatan" placeholder="0">
                     </div>
                     <div class="salary-form-control">
                         <label for="bonusBulananJabatan">Jabatan Bulanan</label>
-                        <input type="number" id="bonusBulananJabatan" placeholder="0">
+                        <input type="text" id="bonusBulananJabatan" placeholder="0">
                     </div>
                 </div>
 
@@ -399,33 +399,33 @@
                 <div class="form-group-row">
                     <div class="salary-form-control">
                         <label for="targetOmsetHarian">Target Omset Harian</label>
-                        <input type="number" id="targetOmsetHarian" value="450000">
+                        <input type="text" id="targetOmsetHarian" value="450.000">
                     </div>
                     <div class="salary-form-control">
                         <label for="targetOmsetMingguan">Target Omset Mingguan</label>
-                        <input type="number" id="targetOmsetMingguan" value="3500000">
+                        <input type="text" id="targetOmsetMingguan" value="3.500.000">
                     </div>
                 </div>
 
                 <div class="form-group-row">
                     <div class="salary-form-control">
                         <label for="targetOmsetBulanan30">Target Omset 30 Hari</label>
-                        <input type="number" id="targetOmsetBulanan30" value="15000000">
+                        <input type="text" id="targetOmsetBulanan30" value="15.000.000">
                     </div>
                     <div class="salary-form-control">
                         <label_for="targetOmsetBulanan31">Target Omset 31 Hari</label_for>
-                        <input type="number" id="targetOmsetBulanan31" value="15500000">
+                        <input type="text" id="targetOmsetBulanan31" value="15.500.000">
                     </div>
                 </div>
 
                 <div class="form-group-row">
                     <div class="salary-form-control">
                         <label for="targetHadirMingguan">Min. Hadir Mingguan (Hari)</label>
-                        <input type="number" id="targetHadirMingguan" value="5">
+                        <input type="text" id="targetHadirMingguan" value="5">
                     </div>
                     <div class="salary-form-control">
                         <label for="targetHadirBulanan">Min. Hadir Bulanan (Hari)</label>
-                        <input type="number" id="targetHadirBulanan" value="25">
+                        <input type="text" id="targetHadirBulanan" value="25">
                     </div>
                 </div>
 
@@ -708,48 +708,80 @@ async function loadGajiConfig() {
     } catch(e) { console.error(e); }
 }
 
+function formatRibuan(val) {
+    if (val === undefined || val === null || val === '') return '0';
+    let clean = String(val).replace(/\D/g, '');
+    if (clean === '') return '0';
+    return parseInt(clean, 10).toLocaleString('id-ID');
+}
+
+function parseRibuan(str) {
+    if (!str) return 0;
+    let clean = String(str).replace(/\D/g, '');
+    return parseInt(clean, 10) || 0;
+}
+
+function initAutoFormatRibuan(inputIds) {
+    inputIds.forEach(id => {
+        const input = document.getElementById(id);
+        if (!input) return;
+        input.addEventListener('input', (e) => {
+            const cursorPosition = e.target.selectionStart;
+            const originalLength = e.target.value.length;
+            
+            const formatted = formatRibuan(e.target.value);
+            e.target.value = formatted;
+            
+            const newLength = formatted.length;
+            const newPosition = cursorPosition + (newLength - originalLength);
+            e.target.setSelectionStart(newPosition);
+            e.target.setSelectionEnd(newPosition);
+        });
+    });
+}
+
 function loadSelectedRoleConfig() {
     const role = document.getElementById('selectRoleConfig').value;
     const c = activeSalaryConfigs[role] || { gaji_weekday: 0, gaji_weekend: 0, gaji_bulanan: 0, tunjangan_jabatan: 0, bonus_harian: 0, bonus_mingguan: 0, bonus_bulanan: 0, bonus_harian_jabatan: 0, bonus_mingguan_jabatan: 0, bonus_bulanan_jabatan: 0, target_omset_harian: 450000, target_omset_mingguan: 3500000, target_omset_bulanan_30: 15000000, target_omset_bulanan_31: 15500000, target_hadir_mingguan: 5, target_hadir_bulanan: 25 };
 
-    document.getElementById('gajiWeekday').value = c.gaji_weekday;
-    document.getElementById('gajiWeekend').value = c.gaji_weekend;
-    document.getElementById('gajiBulanan').value = c.gaji_bulanan;
-    document.getElementById('tunjanganJabatan').value = c.tunjangan_jabatan;
-    document.getElementById('bonusHarian').value = c.bonus_harian;
-    document.getElementById('bonusMingguan').value = c.bonus_mingguan;
-    document.getElementById('bonusBulanan').value = c.bonus_bulanan;
-    document.getElementById('bonusHarianJabatan').value = c.bonus_harian_jabatan;
-    document.getElementById('bonusMingguanJabatan').value = c.bonus_mingguan_jabatan;
-    document.getElementById('bonusBulananJabatan').value = c.bonus_bulanan_jabatan;
-    document.getElementById('targetOmsetHarian').value = c.target_omset_harian;
-    document.getElementById('targetOmsetMingguan').value = c.target_omset_mingguan;
-    document.getElementById('targetOmsetBulanan30').value = c.target_omset_bulanan_30;
-    document.getElementById('targetOmsetBulanan31').value = c.target_omset_bulanan_31;
-    document.getElementById('targetHadirMingguan').value = c.target_hadir_mingguan;
-    document.getElementById('targetHadirBulanan').value = c.target_hadir_bulanan;
+    document.getElementById('gajiWeekday').value = formatRibuan(c.gaji_weekday);
+    document.getElementById('gajiWeekend').value = formatRibuan(c.gaji_weekend);
+    document.getElementById('gajiBulanan').value = formatRibuan(c.gaji_bulanan);
+    document.getElementById('tunjanganJabatan').value = formatRibuan(c.tunjangan_jabatan);
+    document.getElementById('bonusHarian').value = formatRibuan(c.bonus_harian);
+    document.getElementById('bonusMingguan').value = formatRibuan(c.bonus_mingguan);
+    document.getElementById('bonusBulanan').value = formatRibuan(c.bonus_bulanan);
+    document.getElementById('bonusHarianJabatan').value = formatRibuan(c.bonus_harian_jabatan);
+    document.getElementById('bonusMingguanJabatan').value = formatRibuan(c.bonus_mingguan_jabatan);
+    document.getElementById('bonusBulananJabatan').value = formatRibuan(c.bonus_bulanan_jabatan);
+    document.getElementById('targetOmsetHarian').value = formatRibuan(c.target_omset_harian);
+    document.getElementById('targetOmsetMingguan').value = formatRibuan(c.target_omset_mingguan);
+    document.getElementById('targetOmsetBulanan30').value = formatRibuan(c.target_omset_bulanan_30);
+    document.getElementById('targetOmsetBulanan31').value = formatRibuan(c.target_omset_bulanan_31);
+    document.getElementById('targetHadirMingguan').value = formatRibuan(c.target_hadir_mingguan);
+    document.getElementById('targetHadirBulanan').value = formatRibuan(c.target_hadir_bulanan);
 }
 
 async function saveSalaryConfig() {
     const role = document.getElementById('selectRoleConfig').value;
     const payload = {
         role: role,
-        gaji_weekday: parseInt(document.getElementById('gajiWeekday').value) || 0,
-        gaji_weekend: parseInt(document.getElementById('gajiWeekend').value) || 0,
-        gaji_bulanan: parseInt(document.getElementById('gajiBulanan').value) || 0,
-        tunjangan_jabatan: parseInt(document.getElementById('tunjanganJabatan').value) || 0,
-        bonus_harian: parseInt(document.getElementById('bonusHarian').value) || 0,
-        bonus_mingguan: parseInt(document.getElementById('bonusMingguan').value) || 0,
-        bonus_bulanan: parseInt(document.getElementById('bonusBulanan').value) || 0,
-        bonus_harian_jabatan: parseInt(document.getElementById('bonusHarianJabatan').value) || 0,
-        bonus_mingguan_jabatan: parseInt(document.getElementById('bonusMingguanJabatan').value) || 0,
-        bonus_bulanan_jabatan: parseInt(document.getElementById('bonusBulananJabatan').value) || 0,
-        target_omset_harian: parseInt(document.getElementById('targetOmsetHarian').value) || 450000,
-        target_omset_mingguan: parseInt(document.getElementById('targetOmsetMingguan').value) || 3500000,
-        target_omset_bulanan_30: parseInt(document.getElementById('targetOmsetBulanan30').value) || 15000000,
-        target_omset_bulanan_31: parseInt(document.getElementById('targetOmsetBulanan31').value) || 15500000,
-        target_hadir_mingguan: parseInt(document.getElementById('targetHadirMingguan').value) || 5,
-        target_hadir_bulanan: parseInt(document.getElementById('targetHadirBulanan').value) || 25
+        gaji_weekday: parseRibuan(document.getElementById('gajiWeekday').value),
+        gaji_weekend: parseRibuan(document.getElementById('gajiWeekend').value),
+        gaji_bulanan: parseRibuan(document.getElementById('gajiBulanan').value),
+        tunjangan_jabatan: parseRibuan(document.getElementById('tunjanganJabatan').value),
+        bonus_harian: parseRibuan(document.getElementById('bonusHarian').value),
+        bonus_mingguan: parseRibuan(document.getElementById('bonusMingguan').value),
+        bonus_bulanan: parseRibuan(document.getElementById('bonusBulanan').value),
+        bonus_harian_jabatan: parseRibuan(document.getElementById('bonusHarianJabatan').value),
+        bonus_mingguan_jabatan: parseRibuan(document.getElementById('bonusMingguanJabatan').value),
+        bonus_bulanan_jabatan: parseRibuan(document.getElementById('bonusBulananJabatan').value),
+        target_omset_harian: parseRibuan(document.getElementById('targetOmsetHarian').value) || 450000,
+        target_omset_mingguan: parseRibuan(document.getElementById('targetOmsetMingguan').value) || 3500000,
+        target_omset_bulanan_30: parseRibuan(document.getElementById('targetOmsetBulanan30').value) || 15000000,
+        target_omset_bulanan_31: parseRibuan(document.getElementById('targetOmsetBulanan31').value) || 15500000,
+        target_hadir_mingguan: parseRibuan(document.getElementById('targetHadirMingguan').value) || 5,
+        target_hadir_bulanan: parseRibuan(document.getElementById('targetHadirBulanan').value) || 25
     };
 
     try {
@@ -921,6 +953,15 @@ window.onload = async () => {
     buildSidebar();
     updateClock();
     
+    // Inisialisasi format ribuan otomatis untuk input konfigurasi gaji
+    initAutoFormatRibuan([
+        'gajiWeekday', 'gajiWeekend', 'gajiBulanan', 'tunjanganJabatan', 
+        'bonusHarian', 'bonusMingguan', 'bonusBulanan', 'bonusHarianJabatan', 
+        'bonusMingguanJabatan', 'bonusBulananJabatan', 'targetOmsetHarian', 
+        'targetOmsetMingguan', 'targetOmsetBulanan30', 'targetOmsetBulanan31', 
+        'targetHadirMingguan', 'targetHadirBulanan'
+    ]);
+
     // LOGIC DYNAMIC FILTER: Otomatis Senin s/d Minggu pekan ini
     const today = new Date();
     const dayOfWeek = today.getDay(); // 0 (Minggu) s/d 6 (Sabtu)

@@ -418,7 +418,7 @@ async function hitungRekapan() {
         // Fetch paralel: Master Produk, History Transaksi Langsung, dan Buku Kas (Belanja/Pengeluaran)
         const [resProd, resTrx, resKas] = await Promise.all([
             masterProdukCache.length ? Promise.resolve({json:()=>masterProdukCache}) : fetch(`${API_BASE}?action=get_produk`),
-            fetch(`${API_BASE}?action=get_history`),
+            fetch(`${API_BASE}?action=get_history&tgl_mulai=${tglVal}&tgl_selesai=${tglVal}`),
             fetch(`${API_BASE}?action=get_kas_data&role=${role}&cabang=${encodeURIComponent(currentUser.cabang||'')}`)
         ]);
 
