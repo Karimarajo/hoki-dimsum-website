@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
@@ -464,7 +464,24 @@
 
             <!-- KOLOM KANAN: History -->
             <div class="card-laporan">
-                <h3 style="margin-bottom:14px;">📄 History Settlement</h3>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:10px;">
+                    <h3 style="margin:0;">📄 History Settlement</h3>
+                </div>
+                
+                <!-- Filter Tanggal untuk History Laporan -->
+                <div class="filter-bar" style="display:flex; gap:8px; margin-bottom:12px; padding: 10px; background:var(--surface-2); border-radius:var(--r-md); border: 1px solid var(--border); flex-wrap:wrap; align-items:flex-end;">
+                    <div style="display:flex; flex-direction:column; gap:4px; flex:1; min-width:110px;">
+                        <label style="font-size:9px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.8px;">Dari</label>
+                        <input type="date" id="histMulai" style="height:32px; padding:0 8px; font-size:12px; border:1.5px solid var(--border); border-radius:var(--r-sm); background:var(--surface); outline:none; font-family:'DM Sans';">
+                    </div>
+                    <div style="display:flex; flex-direction:column; gap:4px; flex:1; min-width:110px;">
+                        <label style="font-size:9px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.8px;">Sampai</label>
+                        <input type="date" id="histSelesai" style="height:32px; padding:0 8px; font-size:12px; border:1.5px solid var(--border); border-radius:var(--r-sm); background:var(--surface); outline:none; font-family:'DM Sans';">
+                    </div>
+                    <button type="button" onclick="renderHistoryLaporan()" style="height:32px; padding:0 12px; font-size:12px; font-weight:700; background:var(--red); color:white; border:none; border-radius:var(--r-sm); cursor:pointer; font-family:'DM Sans';">🔍 Cari</button>
+                    <button type="button" onclick="resetHistFilter()" style="height:32px; padding:0 10px; font-size:12px; font-weight:500; background:transparent; color:var(--text-muted); border:1px solid var(--border); border-radius:var(--r-sm); cursor:pointer; font-family:'DM Sans';">🔄 Reset</button>
+                </div>
+
                 <div style="overflow-x:auto;">
                     <table id="historyTable">
                         <thead>
@@ -928,7 +945,16 @@ function kirimWADariDetail() {
 /* ── RENDER HISTORY ── */
 async function renderHistoryLaporan() {
     try {
-        const url = `${API_BASE}?action=get_laporan_history&role=${currentUser.role}&cabang=${encodeURIComponent(cabangAktif)}`;
+        const tglMulai   = document.getElementById('histMulai').value;
+        const tglSelesai = document.getElementById('histSelesai').value;
+        
+        let queryParams = new URLSearchParams();
+        queryParams.append('role', currentUser.role);
+        queryParams.append('cabang', cabangAktif);
+        if (tglMulai) queryParams.append('tgl_mulai', tglMulai);
+        if (tglSelesai) queryParams.append('tgl_selesai', tglSelesai);
+
+        const url = `${API_BASE}?action=get_laporan_history&${queryParams.toString()}`;
         const res = await fetch(url);
         cacheHistoryLaporan = await res.json();
         const tbody = document.getElementById('historyBody');
@@ -939,9 +965,30 @@ async function renderHistoryLaporan() {
             return;
         }
 
-        cacheHistoryLaporan.forEach(l => {
-            if (!['Owner','VIP'].includes(currentUser.role) && l.cabang !== cabangAktif) return;
+        // ── LOGIKA BARU: Filter data berdasarkan input tanggal di browser ──
+        let dataTerfilter = cacheHistoryLaporan.filter(l => {
+            // Pengaman Hak Akses Cabang untuk Staff biasa
+            if (!['Owner', 'VIP'].includes(currentUser.role) && l.cabang !== cabangAktif) return false;
 
+            // Ambil bagian tanggal saja (YYYY-MM-DD) dari kolom waktu di database
+            const tglData = (l.waktu || '').split(' ')[0];
+
+            if (tglMulai && tglData < tglMulai) return false;
+            if (tglSelesai && tglData > tglSelesai) return false;
+
+            return true;
+        });
+
+        if (dataTerfilter.length === 0) {
+            tbody.innerHTML = '<tr class="empty-row"><td colspan="6">Tidak ada laporan dalam rentang tanggal ini</td></tr>';
+            return;
+        }
+
+        // Batasi tampilan tabel hanya 100 data terfilter terbaru demi performa UI
+        const limitRender = 100;
+        const itemsToRender = dataTerfilter.slice(0, limitRender);
+
+        itemsToRender.forEach(l => {
             const parts  = (l.waktu || '').split(' ');
             const tglStr = parts[0] || '—';
             const jamStr = parts[1] ? parts[1].substring(0, 5) : '—'; // Ambil HH:mm saja
@@ -958,9 +1005,25 @@ async function renderHistoryLaporan() {
                 </td>
             </tr>`;
         });
+
+        // Baris informasi penjelas jika data melimpah melebihi batas render
+        if (dataTerfilter.length > limitRender) {
+            tbody.innerHTML += `<tr>
+                <td colspan="6" style="text-align:center; color:var(--text-light); font-style:italic; padding: 10px; background: var(--surface-2);">
+                    ⚠️ Menampilkan ${limitRender} laporan terbaru dari total ${dataTerfilter.length} hasil pencarian.
+                </td>
+            </tr>`;
+        }
     } catch (e) {
         console.error('Error renderHistoryLaporan:', e);
+        document.getElementById('historyBody').innerHTML = '<tr class="empty-row"><td colspan="6" style="color:var(--red);">⚠️ Gagal memuat data pencarian</td></tr>';
     }
+}
+
+function resetHistFilter() {
+    document.getElementById('histMulai').value = '';
+    document.getElementById('histSelesai').value = '';
+    renderHistoryLaporan();
 }
 
 /* ── BUKA DETAIL ── */

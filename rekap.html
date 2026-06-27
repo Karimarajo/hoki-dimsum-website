@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
@@ -414,63 +414,78 @@ async function hitungRekapan() {
     }
 
     try {
-        // Ambil laporan settlement + master produk
-        const [resLap, resProd] = await Promise.all([
-            fetch(`${API_BASE}?action=get_laporan_history&role=${role}&cabang=${encodeURIComponent(currentUser.cabang||'')}`),
-            masterProdukCache.length ? Promise.resolve({json:()=>masterProdukCache}) : fetch(`${API_BASE}?action=get_produk`)
+        // Fetch paralel: Master Produk, History Transaksi Langsung, dan Buku Kas (Belanja/Pengeluaran)
+        const [resProd, resTrx, resKas] = await Promise.all([
+            masterProdukCache.length ? Promise.resolve({json:()=>masterProdukCache}) : fetch(`${API_BASE}?action=get_produk`),
+            fetch(`${API_BASE}?action=get_history`),
+            fetch(`${API_BASE}?action=get_kas_data&role=${role}&cabang=${encodeURIComponent(currentUser.cabang||'')}`)
         ]);
 
-        const allReports = await resLap.json();
         if (!masterProdukCache.length) masterProdukCache = await resProd.json();
+        const transaksi = await resTrx.json();
+        const kasData = await resKas.json();
 
         let total = { omset:0, pcs:0, exp:0, metode:{}, menu:{}, listExp:[], breakdown:{} };
 
-        const filtered = allReports.filter(r => {
-            const rDate = (r.waktu || '').split(' ')[0];
-            return rDate === tglVal && selectedBranches.includes(r.cabang);
-        });
-
-        filtered.forEach(r => {
-            total.omset += parseInt(r.grand_total || 0);
-
-            // Metode
-            const mtd = JSON.parse(r.metode_json || '{}');
-            for (let m in mtd) total.metode[m] = (total.metode[m] || 0) + parseInt(mtd[m]);
-
-            // Audit stok
-            const audit = JSON.parse(r.audit_json || '{}');
-            total.pcs += parseInt(audit.dLak || 0);
-
-            // Pengeluaran
-            const exps = JSON.parse(r.pengeluaran_json || '[]');
-            exps.forEach(e => {
-                total.exp += parseInt(e.harga || 0);
-                total.listExp.push({ ...e, cabang: r.cabang });
-            });
-        });
-
-        // Ambil menu terjual dari transaksi langsung (lebih akurat)
-        const resTrx = await fetch(`${API_BASE}?action=get_history`);
-        const transaksi = await resTrx.json();
-
+        // 1. Proses transaksi langsung (Omset, Metode Pembayaran, Menu Terjual, dan Pcs Dimsum)
         transaksi.forEach(t => {
             const tDate = (t.waktu || '').split(' ')[0];
+            // Filter berdasarkan tanggal yang dipilih dan cabang yang dicentang
             if (tDate !== tglVal || !selectedBranches.includes(t.cabang)) return;
 
-            const items = JSON.parse(t.items_json || '[]');
+            // Tambahkan ke omset total
+            const subtotal = parseInt(t.total || 0, 10);
+            total.omset += subtotal;
+
+            // Rincian Metode Pembayaran
+            const mtd = (t.metode || 'CASH').toUpperCase();
+            total.metode[mtd] = (total.metode[mtd] || 0) + subtotal;
+
+            // Bedah item terjual
+            let items = [];
+            try { items = JSON.parse(t.items_json || '[]'); } catch(_) { items = []; }
+            
             items.forEach(it => {
                 const nama = it.nama || it.sku || '';
                 const qty  = parseInt(it.qty) || 1;
+                
+                // Masukkan ke menu terjual
                 total.menu[nama] = (total.menu[nama] || 0) + qty;
 
-                // Breakdown dimsum per produk
+                // Cari kecocokan produk di master untuk hitung pcs dimsum & breakdown
                 const p = masterProdukCache.find(x => x.nama === nama || x.sku === it.sku);
-                if (p && parseInt(p.dimsumPcs) > 0) {
-                    const dimsumQty = parseInt(p.dimsumPcs) * qty;
-                    total.breakdown[nama] = total.breakdown[nama] || { porsi:0, dimsum:0 };
-                    total.breakdown[nama].porsi  += qty;
-                    total.breakdown[nama].dimsum += dimsumQty;
+                if (p) {
+                    const dimsumPerPorsi = parseInt(p.dimsumPcs || 0, 10);
+                    if (dimsumPerPorsi > 0) {
+                        const dimsumQty = dimsumPerPorsi * qty;
+                        total.pcs += dimsumQty; // Akumulasi total pcs dimsum terjual
+
+                        // Breakdown dimsum per produk
+                        total.breakdown[nama] = total.breakdown[nama] || { porsi:0, dimsum:0 };
+                        total.breakdown[nama].porsi  += qty;
+                        total.breakdown[nama].dimsum += dimsumQty;
+                    }
                 }
+            });
+        });
+
+        // 2. Proses Pengeluaran dari Buku Kas (hoki_kas_data)
+        kasData.forEach(d => {
+            // Hanya ambil pengeluaran (mode = Debit)
+            if (d.mode !== 'Debit') return;
+
+            const dDate = (d.waktu || '').split(' ')[0].split('T')[0];
+            // Filter berdasarkan tanggal terpilih dan cabang yang dicentang
+            if (dDate !== tglVal || !selectedBranches.includes(d.cabang)) return;
+
+            const nom = parseInt(d.nominal || 0, 10);
+            total.exp += nom;
+
+            total.listExp.push({
+                nama: d.nama || 'Pengeluaran',
+                qty: d.qty || 1,
+                harga: nom,
+                cabang: d.cabang
             });
         });
 
