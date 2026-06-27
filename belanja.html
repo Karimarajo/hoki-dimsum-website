@@ -780,13 +780,19 @@ async function muatTabel() {
         const tbody = document.getElementById('tabelArusKas');
         tbody.innerHTML = '';
 
+        // Hitung total dari SELURUH data yang telah difilter agar penjumlahan tetap 100% akurat
         filtered.forEach(d => {
-            // nominal = total harga yang diinput (BUKAN harga satuan × qty)
-            // qty hanya kolom keterangan (misal: 5 kg, 3 lusin), tidak dipakai sebagai multiplier
             const nom = parseInt(d.nominal || 0, 10);
             if (d.mode === 'Credit') credit += nom;
             else debit += nom;
+        });
 
+        // Hanya render 100 item pertama ke tabel agar DOM tetap ringan dan loading sangat cepat
+        const limitRender = 100;
+        const itemsToRender = filtered.slice(0, limitRender);
+
+        itemsToRender.forEach(d => {
+            const nom = parseInt(d.nominal || 0, 10);
             const badge = d.mode === 'Credit' ? 'badge-in' : 'badge-out';
             const sign  = d.mode === 'Credit' ? '+' : '-';
             const color = d.mode === 'Credit' ? 'var(--green)' : 'var(--red)';
@@ -804,6 +810,16 @@ async function muatTabel() {
                     <td>${currentUser.role === 'VIP' ? `<button class="btn-del-kas" onclick="hapusKas(${d.id})">✖</button>` : '—'}</td>
                 </tr>`;
         });
+
+        // Tampilkan info jika ada data yang disembunyikan agar user tidak bingung
+        if (filtered.length > limitRender) {
+            tbody.innerHTML += `
+                <tr>
+                    <td colspan="9" style="text-align:center; color:var(--text-light); font-style:italic; padding: 12px; background: var(--surface-2);">
+                        ⚠️ Menampilkan ${limitRender} data terbaru dari total ${filtered.length} data. Gunakan filter tanggal/nama untuk melihat data spesifik lainnya.
+                    </td>
+                </tr>`;
+        }
 
         // ✅ Fix Bug 4: helper format angka konsisten (negatif tetap rapi)
         const formatRp = (val) => {

@@ -469,16 +469,30 @@ async function renderHistory() {
     const tbody = document.getElementById('tabelHistory');
     tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><span class="icon">⏳</span><p>Memuat data...</p></div></td></tr>`;
     try {
-        const res = await fetch(`${API_BASE}?action=get_history`);
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        const raw          = await res.json();
-        const transaksiList = Array.isArray(raw) ? raw : [];
-
         const tglMulai      = document.getElementById('tglMulai').value;
         const tglSelesai    = document.getElementById('tglSelesai').value;
         const role          = currentUser.role;
         const cabangLoginRaw = (cabangLogin || '').trim();
         const cabangAkses   = (currentUser.cabang || '').split(',').map(c => c.trim()).filter(Boolean);
+
+        // Kirim filter ke API agar query di DB sangat cepat dan hemat memori/bandwidth
+        let queryParams = new URLSearchParams();
+        if (tglMulai) queryParams.append('tgl_mulai', tglMulai);
+        if (tglSelesai) queryParams.append('tgl_selesai', tglSelesai);
+        
+        // Sesuaikan parameter cabang berdasarkan role login
+        if (['VIP', 'Owner'].includes(role)) {
+            if (selectedCabang !== 'Semua') {
+                queryParams.append('cabang', selectedCabang);
+            }
+        } else {
+            queryParams.append('cabang', cabangLoginRaw);
+        }
+
+        const res = await fetch(`${API_BASE}?action=get_history&${queryParams.toString()}`);
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const raw          = await res.json();
+        const transaksiList = Array.isArray(raw) ? raw : [];
 
         tbody.innerHTML = '';
         let count = 0;

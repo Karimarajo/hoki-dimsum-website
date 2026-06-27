@@ -455,7 +455,33 @@ switch ($action) {
         break;
 
     case 'get_history':
-        $res = $conn->query("SELECT * FROM transaksi ORDER BY id DESC");
+        // Cek filter opsional untuk optimasi performa load data
+        $tglMulai = isset($_GET['tgl_mulai']) ? $conn->real_escape_string($_GET['tgl_mulai']) : '';
+        $tglSelesai = isset($_GET['tgl_selesai']) ? $conn->real_escape_string($_GET['tgl_selesai']) : '';
+        $cab = isset($_GET['cabang']) ? $conn->real_escape_string($_GET['cabang']) : '';
+        $role = isset($_GET['role']) ? $_GET['role'] : '';
+
+        // Pastikan index di database dibuat demi kecepatan pencarian
+        $conn->query("ALTER TABLE transaksi ADD INDEX IF NOT EXISTS idx_waktu_cabang (waktu, cabang)");
+
+        $where = [];
+        if ($tglMulai) {
+            $where[] = "DATE(waktu) >= '$tglMulai'";
+        }
+        if ($tglSelesai) {
+            $where[] = "DATE(waktu) <= '$tglSelesai'";
+        }
+        if ($cab && strtolower($cab) !== 'semua') {
+            $where[] = "LOWER(cabang) = LOWER('$cab')";
+        }
+
+        $whereClause = count($where) > 0 ? "WHERE " . implode(" AND ", $where) : "";
+        
+        // Batasi baris default (misal 500 teratas jika tidak difilter tanggal) agar load cepat,
+        // namun tetap mengembalikan semua jika user secara spesifik memfilter rentang tanggal.
+        $limitClause = ($tglMulai || $tglSelesai) ? "" : "LIMIT 500";
+
+        $res = $conn->query("SELECT * FROM transaksi $whereClause ORDER BY id DESC $limitClause");
         echo json_encode($res ? $res->fetch_all(MYSQLI_ASSOC) : []);
         break;
 
