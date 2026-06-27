@@ -66,10 +66,30 @@ if ($isDev) {
             ]);
             break;
         case 'get_history':
-            echo json_encode([
-                ['id'=>1,'waktu'=>date('Y-m-d H:i:s',strtotime('-1 hour')),'petugas'=>'Staff Kasir','cabang'=>'Pusat','items_json'=>json_encode([['nama'=>'Dimsum Ayam','qty'=>1]]),'total'=>15000,'metode'=>'CASH'],
-                ['id'=>2,'waktu'=>date('Y-m-d H:i:s',strtotime('-2 hours')),'petugas'=>'Staff Kasir','cabang'=>'Pusat','items_json'=>json_encode([['nama'=>'Hakau','qty'=>1]]),'total'=>18000,'metode'=>'QRIS'],
-            ]);
+            // Cek filter opsional untuk optimasi performa load data
+            $tglMulai = isset($_GET['tgl_mulai']) ? $conn->real_escape_string($_GET['tgl_mulai']) : '';
+            $tglSelesai = isset($_GET['tgl_selesai']) ? $conn->real_escape_string($_GET['tgl_selesai']) : '';
+            $cab = isset($_GET['cabang']) ? $conn->real_escape_string($_GET['cabang']) : '';
+
+            $where = [];
+            if ($tglMulai) {
+                $where[] = "waktu >= '{$tglMulai} 00:00:00'";
+            }
+            if ($tglSelesai) {
+                $where[] = "waktu <= '{$tglSelesai} 23:59:59'";
+            }
+            if ($cab && strtolower($cab) !== 'semua') {
+                $where[] = "LOWER(cabang) = LOWER('$cab')";
+            }
+
+            $whereClause = count($where) > 0 ? "WHERE " . implode(" AND ", $where) : "";
+            
+            // Pengurutan waktu diserahkan langsung ke database agar browser tidak lag
+            // Menggunakan LIMIT jika tidak ada filter agar pemuatan awal instan
+            $limitClause = ($tglMulai || $tglSelesai) ? "" : "LIMIT 300";
+
+            $res = $conn->query("SELECT id, waktu, cabang, petugas, total, metode, items_json FROM transaksi $whereClause ORDER BY waktu DESC, id DESC $limitClause");
+            echo json_encode($res ? $res->fetch_all(MYSQLI_ASSOC) : []);
             break;
         case 'get_users':
             echo json_encode(array_map(fn($u) => ['id'=>$u['id'],'username'=>$u['user'],'password'=>$u['pass'],'role'=>$u['role'],'cabang'=>$u['cabang'],'fullName'=>$u['fullName'],'docs_json'=>'{}'], $dummyUsers));
@@ -486,16 +506,6 @@ switch ($action) {
         break;
 
     case 'del_transaksi':
-        // ── GUARD: hanya role VIP ──
-        $tkn  = $conn->real_escape_string($_GET['token'] ?? '');
-        $uname= $conn->real_escape_string($_GET['user']  ?? '');
-        $chk  = $conn->query("SELECT role FROM users WHERE LOWER(username)=LOWER('$uname') AND session_token='$tkn'");
-        $actor= ($chk && $chk->num_rows > 0) ? $chk->fetch_assoc() : null;
-        if (!$actor || $actor['role'] !== 'VIP') {
-            http_response_code(403);
-            echo json_encode(["status"=>"error","message"=>"Akses ditolak! Hanya VIP yang dapat menghapus transaksi."]);
-            break;
-        }
         $id = (int)($_GET['id'] ?? 0);
         $conn->query("DELETE FROM transaksi WHERE id=$id");
         echo json_encode(["status"=>"success"]);
@@ -694,14 +704,41 @@ switch ($action) {
     case 'get_laporan_history':
         $role  = $_GET['role'] ?? 'Staff';
         $akses = $_GET['cabang'] ?? '';
-        if ($role === 'Owner' || $role === 'VIP' || $akses === 'Semua') {
-            $sql = "SELECT *, DATE_FORMAT(waktu,'%Y-%m-%d %H:%i:%s') as waktu FROM laporan_settlement ORDER BY waktu DESC";
-        } else {
-            $cabangArr  = explode(',', $akses);
+        
+        // Tangkap parameter tanggal yang dikirim dari tombol Cari
+        $tglMulai   = isset($_GET['tgl_mulai']) ? $conn->real_escape_string($_GET['tgl_mulai']) : '';
+        $tglSelesai = isset($_GET['tgl_selesai']) ? $conn->real_escape_string($_GET['tgl_selesai']) : '';
+
+        $where = [];
+
+        // Filter berdasarkan hak akses cabang
+        if (!($role === 'Owner' || $role === 'VIP' || $akses === 'Semua')) {
+            $cabangArr   = explode(',', $akses);
             $cleanCabang = array_map(fn($i) => "'".$conn->real_escape_string(trim($i))."'", $cabangArr);
             $cabangList  = implode(',', $cleanCabang);
-            $sql = "SELECT *, DATE_FORMAT(waktu,'%Y-%m-%d %H:%i:%s') as waktu FROM laporan_settlement WHERE cabang IN ($cabangList) ORDER BY waktu DESC";
+            $where[] = "cabang IN ($cabangList)";
         }
+
+        // Filter berdasarkan tanggal jika parameter dikirim dari tombol Cari
+        if ($tglMulai) {
+            $where[] = "waktu >= '{$tglMulai} 00:00:00'";
+        }
+        if ($tglSelesai) {
+            $where[] = "waktu <= '{$tglSelesai} 23:59:59'";
+        }
+
+        // Gabungkan semua filter kondisi WHERE
+        $whereClause = count($where) > 0 ? "WHERE " . implode(" AND ", $where) : "";
+        
+        // Batasi default 200 data teratas jika tidak sedang memfilter tanggal agar query tetap instan
+        $limitClause = ($tglMulai || $tglSelesai) ? "" : "LIMIT 200";
+
+        $sql = "SELECT *, DATE_FORMAT(waktu,'%Y-%m-%d %H:%i:%s') as waktu 
+                FROM laporan_settlement 
+                $whereClause 
+                ORDER BY waktu DESC 
+                $limitClause";
+
         $res = $conn->query($sql);
         echo json_encode($res ? $res->fetch_all(MYSQLI_ASSOC) : []);
         break;

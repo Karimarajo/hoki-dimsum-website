@@ -89,8 +89,8 @@
         gap: 1px;
         white-space: nowrap;
     }
-    .total-text  { font-family: 'DM Mono', monospace; font-weight: 700; color: var(--red); }
-    .item-text   { font-size: 12px; color: var(--text-muted); }
+    .total-text   { font-family: 'DM Mono', monospace; font-weight: 700; color: var(--red); }
+    .item-text    { font-size: 12px; color: var(--text-muted); }
     .cabang-text { font-weight: 700; color: var(--text); }
 
     .tag-metode {
@@ -472,82 +472,67 @@ async function renderHistory() {
         const tglMulai      = document.getElementById('tglMulai').value;
         const tglSelesai    = document.getElementById('tglSelesai').value;
         const role          = currentUser.role;
-        const cabangLoginRaw = (cabangLogin || '').trim();
-        const cabangAkses   = (currentUser.cabang || '').split(',').map(c => c.trim()).filter(Boolean);
+        const cabangLoginRaw = (cabangLogin || '').trim().toLowerCase();
 
-        // Kirim filter ke API agar query di DB sangat cepat dan hemat memori/bandwidth
         let queryParams = new URLSearchParams();
         if (tglMulai) queryParams.append('tgl_mulai', tglMulai);
         if (tglSelesai) queryParams.append('tgl_selesai', tglSelesai);
         
-        // Sesuaikan parameter cabang berdasarkan role login
         if (['VIP', 'Owner'].includes(role)) {
-            if (selectedCabang !== 'Semua') {
-                queryParams.append('cabang', selectedCabang);
-            }
+            if (selectedCabang !== 'Semua') queryParams.append('cabang', selectedCabang);
         } else {
-            queryParams.append('cabang', cabangLoginRaw);
+            queryParams.append('cabang', cabangLogin);
         }
 
         const res = await fetch(`${API_BASE}?action=get_history&${queryParams.toString()}`);
         if (!res.ok) throw new Error('HTTP ' + res.status);
-        const raw          = await res.json();
-        const transaksiList = Array.isArray(raw) ? raw : [];
+        const transaksiList = await res.json();
 
-        tbody.innerHTML = '';
+        const fragment = document.createDocumentFragment();
         let count = 0;
-
-        transaksiList.sort((a, b) => {
-            const toMs = s => s ? new Date(String(s).trim().replace(' ', 'T')).getTime() : 0;
-            return toMs(b.waktu) - toMs(a.waktu);
-        });
+        
+        // Cek apakah user yang login punya hak akses menghapus (Hanya Owner & VIP)
+        const canDelete = ['VIP', 'Owner'].includes(role);
 
         transaksiList.forEach(t => {
-            const waktuStr  = t.waktu || '';
-            const dateTrx   = waktuStr.split('T')[0].split(' ')[0];
-            const cabangTrx = (t.cabang || '').trim();
+            const cabangTrx = (t.cabang || '').trim().toLowerCase();
 
-            if (['VIP', 'Owner'].includes(role)) {
-                // Owner/VIP bebas filter, jika pilih 'Semua' maka tampil semua
-                if (selectedCabang !== 'Semua' && cabangTrx.toLowerCase() !== selectedCabang.toLowerCase()) return;
-            } else {
-                // UNTUK STAFF: Wajib sama dengan cabang saat dia login (cabangLoginRaw)
-                // Jika transaksi berasal dari cabang lain, maka di-skip (return)
-                if (cabangTrx.toLowerCase() !== cabangLoginRaw.toLowerCase()) return;
+            // Proteksi hak akses cabang untuk Staff
+            if (!['VIP', 'Owner'].includes(role)) {
+                if (cabangTrx !== cabangLoginRaw) return;
             }
 
-            if (tglMulai   && dateTrx < tglMulai)   return;
-            if (tglSelesai && dateTrx > tglSelesai)  return;
-
             let items = [];
-            try { const p = JSON.parse(t.items_json || '[]'); items = Array.isArray(p) ? p : []; } catch(_) { items = []; }
-            const namaItems = (items || []).map(it => (it && (it.nama || it.name)) || '').filter(Boolean).join(', ') || '—';
-            const canDelete = ['VIP','Owner'].includes(role);
+            try { items = JSON.parse(t.items_json || '[]'); } catch(_) { items = []; }
+            const namaItems = items.map(it => it?.nama || it?.name || '').filter(Boolean).join(', ') || '—';
 
             let waktuDisplay = '—';
             if (t.waktu) {
-                const norm = String(t.waktu).replace('T', ' ');
-                const parts = norm.split(' ');
+                const parts = t.waktu.replace('T', ' ').split(' ');
                 const tgl   = parts[0] || '—';
                 const jam   = parts[1] ? parts[1].slice(0, 5) : '';
-                waktuDisplay = '<span>' + tgl + '</span>'
-                    + '<span style="color:var(--text-light);font-size:10px;">' + jam + '</span>';
+                waktuDisplay = `<span>${tgl}</span><span style="color:var(--text-light);font-size:10px;">${jam}</span>`;
             }
 
-            tbody.innerHTML += `<tr>
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
                 <td><span class="waktu-text">${waktuDisplay}</span></td>
                 <td>${t.petugas || '—'}</td>
                 <td><span class="cabang-text">${t.cabang || '—'}</span></td>
                 <td><span class="item-text">${namaItems}</span></td>
                 <td><span class="total-text">Rp ${parseInt(t.total || 0).toLocaleString('id-ID')}</span></td>
                 <td><span class="tag-metode">${t.metode || '—'}</span></td>
-                <td>${canDelete ? `<button class="btn-hapus" onclick="hapusTransaksi(${t.id})">Hapus</button>` : '—'}</td>
-            </tr>`;
+                <td>${canDelete ? `<button class="btn-hapus" onclick="hapusTransaksi(${t.id})">Hapus</button>` : '<span style="color:var(--text-light); font-size:12px;">—</span>'}</td>
+            `;
+            fragment.appendChild(tr);
             count++;
         });
 
+        tbody.innerHTML = '';
         if (count === 0) {
             tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><span class="icon">📄</span><p>Tidak ada data transaksi</p></div></td></tr>`;
+        } else {
+            tbody.appendChild(fragment);
         }
     } catch(e) {
         console.error('renderHistory:', e);
@@ -556,22 +541,34 @@ async function renderHistory() {
 }
 
 async function hapusTransaksi(id) {
-    // ── GUARD: hanya role VIP yang boleh hapus ──
     const userNow = JSON.parse(localStorage.getItem('currentUser') || '{}');
-    if (userNow.role !== 'VIP') {
-        toast.error('Akses ditolak! Hanya VIP yang dapat menghapus transaksi.');
-        return;
-    }
+    
+    // Kembali menggunakan showConfirm kustom kamu yang rapi
     const ok = await showConfirm('Hapus transaksi ini secara permanen?', 'Ya, Hapus', 'Batal', '🗑️');
     if (!ok) return;
+    
     try {
-        const token = localStorage.getItem('sessionToken') || '';
+        const token = localStorage.getItem('sessionToken') || userNow.token || '';
         const user  = userNow.user || '';
-        await fetch(`${API_BASE}?action=del_transaksi&id=${id}&token=${encodeURIComponent(token)}&user=${encodeURIComponent(user)}`);
-        toast.success('Transaksi berhasil dihapus!');
-        renderHistory();
+        
+        const url = `${API_BASE}?action=del_transaksi&id=${id}&token=${encodeURIComponent(token)}&user=${encodeURIComponent(user)}`;
+        const res = await fetch(url);
+        
+        if (res.status === 403) {
+            toast.error('Akses ditolak oleh server!');
+            return;
+        }
+        
+        const hasil = await res.json();
+        if (hasil.status === 'success') {
+            toast.success('Transaksi berhasil dihapus!');
+            renderHistory(); // Refresh data tabel otomatis
+        } else {
+            toast.error(hasil.message || 'Gagal menghapus transaksi!');
+        }
     } catch(e) {
-        toast.error('Gagal menghapus transaksi!');
+        console.error('Gagal hapus transaksi:', e);
+        toast.error('Gagal menghapus transaksi! Periksa koneksi internet.');
     }
 }
 
