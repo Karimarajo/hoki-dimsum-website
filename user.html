@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
@@ -427,12 +427,13 @@ function buildSidebar() {
     const PAGES_MGMT      = ['rekap.html','produk.html'];
     const PAGES_EXEC      = ['laporan.html','statistik.html','bahan_baku.html','hpp_produk.html','belanja.html','warehouse.html','salary_staff.html'];
     const PAGES_VIP       = ['user.html','login_history.html'];
+    const PAGES_INVESTOR  = ['investor_omset.html','investor_profit.html'];
     const inGroup = pages => pages.includes(cur);
     const getOpen = (id, pages) => {
         const s = localStorage.getItem('navGroup_' + id);
         return s !== null ? s === '1' : true;
     };
-    const GROUP_ICONS = { frontline:'🛒', management:'📊', executive:'📋', vip:'👑' };
+    const GROUP_ICONS = { frontline:'🛒', management:'📊', executive:'📋', vip:'👑', investor:'🤝' };
     const navGroup = (id, label, items, pages) => {
         const open      = getOpen(id, pages);
         const hasActive = inGroup(pages);
@@ -454,7 +455,10 @@ function buildSidebar() {
         + navItem('📦','Stok Harian','stok.html')
         + navItem('🚚','Restock Barang','restock.html')
         + navItem('📊','Laporan Penjualan','laporan_staff.html');
-    let h = navGroup('frontline', 'Frontline', frontline, PAGES_FRONTLINE);
+    let h = '';
+    if (role !== 'Investor') {
+        h += navGroup('frontline', 'Frontline', frontline, PAGES_FRONTLINE);
+    }
 
     if (['Senior Staff','SPV','Owner','VIP'].includes(role)) {
         let mgmt = navItem('📈','Rekapan Penjualan','rekap.html')
@@ -470,6 +474,11 @@ function buildSidebar() {
             + navItem('💸','Belanja','belanja.html')
             + navItem('💵','Salary Staff','salary_staff.html');
         h += navGroup('executive', 'Executive', exec, PAGES_EXEC);
+    }
+    if (['Owner','VIP','Investor'].includes(role)) {
+        let inv = navItem('📈','Omset Cabang','investor_omset.html')
+            + navItem('💰','Profit Sharing','investor_profit.html');
+        h += navGroup('investor', 'Area Investor', inv, PAGES_INVESTOR);
     }
     if (role === 'VIP') {
         let vip = navItem('👥','Manajemen User','user.html')
@@ -686,10 +695,15 @@ async function renderUser() {
 }
 
 let editUserId = null;
+let editUserRole = null;
+let editUserUsername = null;
 
-function bukaCabangModal(idx) {
+async function bukaCabangModal(idx) {
     const u = window.allUsersData[idx];
     editUserId = u.id;
+    editUserRole = u.role;
+    editUserUsername = u.username;
+    
     document.getElementById('editCabangNama').textContent = `${u.fullName || u.username} · ${u.role}`;
 
     const currentCabang = (u.cabang || '').split(',').map(c => c.trim()).filter(Boolean);
@@ -699,16 +713,41 @@ function bukaCabangModal(idx) {
     const allCabang = Array.from(document.querySelectorAll('input[name="cabangAkses"]'))
         .map(el => el.value).filter(v => v !== 'Semua');
 
-    list.innerHTML = `<label class="check-item">
-        <span>Semua</span>
-        <input type="checkbox" name="editCabangAkses" value="Semua" ${currentCabang.includes('Semua') ? 'checked' : ''}>
-    </label>`;
-    allCabang.forEach(nama => {
-        list.innerHTML += `<label class="check-item">
-            <span>${nama}</span>
-            <input type="checkbox" name="editCabangAkses" value="${nama}" ${currentCabang.includes(nama) ? 'checked' : ''}>
+    if (u.role === 'Investor') {
+        let mapping = {};
+        try {
+            const res = await fetch(`${API_BASE}?action=get_investor_access&username=${u.username}`);
+            const data = await res.json();
+            data.forEach(m => {
+                mapping[m.nama_cabang] = m.persentase_bagi_hasil;
+            });
+        } catch (e) {
+            console.error("Gagal mengambil akses investor:", e);
+        }
+
+        allCabang.forEach(nama => {
+            const isChecked = currentCabang.includes(nama);
+            const persenVal = mapping[nama] !== undefined ? mapping[nama] : 0;
+            list.innerHTML += `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;gap:8px;">
+                <label class="check-item" style="margin-bottom:0;flex:1;">
+                    <input type="checkbox" name="editCabangAkses" value="${nama}" ${isChecked ? 'checked' : ''} onchange="this.parentElement.nextElementSibling.style.display = this.checked ? 'block' : 'none'">
+                    <span>${nama}</span>
+                </label>
+                <input type="number" name="editCabangPersen" data-cabang="${nama}" value="${persenVal}" min="0" max="100" style="width:70px;padding:3px 6px;border:1px solid var(--border);border-radius:4px;display:${isChecked ? 'block' : 'none'}" placeholder="0">%
+            </div>`;
+        });
+    } else {
+        list.innerHTML = `<label class="check-item">
+            <span>Semua</span>
+            <input type="checkbox" name="editCabangAkses" value="Semua" ${currentCabang.includes('Semua') ? 'checked' : ''}>
         </label>`;
-    });
+        allCabang.forEach(nama => {
+            list.innerHTML += `<label class="check-item">
+                <span>${nama}</span>
+                <input type="checkbox" name="editCabangAkses" value="${nama}" ${currentCabang.includes(nama) ? 'checked' : ''}>
+            </label>`;
+        });
+    }
 
     const modal = document.getElementById('modalEditCabang');
     modal.style.display = 'flex';
@@ -717,25 +756,53 @@ function bukaCabangModal(idx) {
 function tutupModalCabang() {
     document.getElementById('modalEditCabang').style.display = 'none';
     editUserId = null;
+    editUserRole = null;
+    editUserUsername = null;
 }
 
 async function simpanEditCabang() {
     if (!editUserId) return;
-    const cabang = Array.from(document.querySelectorAll('input[name="editCabangAkses"]:checked'))
-        .map(c => c.value).join(',');
+    
     try {
-        const res   = await fetch(`${API_BASE}?action=update_user_cabang`, {
-            method:  'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body:    JSON.stringify({ id: editUserId, cabang })
-        });
-        const hasil = await res.json();
-        if (hasil.status === 'success') {
-            toast.success('Akses cabang berhasil diperbarui!');
-            tutupModalCabang();
-            renderUser();
+        if (editUserRole === 'Investor') {
+            const selectedInputs = Array.from(document.querySelectorAll('input[name="editCabangAkses"]:checked'));
+            const mappings = selectedInputs.map(c => {
+                const cab = c.value;
+                if (cab === 'Semua') return null;
+                const inp = document.querySelector(`input[name="editCabangPersen"][data-cabang="${cab}"]`);
+                const persen = inp ? parseFloat(inp.value) || 0 : 0;
+                return { cabang: cab, persen };
+            }).filter(Boolean);
+
+            const res = await fetch(`${API_BASE}?action=save_investor_access`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: editUserUsername, mappings })
+            });
+            const hasil = await res.json();
+            if (hasil.status === 'success') {
+                toast.success('Akses bagi hasil investor berhasil disimpan!');
+                tutupModalCabang();
+                renderUser();
+            } else {
+                toast.error('Gagal: ' + (hasil.message || 'error'));
+            }
         } else {
-            toast.error('Gagal: ' + (hasil.message || 'error'));
+            const cabang = Array.from(document.querySelectorAll('input[name="editCabangAkses"]:checked'))
+                .map(c => c.value).join(',');
+            const res = await fetch(`${API_BASE}?action=update_user_cabang`, {
+                method:  'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body:    JSON.stringify({ id: editUserId, cabang })
+            });
+            const hasil = await res.json();
+            if (hasil.status === 'success') {
+                toast.success('Akses cabang berhasil diperbarui!');
+                tutupModalCabang();
+                renderUser();
+            } else {
+                toast.error('Gagal: ' + (hasil.message || 'error'));
+            }
         }
     } catch(e) {
         toast.error('Gagal koneksi server!');

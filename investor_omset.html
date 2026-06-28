@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Hoki POS - Omset Cabang (Investor)</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🥟</text></svg>">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css?v=20260501">
+    <style>
+    .payroll-filter-card {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 16px !important;
+        padding: 24px;
+        margin-bottom: 28px;
+    }
+    .payroll-result-card {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 16px !important;
+        padding: 24px;
+        margin-top: 28px;
+    }
+    .stat-cards-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 20px;
+        margin-bottom: 24px;
+    }
+    .stat-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 20px;
+        text-align: center;
+        box-shadow: var(--sh-sm);
+    }
+    .stat-title {
+        font-size: 11px;
+        font-weight: 700;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 8px;
+    }
+    .stat-value {
+        font-family: 'DM Mono', monospace;
+        font-size: 24px;
+        font-weight: 700;
+        color: var(--red);
+    }
+    .stat-value.green { color: var(--green); }
+    .stat-value.blue { color: #0284c7; }
+    
+    .wh-table-wrap {
+        border-radius: 12px !important;
+        overflow-x: auto !important;
+        border: 1px solid #e2e8f0 !important;
+        margin-top: 20px;
+    }
+    table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    th {
+        background: var(--red);
+        color: white;
+        padding: 12px;
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        text-align: left;
+    }
+    td {
+        padding: 12px;
+        border-bottom: 1px solid var(--border);
+        color: var(--text);
+        font-size: 13px;
+    }
+    </style>
+    <script src="config.js"></script>
+</head>
+<body>
+
+<aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand" onclick="toggleSidebar()">
+        <div class="sidebar-logo"><img src="Assets/logobrand.png" alt="Hoki"></div>
+        <div class="sidebar-brand-text">
+            <div class="sidebar-brand-name">Hoki Dimsum</div>
+            <div class="sidebar-brand-sub">POS System v2.0</div>
+        </div>
+    </div>
+    <button class="sidebar-toggle" onclick="toggleSidebar()">‹</button>
+    <nav class="sidebar-nav" id="sidebarNav"></nav>
+    <div class="sidebar-user">
+        <div class="user-card">
+            <div class="user-avatar" id="userAvatarInitial">?</div>
+            <div class="user-info">
+                <div class="user-name" id="sidebarUserName">Loading...</div>
+                <div class="user-role" id="sidebarUserRole">—</div>
+            </div>
+            <button class="btn-logout-icon" onclick="logout()" title="Logout">🚪</button>
+        </div>
+    </div>
+</aside>
+
+<main class="main-content" id="mainContent">
+    <header class="main-header">
+        <div class="header-left">
+            <button class="btn-menu" onclick="toggleSidebar()">☰</button>
+            <h1 class="header-title">🤝 Omset Cabang</h1>
+        </div>
+        <div class="header-right">
+            <div class="clock-pill">
+                <div id="realtimeClock">00:00:00</div>
+                <div id="realtimeDate">—</div>
+            </div>
+        </div>
+    </header>
+
+    <div class="page-body">
+        <div class="payroll-filter-card">
+            <div class="wh-card-title" style="font-size:14px; font-weight:700; color:var(--text); margin-bottom:16px;">📅 Filter Data & Cabang</div>
+            <div class="wh-form-row" style="display:flex; gap:16px; align-items:flex-end; flex-wrap:wrap;">
+                <div class="salary-form-control" style="display:flex; flex-direction:column; gap:4px;">
+                    <label style="font-size:11px; font-weight:600; color:var(--text-muted);">Pilih Bulan</label>
+                    <input type="month" id="filterBulan" style="width:200px; padding:8px; border:1px solid var(--border); border-radius:8px;">
+                </div>
+                <div class="salary-form-control" style="display:flex; flex-direction:column; gap:4px;">
+                    <label style="font-size:11px; font-weight:600; color:var(--text-muted);">Pilih Cabang</label>
+                    <select id="filterCabang" style="width:180px; padding:8px; border:1px solid var(--border); border-radius:8px;"></select>
+                </div>
+                <button class="btn-simpan" onclick="loadInvestorOmset()" style="height:38px; white-space:nowrap; border-radius:8px; padding:0 16px; background:var(--red); color:white; border:none; font-weight:600; cursor:pointer;">🔍 Cari Data</button>
+            </div>
+        </div>
+
+        <div class="stat-cards-grid">
+            <div class="stat-card">
+                <div class="stat-title">💰 Total Omset</div>
+                <div class="stat-value green" id="statGross">Rp 0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-title">📈 Jumlah Transaksi</div>
+                <div class="stat-value blue" id="statCount">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-title">🛍️ Basket Size Rata-Rata</div>
+                <div class="stat-value" id="statBasket">Rp 0</div>
+            </div>
+        </div>
+
+        <div class="payroll-result-card">
+            <div class="wh-card-title" style="font-size:14px; font-weight:700; color:var(--text); margin-bottom:16px;">📋 Rincian Transaksi Harian</div>
+            <div class="wh-table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Waktu</th>
+                            <th>Cabang</th>
+                            <th>Petugas</th>
+                            <th>Total Belanja</th>
+                            <th>Metode</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabelTransaksi">
+                        <tr>
+                            <td colspan="5" style="text-align:center; color:var(--text-muted);">Silakan pilih filter dan klik Cari Data.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <button id="btnLoadMore" onclick="loadMoreTransactions()" style="display:none; width:100%; padding:12px; margin-top:16px; background:var(--surface-2); border:1px solid var(--border); border-radius:8px; cursor:pointer; font-weight:600; font-size:13px; color:var(--text);">Tampilkan Lainnya</button>
+        </div>
+    </div>
+</main>
+
+<script>
+const currentUser = JSON.parse(localStorage.getItem('currentUser')) || {user:'Guest', role:'Staff'};
+if (!currentUser.user) window.location.href = 'index.html';
+
+// ── SIDEBAR STATE ──
+function toggleSidebar() {
+    const sb = document.getElementById('sidebar');
+    const mc = document.getElementById('mainContent');
+    sb.classList.toggle('collapsed');
+    mc.classList.toggle('expanded');
+    localStorage.setItem('sidebarState', sb.classList.contains('collapsed') ? 'small' : 'large');
+}
+
+function buildSidebar() {
+    if (localStorage.getItem('sidebarState') === 'small') {
+        document.getElementById('sidebar').classList.add('collapsed');
+        document.getElementById('mainContent').classList.add('expanded');
+    }
+    const role = currentUser.role;
+    const cur  = window.location.pathname.split('/').pop() || 'investor_omset.html';
+    const navItem = (icon, label, link) => {
+        const active = cur === link ? 'active' : '';
+        return `<button class="nav-item ${active}" onclick="location.href='${link}'">
+            <span class="nav-icon">${icon}</span>
+            <span class="nav-label">${label}</span>
+        </button>`;
+    };
+    const PAGES_FRONTLINE = ['dashboard.html','history.html','stok.html','restock.html','laporan_staff.html'];
+    const PAGES_MGMT      = ['rekap.html','produk.html'];
+    const PAGES_EXEC      = ['laporan.html','statistik.html','bahan_baku.html','hpp_produk.html','belanja.html','warehouse.html','salary_staff.html'];
+    const PAGES_VIP       = ['user.html','login_history.html'];
+    const PAGES_INVESTOR  = ['investor_omset.html','investor_profit.html'];
+    const inGroup = pages => pages.includes(cur);
+    const getOpen = (id, pages) => {
+        const s = localStorage.getItem('navGroup_' + id);
+        return s !== null ? s === '1' : true;
+    };
+    const GROUP_ICONS = { frontline:'🛒', management:'📊', executive:'📋', vip:'👑', investor:'🤝' };
+    const navGroup = (id, label, items, pages) => {
+        const open      = getOpen(id, pages);
+        const hasActive = inGroup(pages);
+        const icon      = GROUP_ICONS[id] || '📁';
+        return `<div class="nav-group-wrap">
+            <button class="nav-group-label${hasActive ? ' has-active' : ''}" onclick="toggleNavGroup('${id}')">
+                <span class="nav-group-icon">${icon}</span>
+                <span class="nav-group-text">${label}</span>
+                <span class="nav-group-ti">${open ? '−' : '+'}</span>
+            </button>
+            <div class="nav-group-items" id="navg-${id}"${open ? '' : ' style="display:none"'}>
+                ${items}
+            </div>
+        </div>`;
+    };
+
+    let frontline = navItem('🛒','Kasir','dashboard.html')
+        + navItem('📄','History Transaksi','history.html')
+        + navItem('📦','Stok Harian','stok.html')
+        + navItem('🚚','Restock Barang','restock.html')
+        + navItem('📊','Laporan Penjualan','laporan_staff.html');
+    let h = '';
+    if (role !== 'Investor') {
+        h += navGroup('frontline', 'Frontline', frontline, PAGES_FRONTLINE);
+    }
+
+    if (['Senior Staff','SPV','Owner','VIP'].includes(role)) {
+        let mgmt = navItem('📈','Rekapan Penjualan','rekap.html')
+            + navItem('🍱','Master Produk','produk.html');
+        h += navGroup('management', 'Management', mgmt, PAGES_MGMT);
+    }
+    if (['Owner','VIP'].includes(role)) {
+        let exec = navItem('📊','Keuangan Global','laporan.html')
+            + navItem('📈','Statistik','statistik.html')
+            + navItem('🧂','Bahan Baku','bahan_baku.html')
+            + navItem('💰','HPP Produk','hpp_produk.html')
+            + navItem('🏭','Warehouse','warehouse.html')
+            + navItem('💸','Belanja','belanja.html')
+            + navItem('💵','Salary Staff','salary_staff.html');
+        h += navGroup('executive', 'Executive', exec, PAGES_EXEC);
+    }
+    if (['Owner','VIP','Investor'].includes(role)) {
+        let inv = navItem('📈','Omset Cabang','investor_omset.html')
+            + navItem('💰','Profit Sharing','investor_profit.html');
+        h += navGroup('investor', 'Area Investor', inv, PAGES_INVESTOR);
+    }
+    if (role === 'VIP') {
+        let vip = navItem('👥','Manajemen User','user.html')
+            + navItem('🔑','History Login','login_history.html');
+        h += navGroup('vip', 'VIP Access', vip, PAGES_VIP);
+    }
+    document.getElementById('sidebarNav').innerHTML = h;
+    const name = currentUser.user || '?';
+    document.getElementById('userAvatarInitial').innerText = name.charAt(0).toUpperCase();
+    document.getElementById('sidebarUserName').innerText = currentUser.fullName || name;
+    document.getElementById('sidebarUserRole').innerText = role;
+}
+
+function toggleNavGroup(id) {
+    const items = document.getElementById('navg-' + id);
+    const btn   = items.previousElementSibling;
+    const ti    = btn.querySelector('.nav-group-ti');
+    const open  = items.style.display !== 'none';
+    items.style.display = open ? 'none' : '';
+    if (ti) ti.textContent = open ? '+' : '−';
+    localStorage.setItem('navGroup_' + id, open ? '0' : '1');
+}
+
+/* ── CLOCK ── */
+function updateClock() {
+    const now = new Date();
+    document.getElementById('realtimeClock').innerText = now.toLocaleTimeString('id-ID');
+    document.getElementById('realtimeDate').innerText  = now.toLocaleDateString('id-ID',{weekday:'short',year:'numeric',month:'short',day:'numeric'});
+}
+setInterval(updateClock, 1000);
+
+// ── LOAD BRANCH FILTER OPTIONS ──
+async function initFilters() {
+    const filterCab = document.getElementById('filterCabang');
+    filterCab.innerHTML = '';
+
+    if (currentUser.role === 'Investor') {
+        // Investor only sees allowed branches
+        const allowed = (currentUser.cabang || '').split(',').map(c => c.trim()).filter(Boolean);
+        if (allowed.length > 1) {
+            filterCab.innerHTML += `<option value="Semua">Semua Cabang (Milik Anda)</option>`;
+        }
+        allowed.forEach(c => {
+            filterCab.innerHTML += `<option value="${c}">${c}</option>`;
+        });
+    } else {
+        // VIP and Owner can see all branches
+        try {
+            const res = await fetch(`${API_BASE}?action=get_cabang`);
+            const cabang = await res.json();
+            filterCab.innerHTML += `<option value="Semua">Semua Cabang</option>`;
+            cabang.forEach(c => {
+                filterCab.innerHTML += `<option value="${c.nama_cabang}">${c.nama_cabang}</option>`;
+            });
+        } catch (e) {
+            console.error("Gagal memuat cabang:", e);
+        }
+    }
+}
+
+let allTransactionsData = [];
+
+// ── LOAD DATA ──
+async function loadInvestorOmset() {
+    const valBulan = document.getElementById('filterBulan').value;
+    let cabang = document.getElementById('filterCabang').value;
+
+    if (!valBulan) {
+        alert("Pilih bulan!");
+        return;
+    }
+    
+    if (cabang === 'Semua' && currentUser.role === 'Investor') {
+        const allowed = (currentUser.cabang || '').split(',').map(c => c.trim()).filter(Boolean);
+        cabang = allowed.join(',');
+    }
+
+    const [year, month] = valBulan.split('-');
+    const start = `${year}-${month}-01`;
+    const lastDay = new Date(year, month, 0).getDate();
+    const end = `${year}-${month}-${lastDay}`;
+
+    try {
+        const res = await fetch(`${API_BASE}?action=get_history&tgl_mulai=${start}&tgl_selesai=${end}&cabang=${encodeURIComponent(cabang)}`);
+        const transaksi = await res.json();
+        
+        allTransactionsData = transaksi;
+
+        let gross = 0;
+        let count = 0;
+        
+        allTransactionsData.forEach(t => {
+            gross += parseInt(t.total || 0, 10);
+            count++;
+        });
+        
+        renderTransactions(50);
+
+        const basket = count > 0 ? Math.round(gross / count) : 0;
+
+        document.getElementById('statGross').innerText = `Rp ${gross.toLocaleString('id-ID')}`;
+        document.getElementById('statCount').innerText = count;
+        document.getElementById('statBasket').innerText = `Rp ${basket.toLocaleString('id-ID')}`;
+
+    } catch (e) {
+        console.error("Gagal memuat data omset:", e);
+        alert("Gagal koneksi ke server!");
+    }
+}
+
+function renderTransactions(limit) {
+    const tbody = document.getElementById('tabelTransaksi');
+    tbody.innerHTML = '';
+    
+    if (allTransactionsData.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--text-muted);">Tidak ada data transaksi ditemukan.</td></tr>`;
+        document.getElementById('btnLoadMore').style.display = 'none';
+        return;
+    }
+    
+    let toRender = allTransactionsData.slice(0, limit);
+    toRender.forEach(t => {
+        tbody.innerHTML += `<tr>
+            <td>${t.waktu}</td>
+            <td><b>${t.cabang}</b></td>
+            <td>${t.petugas}</td>
+            <td style="font-family:'DM Mono',monospace; font-weight:600;">Rp ${parseInt(t.total).toLocaleString('id-ID')}</td>
+            <td><span style="padding:2px 6px; background:var(--surface-2); border-radius:4px; font-size:11px;">${t.metode}</span></td>
+        </tr>`;
+    });
+    
+    const loadMoreBtn = document.getElementById('btnLoadMore');
+    if (limit < allTransactionsData.length) {
+        loadMoreBtn.style.display = 'block';
+    } else {
+        loadMoreBtn.style.display = 'none';
+    }
+}
+
+function loadMoreTransactions() {
+    renderTransactions(allTransactionsData.length);
+}
+
+window.onload = async () => {
+    buildSidebar();
+    updateClock();
+    
+    // Set default bulan hari ini
+    const today = new Date();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    document.getElementById('filterBulan').value = `${today.getFullYear()}-${month}`;
+
+    await initFilters();
+    await loadInvestorOmset();
+};
+</script>
+<script src="session.js"></script>
+<script src="toast.js"></script>
+</body>
+</html>

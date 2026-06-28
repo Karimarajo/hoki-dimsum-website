@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Hoki POS - Profit Sharing</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🥟</text></svg>">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css?v=20260501">
+    <style>
+    /* Card Styles */
+    .profit-card-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 16px;
+        margin-bottom: 24px;
+    }
+    
+    .profit-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 20px;
+        box-shadow: var(--sh-sm);
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .profit-card.highlight {
+        background: var(--red-soft);
+        border-color: var(--red-border);
+    }
+    
+    .profit-label {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .profit-value {
+        font-size: 24px;
+        font-weight: 700;
+        color: var(--text);
+    }
+    
+    .profit-value.red { color: var(--red); }
+    .profit-value.green { color: var(--green); }
+    .profit-value.blue { color: #0284c7; }
+    
+    .cabang-list {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--text);
+        line-height: 1.5;
+    }
+    
+    .btn-simpan-profit {
+        width: 100%;
+        padding: 14px;
+        background: var(--red);
+        color: white;
+        border: none;
+        border-radius: 12px;
+        font-size: 15px;
+        font-weight: 700;
+        cursor: pointer;
+        margin-bottom: 32px;
+        transition: transform 0.1s, background 0.15s;
+    }
+    .btn-simpan-profit:active {
+        transform: scale(0.98);
+    }
+    .btn-simpan-profit:disabled {
+        background: var(--border);
+        color: var(--text-muted);
+        cursor: not-allowed;
+        transform: none;
+    }
+    
+    .history-section {
+        margin-top: 32px;
+        border-top: 2px dashed var(--border);
+        padding-top: 24px;
+    }
+    
+    .wh-table-wrap {
+        border-radius: 12px !important;
+        overflow-x: auto !important;
+        border: 1px solid #e2e8f0 !important;
+    }
+    table { width: 100%; border-collapse: collapse; }
+    th {
+        background: var(--surface-2);
+        color: var(--text-muted);
+        padding: 12px;
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        text-align: left;
+    }
+    td {
+        padding: 12px;
+        border-bottom: 1px solid var(--border);
+        color: var(--text);
+        font-size: 13px;
+    }
+    .btn-del {
+        background: #fee2e2;
+        color: #dc2626;
+        border: none;
+        padding: 4px 8px;
+        border-radius: 6px;
+        font-size: 11px;
+        font-weight: 600;
+        cursor: pointer;
+    }
+    </style>
+    <script src="config.js"></script>
+</head>
+<body>
+
+<aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand" onclick="toggleSidebar()">
+        <div class="sidebar-logo"><img src="Assets/logobrand.png" alt="Hoki"></div>
+        <div class="sidebar-brand-text">
+            <div class="sidebar-brand-name">Hoki Dimsum</div>
+            <div class="sidebar-brand-sub">POS System v2.0</div>
+        </div>
+    </div>
+    <button class="sidebar-toggle" onclick="toggleSidebar()">‹</button>
+    <nav class="sidebar-nav" id="sidebarNav"></nav>
+    <div class="sidebar-user">
+        <div class="user-card">
+            <div class="user-avatar" id="userAvatarInitial">?</div>
+            <div class="user-info">
+                <div class="user-name" id="sidebarUserName">Loading...</div>
+                <div class="user-role" id="sidebarUserRole">—</div>
+            </div>
+            <button class="btn-logout-icon" onclick="logout()" title="Logout">🚪</button>
+        </div>
+    </div>
+</aside>
+
+<main class="main-content" id="mainContent">
+    <header class="main-header">
+        <div class="header-left">
+            <button class="btn-menu" onclick="toggleSidebar()">☰</button>
+            <h1 class="header-title">🤝 Profit Sharing</h1>
+        </div>
+        <div class="header-right">
+            <div class="clock-pill">
+                <div id="realtimeClock">00:00:00</div>
+                <div id="realtimeDate">—</div>
+            </div>
+        </div>
+    </header>
+
+    <div class="page-body">
+        <div class="payroll-filter-card">
+            <div class="wh-card-title" style="font-size:14px; font-weight:700; color:var(--text); margin-bottom:16px;">📅 Filter Pembagian Hasil</div>
+            <div class="wh-form-row" style="display:flex; gap:16px; align-items:flex-end; flex-wrap:wrap;">
+                <div class="salary-form-control" style="display:flex; flex-direction:column; gap:4px;">
+                    <label style="font-size:11px; font-weight:600; color:var(--text-muted);">Pilih Bulan</label>
+                    <input type="month" id="filterBulan" style="width:200px; padding:8px; border:1px solid var(--border); border-radius:8px;">
+                </div>
+                <div class="salary-form-control" id="investorSelectContainer" style="display:flex; flex-direction:column; gap:4px;">
+                    <label style="font-size:11px; font-weight:600; color:var(--text-muted);">Pilih Investor</label>
+                    <select id="filterInvestor" style="width:200px; padding:8px; border:1px solid var(--border); border-radius:8px;"></select>
+                </div>
+                <button class="btn-simpan" onclick="loadInvestorProfit()" style="height:38px; white-space:nowrap; border-radius:8px; padding:0 16px; background:var(--red); color:white; border:none; font-weight:600; cursor:pointer;">📊 Hitung Profit Sharing</button>
+            </div>
+        </div>
+
+        <div class="payroll-result-card" style="background:transparent; border:none; box-shadow:none; padding:0;">
+            <div class="wh-card-title" style="font-size:16px; font-weight:800; color:var(--text); margin-bottom:16px;">📋 Rincian Profit Sharing</div>
+            
+            <div class="profit-card-grid">
+                <div class="profit-card">
+                    <div class="profit-label">🏢 Daftar Cabang</div>
+                    <div class="cabang-list" id="statCabang">—</div>
+                </div>
+                <div class="profit-card">
+                    <div class="profit-label">💰 Total Omset</div>
+                    <div class="profit-value" id="statOmset">Rp 0</div>
+                </div>
+                <div class="profit-card">
+                    <div class="profit-label">📈 Laba Kotor (HPP)</div>
+                    <div class="profit-value green" id="statLaba">Rp 0</div>
+                </div>
+                <div class="profit-card">
+                    <div class="profit-label">⚙️ Dana Operasional (10%)</div>
+                    <div class="profit-value red" id="statDanaOp">Rp 0</div>
+                </div>
+                <div class="profit-card highlight">
+                    <div class="profit-label" style="color:var(--red);">🤝 Hak Bagi Hasil (50%)</div>
+                    <div class="profit-value blue" id="statHak" style="font-size:28px;">Rp 0</div>
+                </div>
+            </div>
+
+            <button class="btn-simpan-profit" id="btnSimpanProfit" onclick="saveProfitSharing()" disabled>💾 Simpan Profit Sharing Bulan Ini</button>
+        </div>
+        
+        <div class="history-section">
+            <div class="wh-card-title" style="font-size:14px; font-weight:700; color:var(--text); margin-bottom:16px;">🕰️ History Profit Sharing</div>
+            <div class="wh-table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Tanggal Rekam</th>
+                            <th>Bulan</th>
+                            <th>Investor</th>
+                            <th>Cabang</th>
+                            <th>Total Omset</th>
+                            <th>Laba Kotor</th>
+                            <th>Hak Investor</th>
+                            <th>Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabelHistory">
+                        <tr>
+                            <td colspan="8" style="text-align:center; color:var(--text-muted);">Memuat data history...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</main>
+
+<script>
+const currentUser = JSON.parse(localStorage.getItem('currentUser')) || {user:'Guest', role:'Staff'};
+if (!currentUser.user) window.location.href = 'index.html';
+
+let currentCalcData = null;
+
+// ── SIDEBAR STATE ──
+function toggleSidebar() {
+    const sb = document.getElementById('sidebar');
+    const mc = document.getElementById('mainContent');
+    sb.classList.toggle('collapsed');
+    mc.classList.toggle('expanded');
+    localStorage.setItem('sidebarState', sb.classList.contains('collapsed') ? 'small' : 'large');
+}
+
+function buildSidebar() {
+    if (localStorage.getItem('sidebarState') === 'small') {
+        document.getElementById('sidebar').classList.add('collapsed');
+        document.getElementById('mainContent').classList.add('expanded');
+    }
+    const role = currentUser.role;
+    const cur  = window.location.pathname.split('/').pop() || 'investor_profit.html';
+    const navItem = (icon, label, link) => {
+        const active = cur === link ? 'active' : '';
+        return `<button class="nav-item ${active}" onclick="location.href='${link}'">
+            <span class="nav-icon">${icon}</span>
+            <span class="nav-label">${label}</span>
+        </button>`;
+    };
+    const PAGES_FRONTLINE = ['dashboard.html','history.html','stok.html','restock.html','laporan_staff.html'];
+    const PAGES_MGMT      = ['rekap.html','produk.html'];
+    const PAGES_EXEC      = ['laporan.html','statistik.html','bahan_baku.html','hpp_produk.html','belanja.html','warehouse.html','salary_staff.html'];
+    const PAGES_VIP       = ['user.html','login_history.html'];
+    const PAGES_INVESTOR  = ['investor_omset.html','investor_profit.html'];
+    const inGroup = pages => pages.includes(cur);
+    const getOpen = (id, pages) => {
+        const s = localStorage.getItem('navGroup_' + id);
+        return s !== null ? s === '1' : true;
+    };
+    const GROUP_ICONS = { frontline:'🛒', management:'📊', executive:'📋', vip:'👑', investor:'🤝' };
+    const navGroup = (id, label, items, pages) => {
+        const open      = getOpen(id, pages);
+        const hasActive = inGroup(pages);
+        const icon      = GROUP_ICONS[id] || '📁';
+        return `<div class="nav-group-wrap">
+            <button class="nav-group-label${hasActive ? ' has-active' : ''}" onclick="toggleNavGroup('${id}')">
+                <span class="nav-group-icon">${icon}</span>
+                <span class="nav-group-text">${label}</span>
+                <span class="nav-group-ti">${open ? '−' : '+'}</span>
+            </button>
+            <div class="nav-group-items" id="navg-${id}"${open ? '' : ' style="display:none"'}>
+                ${items}
+            </div>
+        </div>`;
+    };
+
+    let frontline = navItem('🛒','Kasir','dashboard.html')
+        + navItem('📄','History Transaksi','history.html')
+        + navItem('📦','Stok Harian','stok.html')
+        + navItem('🚚','Restock Barang','restock.html')
+        + navItem('📊','Laporan Penjualan','laporan_staff.html');
+    
+    let h = '';
+    if (role !== 'Investor') {
+        h += navGroup('frontline', 'Frontline', frontline, PAGES_FRONTLINE);
+    }
+
+    if (['Senior Staff','SPV','Owner','VIP'].includes(role)) {
+        let mgmt = navItem('📈','Rekapan Penjualan','rekap.html')
+            + navItem('🍱','Master Produk','produk.html');
+        h += navGroup('management', 'Management', mgmt, PAGES_MGMT);
+    }
+    if (['Owner','VIP'].includes(role)) {
+        let exec = navItem('📊','Keuangan Global','laporan.html')
+            + navItem('📈','Statistik','statistik.html')
+            + navItem('🧂','Bahan Baku','bahan_baku.html')
+            + navItem('💰','HPP Produk','hpp_produk.html')
+            + navItem('🏭','Warehouse','warehouse.html')
+            + navItem('💸','Belanja','belanja.html')
+            + navItem('💵','Salary Staff','salary_staff.html');
+        h += navGroup('executive', 'Executive', exec, PAGES_EXEC);
+    }
+    if (['Owner','VIP','Investor'].includes(role)) {
+        let inv = navItem('📈','Omset Cabang','investor_omset.html')
+            + navItem('💰','Profit Sharing','investor_profit.html');
+        h += navGroup('investor', 'Area Investor', inv, PAGES_INVESTOR);
+    }
+    if (role === 'VIP') {
+        let vip = navItem('👥','Manajemen User','user.html')
+            + navItem('🔑','History Login','login_history.html');
+        h += navGroup('vip', 'VIP Access', vip, PAGES_VIP);
+    }
+    document.getElementById('sidebarNav').innerHTML = h;
+    const name = currentUser.user || '?';
+    document.getElementById('userAvatarInitial').innerText = name.charAt(0).toUpperCase();
+    document.getElementById('sidebarUserName').innerText = currentUser.fullName || name;
+    document.getElementById('sidebarUserRole').innerText = role;
+}
+
+function toggleNavGroup(id) {
+    const items = document.getElementById('navg-' + id);
+    const btn   = items.previousElementSibling;
+    const ti    = btn.querySelector('.nav-group-ti');
+    const open  = items.style.display !== 'none';
+    items.style.display = open ? 'none' : '';
+    if (ti) ti.textContent = open ? '+' : '−';
+    localStorage.setItem('navGroup_' + id, open ? '0' : '1');
+}
+
+/* ── CLOCK ── */
+function updateClock() {
+    const now = new Date();
+    document.getElementById('realtimeClock').innerText = now.toLocaleTimeString('id-ID');
+    document.getElementById('realtimeDate').innerText  = now.toLocaleDateString('id-ID',{weekday:'short',year:'numeric',month:'short',day:'numeric'});
+}
+setInterval(updateClock, 1000);
+
+// ── INIT FILTER INVESTOR ──
+async function initFilters() {
+    const filterInv = document.getElementById('filterInvestor');
+    filterInv.innerHTML = '';
+
+    if (currentUser.role === 'Investor') {
+        // Investor is locked to their own username
+        document.getElementById('investorSelectContainer').style.display = 'none';
+        filterInv.innerHTML = `<option value="${currentUser.user}">${currentUser.fullName || currentUser.user}</option>`;
+    } else {
+        // VIP and Owner can choose from all investors
+        try {
+            const res = await fetch(`${API_BASE}?action=get_users`);
+            const users = await res.json();
+            const investors = users.filter(u => u.role === 'Investor');
+            
+            investors.forEach(inv => {
+                filterInv.innerHTML += `<option value="${inv.username}">${inv.fullName || inv.username}</option>`;
+            });
+
+            if (investors.length === 0) {
+                filterInv.innerHTML = `<option value="">— Tidak ada Investor terdaftar —</option>`;
+            }
+        } catch (e) {
+            console.error("Gagal memuat list investor:", e);
+        }
+    }
+}
+
+// ── LOAD PROFIT SHARING ──
+async function loadInvestorProfit() {
+    const valBulan = document.getElementById('filterBulan').value;
+    const investor = document.getElementById('filterInvestor').value;
+
+    if (!valBulan) {
+        alert("Pilih bulan!");
+        return;
+    }
+    if (!investor) {
+        alert("Pilih investor terlebih dahulu!");
+        return;
+    }
+    
+    document.getElementById('btnSimpanProfit').disabled = true;
+    currentCalcData = null;
+    
+    const [year, month] = valBulan.split('-');
+    const start = `${year}-${month}-01`;
+    const lastDay = new Date(year, month, 0).getDate();
+    const end = `${year}-${month}-${lastDay}`;
+
+    try {
+        const res = await fetch(`${API_BASE}?action=calculate_investor_profit&tgl_mulai=${start}&tgl_selesai=${end}&investor_username=${encodeURIComponent(investor)}`);
+        const data = await res.json();
+
+        if (!data || data.length === 0 || data.status === "error") {
+            alert(data.message || "Tidak ada data cabang / akses bagi hasil untuk investor ini.");
+            document.getElementById('statCabang').innerText = "—";
+            document.getElementById('statOmset').innerText = "Rp 0";
+            document.getElementById('statLaba').innerText = "Rp 0";
+            document.getElementById('statDanaOp').innerText = "Rp 0";
+            document.getElementById('statHak').innerText = "Rp 0";
+            return;
+        }
+
+        const resData = data[0];
+        
+        document.getElementById('statCabang').innerText = resData.cabang || '—';
+        document.getElementById('statOmset').innerText = `Rp ${resData.omset.toLocaleString('id-ID')}`;
+        document.getElementById('statLaba').innerText = `Rp ${resData.laba_kotor.toLocaleString('id-ID')}`;
+        document.getElementById('statDanaOp').innerText = `Rp ${resData.dana_operasional.toLocaleString('id-ID')}`;
+        document.getElementById('statHak').innerText = `Rp ${resData.hak_investor.toLocaleString('id-ID')}`;
+        
+        currentCalcData = {
+            bulan_tahun: valBulan,
+            investor_username: investor,
+            cabang: resData.cabang,
+            omset: resData.omset,
+            laba_kotor: resData.laba_kotor,
+            dana_operasional: resData.dana_operasional,
+            hak_investor: resData.hak_investor
+        };
+        
+        document.getElementById('btnSimpanProfit').disabled = false;
+
+    } catch (e) {
+        console.error("Gagal memuat pembagian hasil:", e);
+        alert("Gagal koneksi ke server!");
+    }
+}
+
+// ── SIMPAN PROFIT SHARING ──
+async function saveProfitSharing() {
+    if (!currentCalcData) return;
+    
+    const btn = document.getElementById('btnSimpanProfit');
+    btn.disabled = true;
+    btn.innerText = "⏳ Menyimpan...";
+    
+    try {
+        const res = await fetch(`${API_BASE}?action=save_profit_history`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                tanggal_rekam: new Date().toISOString().split('T')[0],
+                ...currentCalcData
+            })
+        });
+        const out = await res.json();
+        if (out.status === 'success') {
+            alert("✅ Data Profit Sharing berhasil disimpan ke history!");
+            loadHistory();
+        } else {
+            alert("❌ Gagal menyimpan: " + (out.message || ""));
+        }
+    } catch (e) {
+        alert("Error koneksi!");
+    }
+    
+    btn.innerText = "💾 Simpan Profit Sharing Bulan Ini";
+    btn.disabled = false;
+}
+
+// ── LOAD HISTORY ──
+async function loadHistory() {
+    try {
+        const res = await fetch(`${API_BASE}?action=get_profit_history`);
+        const data = await res.json();
+        
+        const tbody = document.getElementById('tabelHistory');
+        tbody.innerHTML = '';
+        
+        if (!data || data.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; color:var(--text-muted);">Belum ada data history profit sharing.</td></tr>`;
+            return;
+        }
+        
+        data.forEach(h => {
+            // Jika Investor login, filter tabel history agar hanya menampilkan miliknya (Client side filter for simplicity or backend filter. Best practice is backend filter, but this is simple enough)
+            if (currentUser.role === 'Investor' && h.investor_username !== currentUser.user) return;
+            
+            tbody.innerHTML += `<tr>
+                <td>${h.tgl_fmt}</td>
+                <td><b>${h.bulan_tahun}</b></td>
+                <td>${h.investor_username}</td>
+                <td>${h.cabang}</td>
+                <td style="font-family:'DM Mono',monospace;">Rp ${parseInt(h.omset).toLocaleString('id-ID')}</td>
+                <td style="font-family:'DM Mono',monospace; color:var(--green);">Rp ${parseInt(h.laba_kotor).toLocaleString('id-ID')}</td>
+                <td style="font-family:'DM Mono',monospace; font-weight:700; color:#0284c7;">Rp ${parseInt(h.hak_investor).toLocaleString('id-ID')}</td>
+                <td>
+                    ${currentUser.role !== 'Investor' ? `<button class="btn-del" onclick="delHistory(${h.id})">Hapus</button>` : '—'}
+                </td>
+            </tr>`;
+        });
+    } catch (e) {
+        console.error("Gagal load history:", e);
+    }
+}
+
+async function delHistory(id) {
+    if (!confirm("Yakin ingin menghapus history ini?")) return;
+    try {
+        const res = await fetch(`${API_BASE}?action=del_profit_history&id=${id}`);
+        const out = await res.json();
+        if (out.status === 'success') {
+            loadHistory();
+        } else {
+            alert("Gagal menghapus!");
+        }
+    } catch(e) {}
+}
+
+window.onload = async () => {
+    buildSidebar();
+    updateClock();
+    
+    // Set default bulan hari ini
+    const today = new Date();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    document.getElementById('filterBulan').value = `${today.getFullYear()}-${month}`;
+
+    await initFilters();
+    loadHistory();
+};
+</script>
+<script src="session.js"></script>
+<script src="toast.js"></script>
+</body>
+</html>

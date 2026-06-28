@@ -1,4 +1,7 @@
 <?php
+ob_start();
+error_reporting(E_ALL);
+ini_set('display_errors', '0');
 date_default_timezone_set('Asia/Jakarta');
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
@@ -26,13 +29,9 @@ $isDev = (
     file_exists(__DIR__ . '/dev.flag')
 );
 
-$dbActions = [
-    'get_users', 'get_salary_config', 'save_salary_config', 
-    'get_hierarchy', 'save_hierarchy', 'del_hierarchy', 
-    'calculate_payroll'
-];
-
-if ($isDev && !in_array($action, $dbActions)) {
+// Semua action sekarang langsung ke database (production DB sudah di-import ke XAMPP lokal)
+// Dev dummy data block di-skip karena sudah tidak diperlukan lagi
+if (false) {
     // ── MODE DEV: gunakan dummy data ──────────────────
     $dummyUsers = [
         ['id'=>1,'user'=>'admin',  'pass'=>'admin',  'role'=>'VIP',          'cabang'=>'Semua',                       'fullName'=>'Administrator'],
@@ -163,33 +162,31 @@ if ($isDev && !in_array($action, $dbActions)) {
     exit();
 }
 
-// ── MODE PRODUCTION: konek MySQL (dengan Fallback Root Lokal & Try-Catch Exception) ──────────────────────
+// ── MODE PRODUCTION & DEVELOPMENT DATABASE CONNECTION ──
 $conn = null;
-try {
-    $conn = new mysqli("localhost", "u173485424_kurniarp", "Alpukat19#", "u173485424_hoki");
-} catch (Exception $e) {
+if ($isDev) {
+    // Koneksi khusus untuk XAMPP Lokal setelah import database production
     try {
-        $conn = new mysqli("localhost", "root", "");
-        if ($conn && !$conn->connect_error) {
-            $conn->query("CREATE DATABASE IF NOT EXISTS u173485424_hoki");
-            $conn->select_db("u173485424_hoki");
-        }
-    } catch (Exception $e2) {
+        $conn = @new mysqli("localhost", "root", "", "u173485424_hoki");
+    } catch (Exception $e) {
+        $conn = null;
+    }
+} else {
+    // Koneksi asli Hosting Production (Live)
+    try {
+        $conn = @new mysqli("localhost", "u173485424_kurniarp", "Alpukat19#", "u173485424_hoki");
+    } catch (Exception $e) {
         $conn = null;
     }
 }
 
 if (!$conn || $conn->connect_error) {
-    if (!$isDev) {
-        die(json_encode(["status"=>"error","message"=>"Koneksi database gagal."]));
-    } else {
-        $conn = null;
-    }
+    ob_end_clean();
+    die(json_encode(["status" => "error", "message" => "Koneksi database gagal: " . ($conn ? $conn->connect_error : "Server mati")]));
 }
 
-if ($conn) {
-    $conn->query("SET time_zone = '+07:00'"); 
-    $conn->set_charset("utf8mb4");
+$conn->query("SET time_zone = '+07:00'"); 
+$conn->set_charset("utf8mb4");
 
 // ── AUTO-CREATE ESSENTIAL TABLES ──────────────────────
 $conn->query("CREATE TABLE IF NOT EXISTS users (
@@ -372,8 +369,32 @@ $conn->query("CREATE TABLE IF NOT EXISTS hoki_staff_hierarchy (
     bawahan_username VARCHAR(100) NOT NULL,
     UNIQUE KEY uq_hierarchy (atasan_username, bawahan_username)
 )");
-}
 
+$conn->query("CREATE TABLE IF NOT EXISTS hoki_investor_access (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    investor_username VARCHAR(100) NOT NULL,
+    nama_cabang VARCHAR(100) NOT NULL,
+    persentase_bagi_hasil FLOAT DEFAULT 0,
+    UNIQUE KEY uq_inv_cb (investor_username, nama_cabang)
+)");
+
+$conn->query("INSERT IGNORE INTO hoki_roles (nama_role) VALUES ('Investor')");
+
+$conn->query("CREATE TABLE IF NOT EXISTS hoki_profit_sharing_history (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    tanggal_rekam DATE NOT NULL,
+    bulan_tahun VARCHAR(50) NOT NULL,
+    investor_username VARCHAR(100) NOT NULL,
+    cabang TEXT,
+    omset BIGINT DEFAULT 0,
+    laba_kotor BIGINT DEFAULT 0,
+    dana_operasional BIGINT DEFAULT 0,
+    hak_investor BIGINT DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+)");
+
+// ── Bersihkan buffer sebelum mengirim JSON ──
+ob_end_clean();
 
 switch ($action) {
 
@@ -463,6 +484,95 @@ switch ($action) {
         $id = (int)($_GET['id'] ?? 0);
         $conn->query("DELETE FROM hoki_roles WHERE id=$id");
         echo json_encode(["status"=>"success"]);
+        break;
+
+
+    case 'calculate_investor_profit':
+        $tglMulai = $conn->real_escape_string($_GET['tgl_mulai'] ?? '');
+        $tglSelesai = $conn->real_escape_string($_GET['tgl_selesai'] ?? '');
+        $investor = $conn->real_escape_string($_GET['investor_username'] ?? '');
+        
+        if (empty($tglMulai) || empty($tglSelesai)) {
+            echo json_encode(["status" => "error", "message" => "Rentang tanggal belum dipilih."]);
+            break;
+        }
+        
+        $resUser = $conn->query("SELECT cabang FROM users WHERE username = '$investor' AND role = 'Investor'");
+        if (!$resUser || $resUser->num_rows === 0) {
+            echo json_encode(["status" => "error", "message" => "Investor tidak ditemukan atau role tidak sesuai."]);
+            break;
+        }
+        $userData = $resUser->fetch_assoc();
+        $cabangListStr = $userData['cabang'];
+        $cabangArray = array_filter(array_map('trim', explode(',', $cabangListStr)));
+        
+        // Ambil data HPP Produk sekali
+        $resProduk = $conn->query("SELECT sku, nama, harga, hpp FROM produk");
+        $produkMap = [];
+        if ($resProduk) {
+            while ($p = $resProduk->fetch_assoc()) {
+                $produkMap[] = $p;
+            }
+        }
+
+        $results = [];
+        $totalOmset = 0;
+        $totalLabaKotor = 0;
+        
+        if (count($cabangArray) > 0) {
+            $cabangQuoted = array_map(function($c) use ($conn) { return "'" . $conn->real_escape_string($c) . "'"; }, $cabangArray);
+            $cabangIn = implode(',', $cabangQuoted);
+            
+            // Hitung Omset dan Kumpulkan JSON transaksi untuk Laba Kotor (HPP)
+            $resLap = $conn->query("SELECT total, items_json FROM transaksi WHERE cabang IN ($cabangIn) AND waktu >= '{$tglMulai} 00:00:00' AND waktu <= '{$tglSelesai} 23:59:59'");
+            
+            if ($resLap) {
+                while ($lap = $resLap->fetch_assoc()) {
+                    $totalOmset += (int)$lap['total'];
+                    
+                    $itemsArr = json_decode($lap['items_json'], true) ?: [];
+                    foreach ($itemsArr as $item) {
+                        $skuTrx = trim($item['sku'] ?? '');
+                        $namaTrx = strtolower(trim($item['nama'] ?? ''));
+                        $qty = (int)($item['qty'] ?? 1);
+                        
+                        $found = null;
+                        foreach ($produkMap as $pm) {
+                            if (!empty($pm['sku']) && !empty($skuTrx) && $pm['sku'] === $skuTrx) {
+                                $found = $pm;
+                                break;
+                            }
+                            if (strtolower(trim($pm['nama'])) === $namaTrx) {
+                                $found = $pm;
+                                break;
+                            }
+                        }
+                        
+                        if ($found) {
+                            $hargaJual = (int)$found['harga'];
+                            $hpp = (int)$found['hpp'];
+                            $margin = $hargaJual - $hpp;
+                            $totalLabaKotor += ($margin * $qty);
+                        }
+                    }
+                }
+            }
+        }
+        
+        $danaOperasional = $totalLabaKotor * 0.10;
+        $sisaLaba = $totalLabaKotor - $danaOperasional;
+        $hakInvestor = $sisaLaba * 0.50;
+        
+        // Return satu baris akumulasi
+        $results[] = [
+            'cabang' => implode(', ', $cabangArray),
+            'omset' => $totalOmset,
+            'laba_kotor' => $totalLabaKotor,
+            'dana_operasional' => $danaOperasional,
+            'hak_investor' => $hakInvestor
+        ];
+        
+        echo json_encode($results);
         break;
 
     // ── USERS ─────────────────────────────────────────
@@ -1480,6 +1590,37 @@ switch ($action) {
         unset($pData);
 
         echo json_encode(array_values($payrollResults));
+        break;
+
+    // ── INVESTOR PROFIT HISTORY ───────────────────────
+    case 'save_profit_history':
+        $tgl_rekam = $conn->real_escape_string($input['tanggal_rekam'] ?? date('Y-m-d'));
+        $bln_thn = $conn->real_escape_string($input['bulan_tahun'] ?? '');
+        $inv = $conn->real_escape_string($input['investor_username'] ?? '');
+        $cab = $conn->real_escape_string($input['cabang'] ?? '');
+        $omset = (int)($input['omset'] ?? 0);
+        $lk = (int)($input['laba_kotor'] ?? 0);
+        $do = (int)($input['dana_operasional'] ?? 0);
+        $hi = (int)($input['hak_investor'] ?? 0);
+        
+        $sql = "INSERT INTO hoki_profit_sharing_history (tanggal_rekam, bulan_tahun, investor_username, cabang, omset, laba_kotor, dana_operasional, hak_investor) 
+                VALUES ('$tgl_rekam', '$bln_thn', '$inv', '$cab', $omset, $lk, $do, $hi)";
+        if ($conn->query($sql)) {
+            echo json_encode(["status" => "success"]);
+        } else {
+            echo json_encode(["status" => "error", "message" => $conn->error]);
+        }
+        break;
+        
+    case 'get_profit_history':
+        $res = $conn->query("SELECT *, DATE_FORMAT(tanggal_rekam, '%d %M %Y') as tgl_fmt FROM hoki_profit_sharing_history ORDER BY id DESC");
+        echo json_encode($res ? $res->fetch_all(MYSQLI_ASSOC) : []);
+        break;
+        
+    case 'del_profit_history':
+        $id = (int)($_GET['id'] ?? 0);
+        $conn->query("DELETE FROM hoki_profit_sharing_history WHERE id=$id");
+        echo json_encode(["status" => "success"]);
         break;
 
     // ─────────────────────────────────────────────────

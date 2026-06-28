@@ -16,10 +16,25 @@
 
     if (isLoginPage()) return;
 
-    /* Redirect to login if session is gone */
+    /* Redirect to login if session is gone, or enforce Investor route locks */
     function guardSession() {
-        const u = localStorage.getItem('currentUser');
-        if (!u) window.location.href = LOGIN_PAGE;
+        const uStr = localStorage.getItem('currentUser');
+        if (!uStr) {
+            window.location.href = LOGIN_PAGE;
+            return;
+        }
+        
+        try {
+            const u = JSON.parse(uStr);
+            if (u && u.role === 'Investor') {
+                const path = window.location.pathname;
+                if (!path.endsWith('investor_omset.html') && !path.endsWith('investor_profit.html')) {
+                    window.location.href = 'investor_omset.html';
+                }
+            }
+        } catch (e) {
+            // Ignore parse errors, let normal app flow handle invalid session data
+        }
     }
 
     /* Sync logout across tabs — if another tab clears currentUser, redirect here too */

@@ -614,12 +614,13 @@ function buildSidebar() {
     const PAGES_MGMT      = ['rekap.html','produk.html'];
     const PAGES_EXEC      = ['laporan.html','statistik.html','bahan_baku.html','hpp_produk.html','belanja.html','warehouse.html','salary_staff.html'];
     const PAGES_VIP       = ['user.html','login_history.html'];
+    const PAGES_INVESTOR  = ['investor_omset.html','investor_profit.html'];
     const inGroup = pages => pages.includes(cur);
     const getOpen = (id, pages) => {
         const s = localStorage.getItem('navGroup_' + id);
         return s !== null ? s === '1' : true;
     };
-    const GROUP_ICONS = { frontline:'🛒', management:'📊', executive:'📋', vip:'👑' };
+    const GROUP_ICONS = { frontline:'🛒', management:'📊', executive:'📋', vip:'👑', investor:'🤝' };
     const navGroup = (id, label, items, pages) => {
         const open      = getOpen(id, pages);
         const hasActive = inGroup(pages);
@@ -641,7 +642,10 @@ function buildSidebar() {
         + navItem('📦','Stok Harian','stok.html')
         + navItem('🚚','Restock Barang','restock.html')
         + navItem('📊','Laporan Penjualan','laporan_staff.html');
-    let h = navGroup('frontline', 'Frontline', frontline, PAGES_FRONTLINE);
+    let h = '';
+    if (role !== 'Investor') {
+        h += navGroup('frontline', 'Frontline', frontline, PAGES_FRONTLINE);
+    }
 
     if (['Senior Staff','SPV','Owner','VIP'].includes(role)) {
         let mgmt = navItem('📈','Rekapan Penjualan','rekap.html')
@@ -657,6 +661,11 @@ function buildSidebar() {
             + navItem('💸','Belanja','belanja.html')
             + navItem('💵','Salary Staff','salary_staff.html');
         h += navGroup('executive', 'Executive', exec, PAGES_EXEC);
+    }
+    if (['Owner','VIP','Investor'].includes(role)) {
+        let inv = navItem('📈','Omset Cabang','investor_omset.html')
+            + navItem('💰','Profit Sharing','investor_profit.html');
+        h += navGroup('investor', 'Area Investor', inv, PAGES_INVESTOR);
     }
     if (role === 'VIP') {
         let vip = navItem('👥','Manajemen User','user.html')
