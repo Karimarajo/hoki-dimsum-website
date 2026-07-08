@@ -741,6 +741,44 @@ switch ($action) {
             : json_encode(["status"=>"error","message"=>$conn->error]);
         break;
 
+    // ── INVENTORY (LOGISTIK/GUDANG) ───────────────────
+    case 'get_inventory':
+        $res = $conn->query("SELECT * FROM inventory ORDER BY nama_barang ASC");
+        echo json_encode($res ? $res->fetch_all(MYSQLI_ASSOC) : []);
+        break;
+        
+    case 'add_inventory':
+        $nama_barang = $conn->real_escape_string($input['nama_barang'] ?? '');
+        $satuan = $conn->real_escape_string($input['satuan'] ?? '');
+        
+        if (empty($nama_barang) || empty($satuan)) {
+            echo json_encode(["status"=>"error", "message"=>"Nama barang dan satuan harus diisi."]);
+            break;
+        }
+
+        // Check if exists
+        $check = $conn->query("SELECT id FROM inventory WHERE nama_barang = '$nama_barang'");
+        if ($check && $check->num_rows > 0) {
+            echo json_encode(["status"=>"error", "message"=>"Barang sudah ada di inventory."]);
+            break;
+        }
+
+        $res = $conn->query("INSERT INTO inventory (nama_barang, satuan) VALUES ('$nama_barang', '$satuan')");
+        if ($res) {
+            echo json_encode(["status"=>"success"]);
+        } else {
+            echo json_encode(["status"=>"error", "message"=>$conn->error]);
+        }
+        break;
+
+    case 'del_inventory':
+        $id = (int)($_GET['id'] ?? 0);
+        if ($id > 0) {
+            $conn->query("DELETE FROM inventory WHERE id=$id");
+        }
+        echo json_encode(["status"=>"success"]);
+        break;
+
     // ── MASTER STOK ───────────────────────────────────
     case 'get_master_stok':
         $res = $conn->query("SELECT * FROM stok_master ORDER BY nama_item ASC");

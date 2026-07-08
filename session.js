@@ -104,8 +104,7 @@
             
             const newLength = formatted.length;
             const newPosition = cursorPosition + (newLength - originalLength);
-            e.target.setSelectionStart(newPosition);
-            e.target.setSelectionEnd(newPosition);
+            e.target.setSelectionRange(newPosition, newPosition);
         });
     }
 

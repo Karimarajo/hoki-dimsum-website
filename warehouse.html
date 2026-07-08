@@ -285,10 +285,12 @@
                     <span onclick="tutupDaftarBarangModal()" style="font-size:24px; font-weight:bold; color:var(--text-light); cursor:pointer; line-height:1;">&times;</span>
                 </div>
                 <div class="wh-form-group">
-                    <label for="daftarSelectBarang">Pilih Barang dari Master</label>
-                    <select id="daftarSelectBarang" style="height:38px; padding:0 12px; border:1.5px solid var(--border); border-radius:var(--r-md); background:var(--surface); color:var(--text); width:100%;">
-                        <option value="">— Pilih Barang —</option>
-                    </select>
+                    <label for="daftarInputBarang">Nama Barang</label>
+                    <input type="text" id="daftarInputBarang" placeholder="Contoh: Garpu" style="height:38px; padding:0 12px; border:1.5px solid var(--border); border-radius:var(--r-md); background:var(--surface); color:var(--text); width:100%; box-sizing:border-box;">
+                </div>
+                <div class="wh-form-group">
+                    <label for="daftarInputSatuan">Satuan (pcs/pack/lainnya)</label>
+                    <input type="text" id="daftarInputSatuan" placeholder="Contoh: pack" style="height:38px; padding:0 12px; border:1.5px solid var(--border); border-radius:var(--r-md); background:var(--surface); color:var(--text); width:100%; box-sizing:border-box;">
                 </div>
                 <button class="btn-simpan" onclick="simpanPendaftaranBarangGudang()" style="height:38px; width:100%;">💾 Daftarkan</button>
             </div>
@@ -727,7 +729,7 @@ async function tambahMasuk() {
 async function loadLogistikList() {
     const gridContainer = document.getElementById('whLogistikGridContainer');
     try {
-        const res = await fetch(`${API_BASE}?action=get_master_stok`);
+        const res = await fetch(`${API_BASE}?action=get_inventory`);
         const list = await res.json().catch(() => []);
         
         if (list.length === 0) {
@@ -740,27 +742,30 @@ async function loadLogistikList() {
         await Promise.all(list.map(async (p) => {
             let sisaStok = 0;
             try {
-                const resLedger = await fetch(`${API_BASE}?action=get_warehouse_ledger&sku=${encodeURIComponent(p.nama_item)}`);
+                const resLedger = await fetch(`${API_BASE}?action=get_warehouse_ledger&sku=${encodeURIComponent(p.nama_barang)}`);
                 const ledgerList = await resLedger.json().catch(() => []);
                 if (ledgerList && ledgerList.length > 0) {
                     sisaStok = parseFloat(ledgerList[0].sisa) || 0;
                 }
             } catch(e) {
-                console.error("Gagal load stok logistik untuk " + p.nama_item, e);
+                console.error("Gagal load stok logistik untuk " + p.nama_barang, e);
             }
 
             const cSisa = sisaClass(sisaStok);
-            const unit = p.nama_item.toLowerCase().includes('pcs') ? ' Pcs' : '';
+            const unit = ' ' + p.satuan;
 
             const card = document.createElement('div');
-            card.className = `wh-item-card ${selectedSKU === p.nama_item ? 'active' : ''}`;
-            card.id = `card-logistik-${p.nama_item.replace(/\s+/g, '-')}`;
+            card.className = `wh-item-card ${selectedSKU === p.nama_barang ? 'active' : ''}`;
+            card.id = `card-logistik-${p.nama_barang.replace(/\s+/g, '-')}`;
             card.onclick = () => {
-                onProdukChange(p.nama_item);
+                onProdukChange(p.nama_barang);
             };
 
             card.innerHTML = `
-                <h4 class="wh-item-card-name">${p.nama_item}</h4>
+                <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                    <h4 class="wh-item-card-name">${p.nama_barang}</h4>
+                    <button onclick="hapusLogistik(event, ${p.id}, '${p.nama_barang}')" style="background:none; border:none; color:var(--red); font-size:16px; cursor:pointer; padding:0; margin-left:8px;" title="Hapus Barang">🗑️</button>
+                </div>
                 <p class="wh-item-card-stock ${cSisa}">Stok: <span>${sisaStok.toLocaleString('id-ID')}${unit}</span></p>
             `;
             gridContainer.appendChild(card);
@@ -773,21 +778,9 @@ async function loadLogistikList() {
 }
 
 // Modal pendaftaran barang gudang baru
-async function bukaDaftarBarangModal() {
-    const select = document.getElementById('daftarSelectBarang');
-    select.innerHTML = '<option value="">— Pilih Barang —</option>';
-    
-    try {
-        const res = await fetch(`${API_BASE}?action=get_master_stok`);
-        const list = await res.json().catch(() => []);
-        
-        list.forEach(p => {
-            select.innerHTML += `<option value="${p.nama_item}">${p.nama_item}</option>`;
-        });
-    } catch(e) {
-        console.error("Gagal load master untuk pendaftaran:", e);
-    }
-    
+function bukaDaftarBarangModal() {
+    document.getElementById('daftarInputBarang').value = '';
+    document.getElementById('daftarInputSatuan').value = '';
     document.getElementById('daftarBarangModal').style.display = 'flex';
 }
 
@@ -801,32 +794,51 @@ function closeDaftarBarangModalOutside(e) {
     }
 }
 
-async function simpanPendaftaranBarangGudang() {
-    const sku = document.getElementById('daftarSelectBarang').value;
-    if (!sku) return toast.warning('Pilih barang terlebih dahulu!');
+async function hapusLogistik(e, id, nama) {
+    e.stopPropagation();
+    const ok = await showConfirm(`Yakin ingin menghapus ${nama} dari daftar logistik? Data ledger untuk barang ini tidak akan terhapus.`, 'Ya, Hapus', 'Batal', '🗑️');
+    if (!ok) return;
 
     try {
-        const payload = {
-            sku: sku,
-            tgl: new Date().toISOString().split('T')[0],
-            masuk: 0,
-            keluar: 0,
-            catatan: 'Inisialisasi Master Gudang'
-        };
-
-        const res = await fetch(`${API_BASE}?action=save_warehouse_masuk`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-
+        const res = await fetch(`${API_BASE}?action=del_inventory&id=${id}`);
         const hasil = await res.json();
         if (hasil.status === 'success') {
+            toast.success(`${nama} berhasil dihapus dari inventory.`);
+            if (selectedSKU === nama) {
+                selectedSKU = null;
+                document.getElementById('formCard').style.display = 'none';
+                document.getElementById('ledgerTableBody').innerHTML = '<tr><td colspan="4" style="text-align:center;">Pilih barang di atas</td></tr>';
+            }
+            loadLogistikList();
+        } else {
+            toast.error('Gagal menghapus: ' + (hasil.message || 'error'));
+        }
+    } catch(err) {
+        toast.error('Gagal koneksi ke server');
+    }
+}
+
+async function simpanPendaftaranBarangGudang() {
+    const sku = document.getElementById('daftarInputBarang').value.trim();
+    const satuan = document.getElementById('daftarInputSatuan').value.trim();
+    if (!sku || !satuan) return toast.warning('Nama barang dan satuan harus diisi!');
+
+    try {
+        // Save to inventory table first
+        const payloadInventory = { nama_barang: sku, satuan: satuan };
+        const resInv = await fetch(`${API_BASE}?action=add_inventory`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payloadInventory)
+        });
+        const hasilInv = await resInv.json();
+        
+        if (hasilInv.status !== 'success') {
+            return toast.error('Gagal menambahkan ke inventory: ' + (hasilInv.message || 'error'));
+        } else {
             toast.success(`Barang "${sku}" berhasil didaftarkan ke Gudang!`);
             tutupDaftarBarangModal();
             loadLogistikList();
-        } else {
-            toast.error('Gagal mendaftarkan barang: ' + (hasil.message || 'error'));
         }
     } catch(e) {
         toast.error('Gagal koneksi ke server!');

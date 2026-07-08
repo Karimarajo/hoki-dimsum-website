@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
@@ -298,15 +298,19 @@
             </div>
             <div class="filter-group">
                 <label for="startDate">📅 Dari Tanggal</label>
-                <input type="date" id="startDate" onchange="loadStatistik()" style="height:42px;">
+                <input type="date" id="startDate" style="height:42px;">
             </div>
             <div class="filter-group">
                 <label for="endDate">📅 Sampai Tanggal</label>
-                <input type="date" id="endDate" onchange="loadStatistik()" style="height:42px;">
+                <input type="date" id="endDate" style="height:42px;">
             </div>
             <div class="filter-group" style="flex:0;">
                 <label style="visibility:hidden;">x</label>
-                <button class="btn-reset" onclick="resetFilter()" style="height:42px;white-space:nowrap;">Reset</button>
+                <button class="btn-cari" onclick="loadStatistik()" style="height:42px;white-space:nowrap;margin:0;">🔍 Cari</button>
+            </div>
+            <div class="filter-group" style="flex:0;">
+                <label style="visibility:hidden;">x</label>
+                <button class="btn-reset" onclick="resetFilter()" style="height:42px;white-space:nowrap;margin:0;">Reset</button>
             </div>
         </div>
 
@@ -347,7 +351,7 @@
             </div>
 
             <div class="card-insight">
-                <h3>🔥 Jawara Menu (Top 5)</h3>
+                <h3>🔥 Jawara Menu (Top 10)</h3>
                 <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
                 <table class="top-menu-table">
                     <tbody id="listProdukUnggulan"></tbody>
@@ -570,38 +574,47 @@ async function loadFilters() {
 async function loadStatistik() {
     
     try {
-        const [resHistory, resSettlement, resKas] = await Promise.all([
-            fetch(`${API_BASE}?action=get_history&tgl_mulai=${startStr}&tgl_selesai=${endStr}`),
-            fetch(`${API_BASE}?action=get_laporan_history&role=Owner&cabang=Semua`),
-            fetch(`${API_BASE}?action=get_kas_data&role=Owner&cabang=Semua`)
+        const cabFilter  = document.getElementById('filterCabang').value;
+        const startStr   = document.getElementById('startDate').value;
+        const endStr     = document.getElementById('endDate').value;
+        
+        console.log("=== VERSI BARU: MENGAMBIL DATA STATISTIK ===");
+        console.log("Filter URL API -> tgl_mulai:", startStr, "tgl_selesai:", endStr);
+
+        const urlHistory = `${API_BASE}?action=get_history&tgl_mulai=${startStr}&tgl_selesai=${endStr}`;
+        const urlSettlement = `${API_BASE}?action=get_laporan_history&role=Owner&cabang=Semua&tgl_mulai=${startStr}&tgl_selesai=${endStr}`;
+        
+        console.log("Fetch 1:", urlHistory);
+        console.log("Fetch 2:", urlSettlement);
+
+        const [resHistory, resSettlement] = await Promise.all([
+            fetch(urlHistory),
+            fetch(urlSettlement)
         ]);
 
         const transaksi  = await resHistory.json();
         const lapStaff   = await resSettlement.json();
-        const kasData    = await resKas.json();
-
-        const cabFilter  = document.getElementById('filterCabang').value;
-        const startStr   = document.getElementById('startDate').value;
-        const endStr     = document.getElementById('endDate').value;
-        const startTime  = startStr ? new Date(startStr).setHours(0,0,0,0)   : null;
-        const endTime    = endStr   ? new Date(endStr).setHours(23,59,59,999) : null;
 
         /* A. ARUS KAS */
         let totalIn = 0;
-        lapStaff.forEach(l => {
-            const d = new Date(l.waktu).getTime();
-            if ((cabFilter === 'Semua' || l.cabang === cabFilter) && (!startTime || d >= startTime) && (!endTime || d <= endTime)) {
-                totalIn += parseFloat(l.grand_total || 0);
-            }
-        });
-
         let totalOut = 0;
-        kasData.forEach(k => {
-            const d = new Date(k.waktu).getTime();
-            if ((cabFilter === 'Semua' || k.cabang === cabFilter) && (!startTime || d >= startTime) && (!endTime || d <= endTime) && k.mode === 'Debit') {
-                totalOut += parseFloat(k.nominal || 0);
-            }
-        });
+        if (Array.isArray(lapStaff)) {
+            lapStaff.forEach(l => {
+                if (cabFilter === 'Semua' || l.cabang === cabFilter) {
+                    totalIn += parseFloat(l.grand_total || 0);
+                    
+                    // Tarik pengeluaran dari detail laporan staff
+                    try {
+                        const exps = JSON.parse(l.pengeluaran_json || '[]');
+                        if (Array.isArray(exps)) {
+                            exps.forEach(ex => {
+                                totalOut += parseFloat(ex.harga || ex.nominal || 0);
+                            });
+                        }
+                    } catch(e) {}
+                }
+            });
+        }
 
         document.getElementById('valIn').innerText  = "Rp " + totalIn.toLocaleString();
         document.getElementById('valOut').innerText = "Rp " + totalOut.toLocaleString();
@@ -612,12 +625,12 @@ async function loadStatistik() {
         barEl.style.background = profit >= 0 ? 'var(--green)' : 'var(--red)';
         document.getElementById('profitInfo').innerText = `Laba Bersih: Rp ${profit.toLocaleString()} (${ratio.toFixed(1)}%)`;
 
-        /* B. PERFORMA CABANG */
+        /* B. PERFORMA CABANG DARI TRANSAKSI */
+        const trxArr = Array.isArray(transaksi) ? transaksi : [];
         let perCabang = {};
-        lapStaff.forEach(l => {
-            const d = new Date(l.waktu).getTime();
-            if ((!startTime || d >= startTime) && (!endTime || d <= endTime)) {
-                perCabang[l.cabang] = (perCabang[l.cabang] || 0) + parseFloat(l.grand_total || 0);
+        trxArr.forEach(t => {
+            if (cabFilter === 'Semua' || t.cabang === cabFilter) {
+                perCabang[t.cabang] = (perCabang[t.cabang] || 0) + parseFloat(t.total || 0);
             }
         });
         const chartCab = document.getElementById('chartCabang');
@@ -637,17 +650,23 @@ async function loadStatistik() {
                 </div>`;
         });
 
-        /* C. JAM & TOP MENU */
-        const trxArr = Array.isArray(transaksi) ? transaksi : [];
+        /* C. JAM & TOP MENU DARI TRANSAKSI */
         let jamData = {}, menuData = {};
         trxArr.forEach(t => {
             try {
-                const d     = new Date(t.waktu).getTime();
-                const mCab  = (cabFilter === 'Semua' || t.cabang === cabFilter);
-                const mDate = (!startTime || d >= startTime) && (!endTime || d <= endTime);
-                if (mCab && mDate) {
-                    const jam = new Date(t.waktu).getHours();
+                if (cabFilter === 'Semua' || t.cabang === cabFilter) {
+                    // Aman mem-parsing jam karena format timestamp selalu YYYY-MM-DD HH:mm:ss dari SQL
+                    // Gunakan regex atau string split untuk mendapat jam dengan aman tanpa Invalid Date
+                    let jam = 0;
+                    if (t.waktu && t.waktu.includes(' ')) {
+                        const timePart = t.waktu.split(' ')[1];
+                        jam = parseInt(timePart.split(':')[0]);
+                    } else {
+                        jam = new Date(t.waktu.replace(/-/g, '/')).getHours();
+                    }
+                    
                     jamData[jam] = (jamData[jam] || 0) + 1;
+                    
                     let items = [];
                     try { const p = JSON.parse(t.items_json || '[]'); items = Array.isArray(p) ? p : []; } catch(_) {}
                     items.forEach(item => {
@@ -678,14 +697,15 @@ async function loadStatistik() {
 
         const listP = document.getElementById('listProdukUnggulan');
         listP.innerHTML = '';
-        const topMenu = Object.entries(menuData).sort((a,b) => b[1]-a[1]).slice(0,5);
+        const topMenu = Object.entries(menuData).sort((a,b) => b[1]-a[1]).slice(0,10);
         if (topMenu.length === 0) {
             listP.innerHTML = `<tr><td colspan="2" style="font-size:12px;color:var(--text-light);padding:8px 0;">Belum ada data menu</td></tr>`;
         } else {
-            topMenu.forEach(([name, qty]) => {
+            topMenu.forEach(([name, qty], index) => {
+                const rank = index + 1;
                 listP.innerHTML += `
                     <tr>
-                        <td>${name}</td>
+                        <td><strong>${rank}.</strong> ${name} <span style="color:var(--text-muted); font-size:11px;">(${qty})</span></td>
                         <td class="qty-cell">${qty} <small style="font-size:10px;color:var(--text-muted);font-weight:400;">Porsi</small></td>
                     </tr>`;
             });
@@ -717,6 +737,11 @@ window.onload = async () => {
     buildSidebar();
     updateClock();
     await loadFilters();
+    
+    // Kosongkan filter tanggal default agar menarik semua data terbaru
+    document.getElementById('startDate').value = '';
+    document.getElementById('endDate').value   = '';
+    
     loadStatistik();
 };
 </script>
