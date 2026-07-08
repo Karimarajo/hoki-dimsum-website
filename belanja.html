@@ -727,10 +727,12 @@ async function muatSaran(data) {
     listKet.innerHTML  = unikKet.map(k => `<option value="${k}">`).join('');
 }
 
+let editKasId = null;
+
 async function simpanTransaksi() {
     const payload = {
         waktu:   document.getElementById('fWaktu').value,
-        user:    currentUser.user,
+        user:    document.getElementById('fUser').value, // Ambil dari input agar tidak berubah saat diedit
         jenis:   document.getElementById('fJenis').value,
         nama:    document.getElementById('fNama').value,
         qty:     document.getElementById('fQty').value,
@@ -741,7 +743,13 @@ async function simpanTransaksi() {
     };
     if (!payload.nama || !payload.nominal) return toast.warning('Nama transaksi dan Nominal wajib diisi!');
     try {
-        const res   = await fetch(`${API_BASE}?action=save_kas_data`, {
+        let action = 'save_kas_data';
+        if (editKasId) {
+            action = 'edit_kas_data';
+            payload.id = editKasId;
+        }
+
+        const res   = await fetch(`${API_BASE}?action=${action}`, {
             method: 'POST',
             body:   JSON.stringify(payload)
         });
@@ -750,7 +758,16 @@ async function simpanTransaksi() {
             document.getElementById('fNama').value    = '';
             document.getElementById('fNominal').value = '';
             document.getElementById('fKet').value     = '';
-            toast.success('Data Kas Berhasil Disimpan!');
+            document.getElementById('fUser').value    = currentUser.user; // Kembalikan ke current user
+            editKasId = null;
+            
+            const btn = document.querySelector('.btn-simpan-kas');
+            if (btn) {
+                btn.innerText = 'Simpan Transaksi';
+                btn.style.background = ''; // Kembali ke default
+            }
+
+            toast.success(action === 'edit_kas_data' ? 'Data Kas Berhasil Diperbarui!' : 'Data Kas Berhasil Disimpan!');
             refreshDataCloud();
         }
     } catch (e) {
@@ -822,7 +839,10 @@ async function muatTabel() {
                     <td><span class="${badge}">${d.mode}</span></td>
                     <td style="font-family:'DM Mono',monospace;font-weight:700;color:${color};">${sign} Rp ${nom.toLocaleString()}</td>
                     <td><small style="color:var(--text-muted);">${d.ket || '-'}</small></td>
-                    <td>${currentUser.role === 'VIP' ? `<button class="btn-del-kas" onclick="hapusKas(${d.id})">✖</button>` : '—'}</td>
+                    <td>${currentUser.role === 'VIP' ? `
+                        <button class="btn-del-kas" style="background:var(--blue); margin-right:4px;" onclick="editKas(${d.id})" title="Edit">✏️</button>
+                        <button class="btn-del-kas" onclick="hapusKas(${d.id})" title="Hapus">✖</button>
+                    ` : '—'}</td>
                 </tr>`;
         });
 
@@ -889,6 +909,53 @@ async function hapusKas(id) {
     } catch (e) {
         toast.error('Gagal menghapus data!');
     }
+}
+
+function editKas(id) {
+    if (currentUser.role !== 'VIP') {
+        toast.error('Akses ditolak! Hanya VIP yang dapat mengedit catatan.');
+        return;
+    }
+    const d = cacheDataKas.find(x => x.id == id);
+    if (!d) return;
+    
+    editKasId = id;
+    
+    // Set field nilai dari data
+    document.getElementById('fUser').value = d.user;
+    document.getElementById('fWaktu').value = (d.waktu || "").replace(' ', 'T').slice(0, 16);
+    
+    // Set Jenis
+    const elJenis = Array.from(document.querySelectorAll('#dropdownJenis .dropdown-item')).find(el => el.innerText.includes(d.jenis));
+    if (elJenis) {
+        elJenis.click();
+    } else {
+        document.getElementById('fJenis').value = d.jenis;
+        document.getElementById('labelJenis').innerText = d.jenis;
+    }
+    
+    document.getElementById('fNama').value = d.nama;
+    document.getElementById('fQty').value = d.qty || 1;
+    
+    // Set Mode
+    const elMode = Array.from(document.querySelectorAll('#dropdownMode .dropdown-item')).find(el => el.innerText.includes(d.mode));
+    if (elMode) {
+        elMode.click();
+    } else {
+        document.getElementById('fMode').value = d.mode;
+        document.getElementById('labelMode').innerText = d.mode;
+    }
+    
+    document.getElementById('fNominal').value = d.nominal;
+    document.getElementById('fKet').value = d.ket || '';
+    
+    const btn = document.querySelector('.btn-simpan-kas');
+    if (btn) {
+        btn.innerText = 'Update Transaksi';
+        btn.style.background = 'var(--blue)';
+    }
+    
+    window.scrollTo({top:0, behavior:'smooth'});
 }
 
 function cetakPDF() {

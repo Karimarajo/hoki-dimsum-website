@@ -913,6 +913,22 @@ switch ($action) {
         echo json_encode(["status"=>"success"]);
         break;
 
+    case 'edit_kas_data':
+        $id  = (int)($input['id'] ?? 0);
+        $wkt = $conn->real_escape_string($input['waktu'] ?? '');
+        $usr = $conn->real_escape_string($input['user'] ?? '');
+        $jns = $conn->real_escape_string($input['jenis'] ?? '');
+        $nam = $conn->real_escape_string($input['nama'] ?? '');
+        $qty = (int)($input['qty'] ?? 1);
+        $mod = $conn->real_escape_string($input['mode'] ?? '');
+        $nom = (int)($input['nominal'] ?? 0);
+        $ket = $conn->real_escape_string($input['ket'] ?? '');
+        $cab = $conn->real_escape_string($input['cabang'] ?? '');
+        
+        $conn->query("UPDATE hoki_kas_data SET waktu='$wkt', user='$usr', jenis='$jns', nama='$nam', qty=$qty, mode='$mod', nominal=$nom, ket='$ket', cabang='$cab' WHERE id=$id");
+        echo json_encode(["status"=>"success"]);
+        break;
+
     case 'del_kas_data':
         // ── GUARD: hanya role VIP ──
         $tkn  = $conn->real_escape_string($_GET['token'] ?? '');
