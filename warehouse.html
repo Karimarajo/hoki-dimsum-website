@@ -261,7 +261,7 @@
 
         <!-- KOTAK PILIH BAHAN BAKU (GRID) -->
         <div class="wh-card">
-            <div class="wh-card-title">🧂 Pilih Bahan Baku</div>
+            <div class="wh-card-title">🧂 Bahan Baku (otomatis)</div>
             <div class="wh-grid" id="whGridContainer">
                 <div style="grid-column: 1/-1; text-align: center; padding: 20px; color: var(--text-muted);">⏳ Memuat bahan baku...</div>
             </div>
@@ -537,9 +537,18 @@ let warehouseItems = [];
 async function loadProdukList() {
     const gridContainer = document.getElementById('whGridContainer');
     try {
-        // Tarik daftar item secara dinamis dari API get_audit_items_master (default & custom)
-        const res = await fetch(`${API_BASE}?action=get_audit_items_master`);
-        const list = await res.json().catch(() => []);
+        // Tarik daftar item secara dinamis dari API get_audit_items_master dan filter jika ada di logistik
+        const [resMaster, resInv] = await Promise.all([
+            fetch(`${API_BASE}?action=get_audit_items_master`),
+            fetch(`${API_BASE}?action=get_inventory`)
+        ]);
+        let list = await resMaster.json().catch(() => []);
+        const invList = await resInv.json().catch(() => []);
+        
+        // Saring daftar bahan baku agar tidak ganda dengan barang di stok gudang/logistik manual
+        const invNames = invList.map(i => i.nama_barang.toLowerCase());
+        list = list.filter(p => !invNames.includes(p.nama.toLowerCase()));
+
         warehouseItems = list;
 
         if (list.length === 0) {
@@ -549,8 +558,8 @@ async function loadProdukList() {
 
         gridContainer.innerHTML = '';
         
-        // Load data stok akhir untuk masing-masing item secara paralel demi kecepatan render
-        await Promise.all(list.map(async (p) => {
+        // Load data stok akhir secara paralel, tapi render berurutan sesuai abjad
+        const cards = await Promise.all(list.map(async (p) => {
             let sisaStok = 0;
             try {
                 // ✔️ PERBAIKAN: Menggunakan p.nama, bukan namaItem agar tidak ReferenceError
@@ -578,8 +587,10 @@ async function loadProdukList() {
                 <h4 class="wh-item-card-name">${p.nama}</h4>
                 <p class="wh-item-card-stock ${cSisa}">Stok: <span>${sisaStok.toLocaleString('id-ID')}${unit}</span></p>
             `;
-            gridContainer.appendChild(card);
+            return card;
         }));
+
+        cards.forEach(c => gridContainer.appendChild(c));
 
     } catch(e) {
         console.error('loadProdukList:', e);
@@ -739,7 +750,8 @@ async function loadLogistikList() {
 
         gridContainer.innerHTML = '';
 
-        await Promise.all(list.map(async (p) => {
+        // Load data paralel tapi simpan urutan kartu sesuai daftar array (A-Z)
+        const cards = await Promise.all(list.map(async (p) => {
             let sisaStok = 0;
             try {
                 const resLedger = await fetch(`${API_BASE}?action=get_warehouse_ledger&sku=${encodeURIComponent(p.nama_barang)}`);
@@ -768,8 +780,10 @@ async function loadLogistikList() {
                 </div>
                 <p class="wh-item-card-stock ${cSisa}">Stok: <span>${sisaStok.toLocaleString('id-ID')}${unit}</span></p>
             `;
-            gridContainer.appendChild(card);
+            return card;
         }));
+        
+        cards.forEach(c => gridContainer.appendChild(c));
 
     } catch(e) {
         console.error('loadLogistikList:', e);

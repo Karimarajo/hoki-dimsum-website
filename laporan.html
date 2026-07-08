@@ -166,6 +166,7 @@
         
     }
 
+    @page { size: A4 portrait; margin: 15mm; }
     @media print {
         /* PENTING: Buka kunci tinggi halaman agar tidak terpotong */
         html, body {
@@ -173,6 +174,9 @@
             overflow: visible !important;
             margin: 0 !important;
             padding: 0 !important;
+            background: #fff !important;
+            font-family: 'DM Sans', sans-serif !important;
+            color: #000 !important;
         }
 
         /* Sembunyikan elemen UI POS */
@@ -209,28 +213,37 @@
         /* Tampilkan Header Cetak Hoki Dimsum */
         .print-header {
             display: block !important;
-            text-align: center;
-            border-bottom: 2px solid #333;
-            margin-bottom: 20px;
-            padding-bottom: 10px;
+            page-break-after: avoid;
         }
 
         /* Statistik Sejajar 4 Kolom */
         .grid-stats {
-            display: flex !important;
-            flex-direction: row !important;
-            flex-wrap: nowrap !important;
-            gap: 10px !important;
-            margin-bottom: 20px !important;
+            display: grid !important;
+            grid-template-columns: repeat(4, 1fr) !important;
+            gap: 15px !important;
+            margin-bottom: 30px !important;
+            page-break-inside: avoid;
         }
         
         .stat-card {
-            flex: 1 !important;
-            border: 1px solid #000 !important;
-            padding: 10px !important;
-            background: #f9f9f9 !important;
-            -webkit-print-color-adjust: exact;
-            print-color-adjust: exact;
+            border: 2px solid #ddd !important;
+            padding: 15px 10px !important;
+            border-radius: 8px !important;
+            background: #fafafa !important;
+            text-align: center;
+        }
+        
+        .stat-card h3 {
+            font-size: 10px !important;
+            color: #555 !important;
+            margin: 0 0 5px !important;
+        }
+        
+        .stat-card p {
+            font-size: 15px !important;
+            font-weight: 800 !important;
+            margin: 0 !important;
+            color: #000 !important;
         }
 
         /* Atur Tabel agar Tidak Hilang */
@@ -238,29 +251,55 @@
             border: none !important;
             box-shadow: none !important;
             padding: 0 !important;
-            margin-bottom: 25px !important;
+            margin-bottom: 30px !important;
             display: block !important;
             overflow: visible !important;
+            page-break-inside: avoid;
         }
         
+        .white-box h4 {
+            font-size: 14px !important;
+            color: #000 !important;
+            border-left: 4px solid #d32f2f !important;
+            padding-left: 10px !important;
+            margin-bottom: 12px !important;
+        }
+
         .laporan-table {
             width: 100% !important;
             border-collapse: collapse !important;
             table-layout: auto !important;
+            font-size: 10px !important;
         }
         
         .laporan-table th {
-            background: #eee !important;
-            color: black !important;
-            border: 1px solid #000 !important;
+            background-color: #f0f0f0 !important;
+            color: #000 !important;
+            border: 1px solid #ccc !important;
             padding: 8px !important;
+            font-weight: bold !important;
         }
         
         .laporan-table td {
-            border: 1px solid #000 !important;
+            border: 1px solid #ccc !important;
             padding: 6px !important;
-            font-size: 10px !important;
+            color: #111 !important;
         }
+
+        .laporan-table tr:nth-child(even) td {
+            background-color: #fafafa !important;
+        }
+
+        .laporan-table tfoot td, .laporan-table .row-total td {
+            background-color: #e6e6e6 !important;
+            font-weight: bold !important;
+            color: #000 !important;
+        }
+
+        /* Bersihkan warna header tabel yang terlalu gelap */
+        th[style*="background:#2e7d32"], th[style*="background:#43a047"] { background: #dcedc8 !important; color: #33691e !important; }
+        th[style*="background:#1565c0"], th[style*="background:#1e88e5"] { background: #bbdefb !important; color: #0d47a1 !important; }
+        th[style*="background:#333"] { background: #e0e0e0 !important; color: #000 !important; }
 
         /* Paksa printer untuk mencetak warna background */
         * {
@@ -317,10 +356,20 @@
 
         <!-- PRINT HEADER -->
         <div class="print-header">
-            <h1 style="margin:0;font-size:24px;color:#d32f2f;">HOKI POS SYSTEM</h1>
-            <h2 style="margin:5px 0;font-size:18px;">Laporan Konsolidasi Keuangan Global</h2>
-            <p id="pdfPeriode" style="margin:0;font-size:12px;color:#555;font-weight:bold;">Periode: Semua Waktu</p>
-            <p style="margin:5px 0 0;font-size:9px;color:#999;">Dicetak pada: <span id="pdfTglCetak"></span></p>
+            <div style="display:flex; justify-content:space-between; align-items:flex-end; border-bottom:3px solid #d32f2f; padding-bottom:12px; margin-bottom:24px;">
+                <div style="text-align:left; display:flex; align-items:center; gap:15px;">
+                    <img src="Assets/logobrand.png" alt="Logo Hoki Dimsum" style="height:50px; width:auto; object-fit:contain;">
+                    <div>
+                        <h1 style="margin:0;font-size:26px;color:#d32f2f;font-weight:800;letter-spacing:1px;font-family:'Playfair Display',serif;">HOKI DIMSUM</h1>
+                        <h2 style="margin:4px 0 0;font-size:14px;color:#444;text-transform:uppercase;letter-spacing:0.5px;">Laporan Konsolidasi Keuangan</h2>
+                    </div>
+                </div>
+                <div style="text-align:right;">
+                    <p id="pdfCabang" style="margin:0;font-size:12px;color:#333;font-weight:700;">Cabang: Semua Cabang</p>
+                    <p id="pdfPeriode" style="margin:2px 0;font-size:11px;color:#555;font-weight:600;">Periode: Semua Waktu</p>
+                    <p style="margin:2px 0 0;font-size:9px;color:#999;">Dicetak pada: <span id="pdfTglCetak"></span></p>
+                </div>
+            </div>
         </div>
 
         <!-- FILTER -->
@@ -376,7 +425,7 @@
             </div>
             <div class="filter-actions" style="margin-top:12px;">
                 <button class="btn-reset" onclick="resetFilter()">Reset Filter</button>
-                <button class="btn-cetak" onclick="window.print()">🖨️ Cetak PDF</button>
+                <button class="btn-cetak" onclick="cetakPDF()">🖨️ Cetak PDF</button>
             </div>
         </div>
 
@@ -893,12 +942,13 @@ function cetakPDF() {
     if (typeof toast !== 'undefined') toast.info("Menyiapkan laporan...");
     
     const cab = document.getElementById('labelCabang').innerText;
-    const periode = document.getElementById('pdfPeriode').innerText;
+    const periode = document.getElementById('pdfPeriode').innerText.replace('Periode: ', '');
     
     // --- TAMBAHAN: Nama File PDF lebih profesional saat di-Save ---
-    document.title = `Laporan_Hoki_${cab}_${periode.replace(/ /g, '_')}`;
+    document.title = `Laporan_Hoki_${cab}_${periode.replace(/ /g, '_').replace(/\//g, '-')}`;
     // -------------------------------------------------------------
 
+    document.getElementById('pdfCabang').innerText = `Cabang: ${cab}`;
     document.getElementById('pdfTglCetak').innerText = new Date().toLocaleString('id-ID');
     
     setTimeout(() => {
