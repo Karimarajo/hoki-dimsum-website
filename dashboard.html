@@ -1160,19 +1160,21 @@ function buildStrukWA(orderId, cabang, pelanggan, items, total, metode) {
         `• ${g.nama} (x${g.qty}) : Rp ${(g.harga * g.qty).toLocaleString('id-ID')}`
     ).join('\n');
 
-    return `*STRUK DIGITAL HOKI DIMSUM*\n` +
+    return `*STRUK DIGITAL _HOKI DIMSUM_*\n` +
         `No. Order: *#${orderId}*\n` +
         `Cabang: ${cabang}\n` +
         `Pelanggan: ${pelanggan.nama}\n` +
         `No. HP: ${pelanggan.telepon || '-'}\n` +
         `─────────────────\n` +
+        `*List Order Kamu*\n`
         `${itemLines}\n` +
         `─────────────────\n` +
         `*Total: Rp ${total.toLocaleString('id-ID')}*\n` +
         `Metode: ${metode}\n\n` +
         `_Terima kasih atas kunjungan Anda!_\n` +
-        `_Hoki Dimsum - Kritik & Saran:_\n` +
-        `_WA Pusat: 08123456789_`;
+        `_Kami juga tersedia di *Gofood, Grab Food dan Shopee Food*_\n` +
+        `_Hubungi Hoki Dimsum - Untuk kritik & saran:_\n` +
+        `_WA Pusat: 087753114641_`;
 }
 
 /* ── DROPDOWN DESKTOP ── */
