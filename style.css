@@ -135,13 +135,13 @@
    .sidebar-logo {
        width: 36px;
        height: 36px;
-       background: var(--red);
+       background: var(--white);
        border-radius: 10px;
        display: flex;
        align-items: center;
        justify-content: center;
        flex-shrink: 0;
-       box-shadow: 0 4px 12px rgba(211,47,47,0.3);
+       box-shadow: 0 4px 12px rgba(2, 2, 2, 0.3);
        overflow: hidden;
    }
    
@@ -890,9 +890,7 @@
    .btn-cari, .btn-filter,
    .btn-wa, .btn-wa-restock, .btn-wa-detail,
    .btn-detail, .btn-view-doc, .btn-icon {
-       background: #F9FAFB;
-       color: #1c1c1a;
-       border: 1px solid #D1D5DB;
+       filter: none;
        border-radius: var(--r-sm);
    }
 
@@ -900,24 +898,19 @@
    .btn-cari:hover, .btn-filter:hover,
    .btn-wa:hover, .btn-wa-restock:hover, .btn-wa-detail:hover,
    .btn-detail:hover, .btn-view-doc:hover, .btn-icon:hover {
-       background: #F3F4F6;
        filter: none;
        border-radius: var(--r-sm);
    }
 
    /* RED — Delete */
-   .btn-del, .btn-del-kas, .btn-del-user,
-   .btn-del-stok, .btn-del-bahan,
-   .btn-hapus {
-       background: #DC2626;
+   .btn-del, .btn-del-kas, .btn-del-user, .btn-del-stok, .btn-del-bahan, .btn-hapus {
        color: white;
        padding: 5px 10px;
        border-radius: var(--r-sm);
    }
 
-   .btn-hapus { padding: 5px 14px; }
 
-   .btn-del:hover, .btn-del-kas:hover, .btn-del-user:hover,
+   .btn-hapus, .btn-del:hover, .btn-del-kas:hover, .btn-del-user:hover,
    .btn-del-stok:hover, .btn-del-bahan:hover, .btn-hapus:hover {
        filter: brightness(0.88);
        border-radius: var(--r-sm);
@@ -2232,3 +2225,43 @@
        }
    
    }
+/* Aturan semesta untuk menyamakan semua tombol ikon aksi */
+.btn-detail-icon, .btn-edit-icon, .btn-hapus-icon, .btn-del, .btn-hapus {
+    width: 34px !important;
+    height: 34px !important;
+    min-width: 34px !important;
+    min-height: 34px !important;
+    padding: 0 !important;
+    margin: 0 3px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 8px !important; 
+    font-size: 14px !important; 
+    border: none !important;
+    cursor: pointer !important;
+    box-sizing: border-box !important;
+    transition: all 0.2s ease !important;
+}
+
+/* Mengatur grup tombol aksi di kolom tabel agar berbaris rapi dan tidak menempel */
+.aksi-group {
+    display: flex !important;
+    gap: 6px !important; 
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+td:last-child {
+    white-space: nowrap !important;
+    text-align: center;
+}
+
+.btn-detail-icon { background-color: rgba(37, 99, 235, 0.1) !important; color: #2563EB !important; }
+.btn-detail-icon:hover { background-color: #2563EB !important; color: white !important; }
+
+.btn-edit-icon { background-color: rgba(245, 158, 11, 0.1) !important; color: #D97706 !important; }
+.btn-edit-icon:hover { background-color: #D97706 !important; color: white !important; }
+
+.btn-hapus-icon, .btn-del, .btn-hapus { background-color: rgba(211, 47, 47, 0.1) !important; color: #D32F2F !important; }
+.btn-hapus-icon:hover, .btn-del:hover, .btn-hapus:hover { background-color: #D32F2F !important; color: white !important; }

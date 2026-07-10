@@ -364,10 +364,10 @@
 <!-- SIDEBAR -->
 <aside class="sidebar" id="sidebar">
     <div class="sidebar-brand" onclick="toggleSidebar()">
-        <div class="sidebar-logo"><img src="Assets/logobrand.png" alt="Hoki"></div>
+        <div class="sidebar-logo"><img src="Assets/3.png" alt="Hoki"></div>
         <div class="sidebar-brand-text">
             <div class="sidebar-brand-name">Hoki Dimsum</div>
-            <div class="sidebar-brand-sub">POS System v2.0</div>
+            <div class="sidebar-brand-sub">POS System v3.0</div>
         </div>
     </div>
     <button class="sidebar-toggle" onclick="toggleSidebar()">‹</button>
@@ -444,7 +444,7 @@
                 </table>
                 </div>
 
-                <div class="section-title">💸 Pengeluaran</div>
+                <div class="section-title">📝 Pengeluaran</div>
                 <div class="exp-input-row">
                     <input type="text"   id="exNama"  placeholder="Nama Barang">
                     <input type="number" id="exHarga" placeholder="Rp Total">
@@ -510,7 +510,7 @@
     <button class="bn-item" onclick="location.href='dashboard.html'"><span class="bn-icon">🛒</span><span class="bn-label">Kasir</span></button>
     <button class="bn-item" onclick="location.href='history.html'"><span class="bn-icon">📄</span><span class="bn-label">History</span></button>
     <button class="bn-item" onclick="location.href='stok.html'"><span class="bn-icon">📦</span><span class="bn-label">Stok</span></button>
-    <button class="bn-item active"><span class="bn-icon">📊</span><span class="bn-label">Laporan</span></button>
+    <button class="bn-item active"><span class="bn-icon">🚀</span><span class="bn-label">Laporan</span></button>
     <button class="bn-item" onclick="openSheet('moreSheet')"><span class="bn-icon">☰</span><span class="bn-label">Lainnya</span></button>
 </nav>
 
@@ -527,7 +527,7 @@
 <div id="detailOverlay">
     <div class="detail-container">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-            <button class="btn-back" onclick="tutupDetail()">← Kembali</button>
+            <button class="btn-detail-icon" onclick="tutupDetail()" title="Detail Data">👁️</button>
             <h2 id="detID" style="margin:0; color:var(--red); font-size:16px; font-family:'DM Mono', monospace;"></h2>
         </div>
 
@@ -558,7 +558,7 @@
             </div>
         </div>
 
-        <p class="section-label">💸 Pengeluaran</p>
+        <p class="section-label">📝 Pengeluaran</p>
         <table id="detTabelExp"></table>
 
         <div class="total-highlight" id="detGrandTotal"></div>
@@ -610,7 +610,7 @@ function buildSidebar() {
     };
     const PAGES_FRONTLINE = ['dashboard.html','history.html','stok.html','restock.html','laporan_staff.html'];
     const PAGES_MGMT      = ['rekap.html','produk.html'];
-    const PAGES_EXEC      = ['laporan.html','statistik.html','bahan_baku.html','hpp_produk.html','belanja.html','warehouse.html','salary_staff.html'];
+    const PAGES_EXEC      = ['laporan.html','statistik.html','bahan_baku.html','hpp_produk.html','belanja.html','warehouse.html','salary_staff.html','customer_hoki.html'];
     const PAGES_VIP       = ['user.html','login_history.html'];
     const PAGES_INVESTOR  = ['investor_omset.html','investor_profit.html'];
     const inGroup = pages => pages.includes(cur);
@@ -639,14 +639,14 @@ function buildSidebar() {
         + navItem('📄','History Transaksi','history.html')
         + navItem('📦','Stok Harian','stok.html')
         + navItem('🚚','Restock Barang','restock.html')
-        + navItem('📊','Laporan Penjualan','laporan_staff.html');
+        + navItem('🚀','Laporan Penjualan','laporan_staff.html');
     let h = '';
     if (role !== 'Investor') {
         h += navGroup('frontline', 'Frontline', frontline, PAGES_FRONTLINE);
     }
 
     if (['Senior Staff','SPV','Owner','VIP'].includes(role)) {
-        let mgmt = navItem('📈','Rekapan Penjualan','rekap.html')
+        let mgmt = navItem('🗓️','Rekapan Penjualan','rekap.html')
             + navItem('🍱','Master Produk','produk.html');
         h += navGroup('management', 'Management', mgmt, PAGES_MGMT);
     }
@@ -654,19 +654,20 @@ function buildSidebar() {
         let exec = navItem('📊','Keuangan Global','laporan.html')
             + navItem('📈','Statistik','statistik.html')
             + navItem('🧂','Bahan Baku','bahan_baku.html')
-            + navItem('💰','HPP Produk','hpp_produk.html')
+            + navItem('🗃️','HPP Produk','hpp_produk.html')
             + navItem('🏭','Warehouse','warehouse.html')
-            + navItem('💸','Belanja','belanja.html')
-            + navItem('💵','Salary Staff','salary_staff.html');
+            + navItem('📝','Belanja','belanja.html')
+            + navItem('💵','Salary Staff','salary_staff.html')
+            + navItem('👨‍👩‍👦','Customer Hoki','customer_hoki.html');
         h += navGroup('executive', 'Executive', exec, PAGES_EXEC);
     }
     if (['Owner','VIP','Investor'].includes(role)) {
-        let inv = navItem('📈','Omset Cabang','investor_omset.html')
+        let inv = navItem('💹','Omset Cabang','investor_omset.html')
             + navItem('💰','Profit Sharing','investor_profit.html');
         h += navGroup('investor', 'Area Investor', inv, PAGES_INVESTOR);
     }
     if (role === 'VIP') {
-        let vip = navItem('👥','Manajemen User','user.html')
+        let vip = navItem('⚙️','manajemen User','user.html')
             + navItem('🔑','History Login','login_history.html');
         h += navGroup('vip', 'VIP Access', vip, PAGES_VIP);
     }
@@ -705,19 +706,20 @@ function buildMoreMenu() {
     }
     if (['Owner','VIP'].includes(role)) {
         items.push({icon:'🧂',label:'Bahan Baku',link:'bahan_baku.html'});
-        items.push({icon:'💰',label:'HPP Produk',link:'hpp_produk.html'});
+        items.push({icon:'🗃️',label:'HPP Produk',link:'hpp_produk.html'});
         items.push({icon:'🏭',label:'Warehouse',link:'warehouse.html'});
-        items.push({icon:'💸',label:'Belanja',link:'belanja.html'});
+        items.push({icon:'📝',label:'Belanja',link:'belanja.html'});
         items.push({icon:'💵',label:'Salary Staff',link:'salary_staff.html'});
         items.push({icon:'📊',label:'Keuangan',link:'laporan.html'});
         items.push({icon:'📈',label:'Statistik',link:'statistik.html'});
+        items.push({icon:'👨‍👩‍👦',label:'Customer Hoki',link:'customer_hoki.html'});
     }
     if (['Owner','VIP','Investor'].includes(role)) {
-        items.push({icon:'📈',label:'Omset Cabang',link:'investor_omset.html'});
+        items.push({icon:'💹',label:'Omset Cabang',link:'investor_omset.html'});
         items.push({icon:'💰',label:'Profit Sharing',link:'investor_profit.html'});
     }
     if (role === 'VIP') {
-        items.push({icon:'👥',label:'Users',link:'user.html'});
+        items.push({icon:'⚙️',label:'Users',link:'user.html'});
         items.push({icon:'🔑',label:'Login Log',link:'login_history.html'});
     }
     items.push({icon:'🚪',label:'Logout',link:'#',action:'logout()'});
@@ -947,7 +949,7 @@ function kirimWADariDetail() {
     txt += `--------------------------------\n`;
     txt += `📉 *AUDIT STOK* :\n${auditTxt}`;
     txt += `--------------------------------\n`;
-    txt += `💸 *PENGELUARAN* :\n${expTxt}`;
+    txt += `📝 *PENGELUARAN* :\n${expTxt}`;
     txt += `--------------------------------\n`;
     txt += `*TOTAL OMSET* : Rp ${parseInt(d.grand_total).toLocaleString('id-ID')}\n`;
     txt += `--------------------------------\n`;
@@ -1015,8 +1017,8 @@ async function renderHistoryLaporan() {
                 <td><b>${l.cabang}</b></td>
                 <td style="font-family:'DM Mono',monospace;font-weight:700;color:var(--red);">Rp ${parseInt(l.grand_total).toLocaleString('id-ID')}</td>
                 <td>
-                    <button class="btn-icon" onclick="bukaDetail('${l.report_id}')">👁️</button>
-                    ${['Owner','VIP'].includes(currentUser.role) ? `<button class="btn-icon" onclick="hapusLaporan(${l.id})">🗑️</button>` : ''}
+                    <button class="btn-detail-icon" onclick="bukaDetail('${l.report_id}')" title="Detail Data">👁️</button>
+                    ${['Owner','VIP'].includes(currentUser.role) ? `<button class="btn-hapus-icon" onclick="hapusLaporan(${l.id})" title="Hapus Data">🗑️</button>` : ''}
                 </td>
             </tr>`;
         });
@@ -1092,7 +1094,7 @@ function bukaDetail(rid) {
 
     // Footer Total
     const totalHTML = `Total Omset: <span id="detTotal">Rp ${parseInt(data.grand_total).toLocaleString('id-ID')}</span>`;
-    const saveBtn = `<button class="btn-save-edit-det" onclick="saveEditDetail()" style="margin-top:15px; background:var(--red); color:white; border:none; padding:10px; border-radius:var(--r-md); cursor:pointer; font-weight:700; width:100%;">💾 Simpan Perubahan</button>`;
+    const saveBtn = `<button class="btn-edit-icon" onclick="saveEditDetail()" title="Edit Data">✏️</button>`;
     
     document.getElementById('detGrandTotal').innerHTML = totalHTML + (currentUser.role !== 'Staff' ? saveBtn : '');
     document.getElementById('detailOverlay').style.display = 'flex';

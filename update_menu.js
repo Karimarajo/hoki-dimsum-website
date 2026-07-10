@@ -6,9 +6,9 @@ let updatedCount = 0;
 for (const file of files) {
     let content = fs.readFileSync(file, 'utf8');
     if (content.includes("function buildMoreMenu()")) {
-        const regex = /items\.push\(\{icon:'💸',label:'Belanja',link:'belanja\.html'\}\);\s*items\.push\(\{icon:'📊',label:'Keuangan',link:'laporan\.html'\}\);\s*items\.push\(\{icon:'📈',label:'Statistik',link:'statistik\.html'\}\);\s*\}\s*if\s*\(\s*role\s*===\s*'VIP'\s*\)\s*\{/s;
+        const regex = /items\.push\(\{icon:'📝',label:'Belanja',link:'belanja\.html'\}\);\s*items\.push\(\{icon:'📊',label:'Keuangan',link:'laporan\.html'\}\);\s*items\.push\(\{icon:'📈',label:'Statistik',link:'statistik\.html'\}\);\s*\}\s*if\s*\(\s*role\s*===\s*'VIP'\s*\)\s*\{/s;
         
-        const replacement = `items.push({icon:'💸',label:'Belanja',link:'belanja.html'});
+        const replacement = `items.push({icon:'📝',label:'Belanja',link:'belanja.html'});
         items.push({icon:'💵',label:'Salary Staff',link:'salary_staff.html'});
         items.push({icon:'📊',label:'Keuangan',link:'laporan.html'});
         items.push({icon:'📈',label:'Statistik',link:'statistik.html'});

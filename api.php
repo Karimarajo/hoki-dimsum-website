@@ -393,6 +393,27 @@ $conn->query("CREATE TABLE IF NOT EXISTS hoki_profit_sharing_history (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 )");
 
+// ── Tabel Pelanggan (Member) ──
+$conn->query("CREATE TABLE IF NOT EXISTS hoki_pelanggan (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nama VARCHAR(150) NOT NULL DEFAULT '',
+    telepon VARCHAR(50) UNIQUE
+)");
+
+// ── Tambah kolom pelanggan ke tabel transaksi secara aman ──
+$checkCol1 = $conn->query("SHOW COLUMNS FROM transaksi LIKE 'pelanggan_nama'");
+if ($checkCol1 && $checkCol1->num_rows === 0) {
+    $conn->query("ALTER TABLE transaksi ADD COLUMN pelanggan_nama VARCHAR(150) DEFAULT 'No Cust'");
+}
+
+$checkCol2 = $conn->query("SHOW COLUMNS FROM transaksi LIKE 'pelanggan_telepon'");
+if ($checkCol2 && $checkCol2->num_rows === 0) {
+    $conn->query("ALTER TABLE transaksi ADD COLUMN pelanggan_telepon VARCHAR(50) DEFAULT ''");
+}
+
+// ── Migrasi data lama dari 'Umum / Non Member' menjadi 'No Cust' ──
+$conn->query("UPDATE transaksi SET pelanggan_nama = 'No Cust' WHERE pelanggan_nama = 'Umum / Non Member'");
+
 // ── Bersihkan buffer sebelum mengirim JSON ──
 ob_end_clean();
 
@@ -659,7 +680,9 @@ switch ($action) {
         $tt = (int)($input['total'] ?? 0);
         $mt = $conn->real_escape_string($input['metode'] ?? '');
         $it = $conn->real_escape_string(json_encode($input['items'] ?? []));
-        $sql = "INSERT INTO transaksi (waktu, cabang, petugas, total, metode, items_json) VALUES (NOW(),'$cb','$pt',$tt,'$mt','$it')";
+        $pn = $conn->real_escape_string($input['pelanggan_nama'] ?? 'No Cust');
+        $ph = $conn->real_escape_string($input['pelanggan_telepon'] ?? '');
+        $sql = "INSERT INTO transaksi (waktu, cabang, petugas, total, metode, items_json, pelanggan_nama, pelanggan_telepon) VALUES (NOW(),'$cb','$pt',$tt,'$mt','$it','$pn','$ph')";
         echo $conn->query($sql)
             ? json_encode(["status"=>"success","id"=>$conn->insert_id])
             : json_encode(["status"=>"error","message"=>$conn->error]);
@@ -1677,6 +1700,122 @@ switch ($action) {
         $id = (int)($_GET['id'] ?? 0);
         $conn->query("DELETE FROM hoki_profit_sharing_history WHERE id=$id");
         echo json_encode(["status" => "success"]);
+        break;
+
+    // ── PELANGGAN (MEMBER) ────────────────────────────
+    case 'get_pelanggan':
+        $res = $conn->query("SELECT * FROM hoki_pelanggan ORDER BY nama ASC");
+        $data = [];
+        if ($res) { while ($r = $res->fetch_assoc()) $data[] = $r; }
+        echo json_encode(["status"=>"success","data"=>$data]);
+        break;
+
+    case 'save_pelanggan':
+        $nama = $conn->real_escape_string(trim($input['nama'] ?? ''));
+        $telepon = preg_replace('/[^0-9]/', '', $input['telepon'] ?? '');
+        if (!$nama || !$telepon) {
+            echo json_encode(["status"=>"error","message"=>"Nama dan No. HP wajib diisi."]);
+            break;
+        }
+        $telepon = $conn->real_escape_string($telepon);
+        $conn->query("INSERT INTO hoki_pelanggan (nama, telepon) VALUES ('$nama','$telepon') ON DUPLICATE KEY UPDATE nama = VALUES(nama)");
+        $newId = $conn->insert_id ?: 0;
+        if (!$newId) {
+            $r = $conn->query("SELECT id FROM hoki_pelanggan WHERE telepon='$telepon'")->fetch_assoc();
+            $newId = $r['id'] ?? 0;
+        }
+        echo json_encode(["status"=>"success","id"=>$newId,"nama"=>$nama,"telepon"=>$telepon]);
+        break;
+
+    case 'get_customer_loyalty':
+        $sql = "
+            SELECT 
+                pelanggan_nama as nama,
+                COUNT(id) as total_order,
+                COALESCE(SUM(total), 0) as total_belanja
+            FROM transaksi
+            WHERE pelanggan_nama != 'No Cust' AND pelanggan_nama != ''
+            GROUP BY pelanggan_nama
+        ";
+        $res = $conn->query($sql);
+        $data = [];
+        if ($res) { 
+            while ($r = $res->fetch_assoc()) {
+                $r['total_order'] = (int)$r['total_order'];
+                $r['total_belanja'] = (float)$r['total_belanja'];
+                $data[] = $r;
+            }
+        }
+        echo json_encode(["status"=>"success","data"=>$data]);
+        break;
+
+    case 'get_top_customers':
+        $sql = "
+            SELECT 
+                pelanggan_nama as nama,
+                pelanggan_telepon as telepon,
+                COUNT(id) as total_order,
+                SUM(total) as total_rupiah,
+                GROUP_CONCAT(DISTINCT cabang SEPARATOR ', ') as cabang_belanja
+            FROM transaksi
+            WHERE pelanggan_nama != 'Umum / Non Member' AND pelanggan_nama != 'No Cust' AND pelanggan_nama != '' AND pelanggan_telepon != ''
+            GROUP BY pelanggan_telepon, pelanggan_nama
+            ORDER BY total_order DESC, total_rupiah DESC
+            LIMIT 10
+        ";
+        $res = $conn->query($sql);
+        $data = [];
+        if ($res) { 
+            while ($r = $res->fetch_assoc()) {
+                $r['total_order'] = (int)$r['total_order'];
+                $r['total_rupiah'] = (float)$r['total_rupiah'];
+                $data[] = $r;
+            }
+        }
+        echo json_encode(["status"=>"success","data"=>$data]);
+        break;
+
+
+    case 'update_pelanggan':
+        $id = (int)($input['id'] ?? 0);
+        $nama = $conn->real_escape_string(trim($input['nama'] ?? ''));
+        $telepon = preg_replace('/[^0-9]/', '', $input['telepon'] ?? '');
+        
+        if (!$id || !$nama || !$telepon) {
+            echo json_encode(["status"=>"error","message"=>"ID, Nama, dan No. HP wajib diisi."]);
+            break;
+        }
+        
+        $telepon = $conn->real_escape_string($telepon);
+        
+        // Cek duplikasi no telp pada ID lain
+        $cek = $conn->query("SELECT id FROM hoki_pelanggan WHERE telepon='$telepon' AND id != $id");
+        if ($cek && $cek->num_rows > 0) {
+            echo json_encode(["status"=>"error","message"=>"Nomor telepon ini sudah digunakan pelanggan lain."]);
+            break;
+        }
+        
+        $sql = "UPDATE hoki_pelanggan SET nama='$nama', telepon='$telepon' WHERE id=$id";
+        if ($conn->query($sql)) {
+            echo json_encode(["status"=>"success"]);
+        } else {
+            echo json_encode(["status"=>"error","message"=>$conn->error]);
+        }
+        break;
+
+    case 'delete_pelanggan':
+        $id = (int)($_GET['id'] ?? 0);
+        if (!$id) {
+            echo json_encode(["status"=>"error","message"=>"ID pelanggan tidak valid."]);
+            break;
+        }
+        
+        $sql = "DELETE FROM hoki_pelanggan WHERE id=$id";
+        if ($conn->query($sql)) {
+            echo json_encode(["status"=>"success"]);
+        } else {
+            echo json_encode(["status"=>"error","message"=>$conn->error]);
+        }
         break;
 
     // ─────────────────────────────────────────────────

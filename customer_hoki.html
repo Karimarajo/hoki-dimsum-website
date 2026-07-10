@@ -1,14 +1,18 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Hoki POS - Bahan Baku</title>
-        <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🥟</text></svg>">
+    <title>Hoki POS - Customer Hoki</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🥟</text></svg>">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&family=DM+Mono:wght@400;500&family=Playfair+Display:wght@700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css?v=20260501">
     <style>
+    .main-content {
+        overflow-x: hidden;
+    }
+
     .form-card {
         background: var(--surface);
         border: 1px solid var(--border);
@@ -18,40 +22,12 @@
         box-shadow: var(--sh-sm);
     }
 
-    .form-card h3 {
-        margin: 0 0 16px;
-        font-size: 14px;
-        font-weight: 700;
-        color: var(--text);
-    }
-
-    .grid-form {
-        display: grid;
-        grid-template-columns: 2fr 1fr 1fr 1fr 1fr auto;
-        gap: 10px;
-        align-items: end;
-    }
-
-    .input-group {
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-    }
-
-    .input-group label {
-        font-size: 10px;
-        font-weight: 700;
-        color: var(--text-muted);
-        text-transform: uppercase;
-        letter-spacing: 0.8px;
-    }
-
-    .input-group input {
-        margin: 0;
-        padding: 9px 12px;
+    .search-input {
+        width: 100%;
+        padding: 12px 16px;
         border: 1.5px solid var(--border);
         border-radius: var(--r-md);
-        font-size: 13px;
+        font-size: 14px;
         font-family: 'DM Sans', sans-serif;
         background: var(--surface);
         color: var(--text);
@@ -59,14 +35,7 @@
         transition: border-color 0.2s;
     }
 
-    .input-group input:focus { border-color: var(--red); }
-    .input-group input[readonly] {
-        background: var(--surface-2);
-        color: var(--red);
-        font-family: 'DM Mono', monospace;
-        font-weight: 700;
-    }
-
+    .search-input:focus { border-color: var(--red); }
 
     .table-wrap {
         background: var(--surface);
@@ -75,18 +44,20 @@
         overflow: hidden;
         box-shadow: var(--sh-sm);
         overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
     }
 
     .table-wrap table {
         width: 100%;
         border-collapse: collapse;
+        min-width: 600px;
     }
 
     .table-wrap thead th {
         background: var(--red);
         color: white;
-        padding: 10px 14px;
-        font-size: 11px;
+        padding: 8px 10px !important;
+        font-size: 11px !important;
         font-weight: 600;
         text-transform: uppercase;
         border: none;
@@ -94,28 +65,144 @@
     }
 
     .table-wrap tbody td {
-        padding: 10px 14px;
+        padding: 8px 10px !important;
         border-bottom: 1px solid var(--border);
-        font-size: 13px;
+        font-size: 12px !important;
         color: var(--text);
         border-top: none; border-left: none; border-right: none;
+        vertical-align: top;
     }
 
     .table-wrap tbody tr:last-child td { border-bottom: none; }
     .table-wrap tbody tr:hover td { background: var(--red-soft); }
 
     .mono { font-family: 'DM Mono', monospace; font-weight: 700; }
-    .red  { color: var(--red); }
-    .green { color: var(--green); }
+    .bold-number { font-weight: 800; font-size: 13px !important; line-height: 1.2 !important; }
+    .zero { color: var(--text-muted); font-weight: 500; }
+    .text-total { color: var(--text-muted); font-size: 11px !important; margin-top: 2px; line-height: 1.2 !important; }
+    .aksi-group, td:last-child {
+        display: flex !important;
+        flex-direction: row !important;
+        gap: 6px !important;
+        align-items: center !important;
+        justify-content: center !important;
+        white-space: nowrap !important;
+    }
 
+    .btn-action, .btn-edit-icon, .btn-hapus-icon {
+        width: 28px !important;
+        height: 28px !important;
+        min-width: 28px !important;
+        min-height: 28px !important;
+        font-size: 12px !important;
+        padding: 0 !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        border-radius: 6px !important;
+        border: none !important;
+        cursor: pointer !important;
+        transition: all 0.2s ease !important;
+    }
 
+    .btn-action.edit, .btn-edit-icon { background-color: rgba(245, 158, 11, 0.1) !important; color: #D97706 !important; }
+    .btn-action.edit:hover, .btn-edit-icon:hover { background-color: #D97706 !important; color: white !important; }
+    
+    .btn-action.del, .btn-hapus-icon { background-color: rgba(211, 47, 47, 0.1) !important; color: #D32F2F !important; }
+    .btn-action.del:hover, .btn-hapus-icon:hover { background-color: #D32F2F !important; color: white !important; }
+
+    /* Modal Edit */
+    .modal-pelanggan-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.6);
+        backdrop-filter: blur(4px);
+        z-index: 9999;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal-pelanggan-overlay.open { display: flex; }
+
+    .modal-pelanggan {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--r-lg);
+        padding: 28px 24px;
+        width: 90%;
+        max-width: 380px;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        animation: modalFadeIn 0.25s ease;
+    }
+
+    @keyframes modalFadeIn {
+        from { opacity: 0; transform: translateY(20px) scale(0.95); }
+        to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    .modal-pelanggan h3 {
+        margin: 0 0 18px;
+        font-size: 16px;
+        font-weight: 800;
+        color: var(--text);
+        text-align: center;
+    }
+
+    .modal-pelanggan input {
+        width: 100%;
+        padding: 12px 14px;
+        border: 1px solid var(--border);
+        border-radius: var(--r-md);
+        background: var(--surface-2);
+        color: var(--text);
+        font-family: 'DM Sans', sans-serif;
+        font-size: 13px;
+        margin-bottom: 10px;
+        box-sizing: border-box;
+    }
+
+    .modal-pelanggan input:focus {
+        outline: none;
+        border-color: var(--red);
+    }
+
+    .modal-pelanggan-btns {
+        display: flex;
+        gap: 8px;
+        margin-top: 8px;
+    }
+
+    .modal-pelanggan-btns button {
+        flex: 1;
+        padding: 12px;
+        border-radius: var(--r-md);
+        border: none;
+        font-family: 'DM Sans', sans-serif;
+        font-weight: 700;
+        font-size: 13px;
+        cursor: pointer;
+        transition: filter 0.15s;
+    }
+
+    .modal-pelanggan-btns button:hover { filter: brightness(0.9); }
+    .modal-pelanggan-btns .btn-cancel {
+        background: var(--surface-2);
+        color: var(--text-muted);
+        border: 1px solid var(--border);
+    }
+    .modal-pelanggan-btns .btn-save {
+        background: var(--red);
+        color: white;
+    }
 
     @media (max-width: 844px) {
-        .grid-form { grid-template-columns: 1fr 1fr; }
-        .grid-form button { grid-column: span 2; }
+        .page-body {
+            padding-bottom: 80px;
+        }
     }
     </style>
-  <script src="config.js"></script>
+    <script src="config.js"></script>
 </head>
 <body>
 
@@ -144,7 +231,7 @@
 <div class="main-content" id="mainContent">
     <header class="top-header">
         <div class="header-left">
-            <div class="header-page-title">🧂 Bahan Baku</div>
+            <div class="header-page-title">👥 Customer Hoki</div>
         </div>
         <div class="header-right">
             <div class="clock-pill">
@@ -156,52 +243,28 @@
 
     <div class="page-body">
         <div class="form-card">
-            <h3>➕ Tambah / Edit Bahan Baku</h3>
-            <div class="grid-form">
-                <div class="input-group">
-                    <label>Nama Bahan</label>
-                    <input type="text" id="bNama" placeholder="Cth: Mentai, Ayam, Tepung...">
-                </div>
-                <div class="input-group">
-                    <label>Harga (Rp)</label>
-                    <input type="number" id="bHarga" placeholder="50000" oninput="hitungHargaSatuan()">
-                </div>
-                <div class="input-group">
-                    <label>Banyak (Qty)</label>
-                    <input type="number" id="bBanyak" placeholder="1000" oninput="hitungHargaSatuan()">
-                </div>
-                <div class="input-group">
-                    <label>Satuan</label>
-                    <input type="text" id="bSatuan" placeholder="gr / ml / pcs">
-                </div>
-                <div class="input-group">
-                    <label>Harga / Satuan</label>
-                    <input type="text" id="bHargaSatuan" readonly placeholder="Auto">
-                </div>
-                <button class="btn-simpan" onclick="simpanBahan()">💾 Simpan</button>
-            </div>
+            <input type="text" class="search-input" id="searchCustomer" placeholder="🔍 Cari pelanggan berdasarkan nama / nomor HP..." oninput="filterCustomer()">
         </div>
 
         <div class="table-wrap">
             <table>
                 <thead>
                     <tr>
-                        <th>Nama Bahan</th>
-                        <th>Harga</th>
-                        <th>Banyak</th>
-                        <th>Satuan</th>
-                        <th>Harga / Satuan</th>
+                        <th>Nama Pelanggan</th>
+                        <th>No. WhatsApp (HP)</th>
+                        <th>Loyalitas Belanja</th>
                         <th>Aksi</th>
                     </tr>
                 </thead>
-                <tbody id="tabelBahan">
-                    <tr><td colspan="6" style="text-align:center;padding:32px;color:var(--text-light);">Memuat data...</td></tr>
+                <tbody id="tabelCustomer">
+                    <tr><td colspan="4" style="text-align:center;padding:32px;color:var(--text-light);">Memuat data pelanggan...</td></tr>
                 </tbody>
             </table>
         </div>
     </div>
 </div>
 
+<!-- BOTTOM NAV -->
 <nav class="bottom-nav">
     <button class="bn-item" onclick="location.href='dashboard.html'"><span class="bn-icon">🛒</span><span class="bn-label">Kasir</span></button>
     <button class="bn-item" onclick="location.href='history.html'"><span class="bn-icon">📄</span><span class="bn-label">History</span></button>
@@ -210,21 +273,45 @@
     <button class="bn-item active" onclick="openSheet('moreSheet')"><span class="bn-icon">☰</span><span class="bn-label">Lainnya</span></button>
 </nav>
 
-<div class="sheet-overlay" id="moreSheet" onclick="closeSheetOutside(event,'moreSheet')">
+<!-- More Sheet -->
+<div class="sheet-overlay" id="moreSheet" onclick="closeSheetOutside(event, 'moreSheet')">
     <div class="bottom-sheet" onclick="event.stopPropagation()">
         <div class="sheet-handle"></div>
-        <p style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:14px;">Menu Lainnya</p>
-        <div class="more-grid" id="moreGrid"></div>
+        <div class="bottom-sheet-header">
+            <h3>Menu Lainnya</h3>
+            <button class="btn-hapus-icon" onclick="document.getElementById('moreSheet').classList.remove('open')" title="Hapus Data">🗑️</button>
+        </div>
+        <div class="bottom-sheet-body">
+            <div class="more-grid" id="moreGrid"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Edit Pelanggan -->
+<div class="modal-pelanggan-overlay" id="modalEditPelanggan" onclick="if(event.target===this) this.classList.remove('open')">
+    <div class="modal-pelanggan">
+        <h3>✏️ Edit Pelanggan</h3>
+        <input type="hidden" id="editId">
+        <label style="font-size:12px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:4px;">Nama Pelanggan</label>
+        <input type="text" id="editNama" placeholder="Nama Lengkap">
+        
+        <label style="font-size:12px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:4px;margin-top:10px;">No. WhatsApp</label>
+        <input type="tel" id="editTelepon" placeholder="08...">
+        
+        <div class="modal-pelanggan-btns">
+            <button class="btn-edit-icon" onclick="document.getElementById('modalEditPelanggan').classList.remove('open')" title="Edit Data">✏️</button>
+            <button class="btn-save" onclick="simpanEditPelanggan()">Simpan Perubahan</button>
+        </div>
     </div>
 </div>
 
 <script>
-const currentUser = JSON.parse(localStorage.getItem('currentUser')) || {user:'Guest', role:'Staff'};
-if (!currentUser.user) window.location.href = 'index.html';
-if (!['Owner','VIP'].includes(currentUser.role)) window.location.href = 'dashboard.html';
+const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+if (!currentUser || !['Owner','VIP'].includes(currentUser.role)) {
+    window.location.href = 'dashboard.html';
+}
 
-let editId = null;
-let allBahan = [];
+let allCustomers = [];
 
 function toggleSidebar() {
     const sb = document.getElementById('sidebar');
@@ -371,99 +458,139 @@ function buildMoreMenu() {
 function openSheet(id) { if(id==='moreSheet') buildMoreMenu(); document.getElementById(id).classList.add('open'); }
 function closeSheetOutside(e,id) { if(e.target===document.getElementById(id)) document.getElementById(id).classList.remove('open'); }
 
-function hitungHargaSatuan() {
-    const harga  = parseFloat(document.getElementById('bHarga').value) || 0;
-    const banyak = parseFloat(document.getElementById('bBanyak').value) || 0;
-    const satuan = document.getElementById('bSatuan').value || '';
-    if (harga > 0 && banyak > 0) {
-        const hs = harga / banyak;
-        document.getElementById('bHargaSatuan').value = `Rp ${hs.toLocaleString('id-ID', {minimumFractionDigits:0, maximumFractionDigits:2})} / ${satuan || 'satuan'}`;
-    } else {
-        document.getElementById('bHargaSatuan').value = '';
+async function muatCustomerHoki() {
+    try {
+        const [resPel, resLoy] = await Promise.all([
+            fetch(`${API_BASE}?action=get_pelanggan`),
+            fetch(`${API_BASE}?action=get_customer_loyalty`)
+        ]);
+        const jsonPel = await resPel.json();
+        const jsonLoy = await resLoy.json();
+        
+        if (jsonPel.status === 'success' && jsonLoy.status === 'success') {
+            const dataPel = jsonPel.data || [];
+            const dataLoy = jsonLoy.data || [];
+            
+            const loyaltyMap = {};
+            dataLoy.forEach(l => {
+                loyaltyMap[l.nama.toLowerCase()] = {
+                    total_order: l.total_order,
+                    total_belanja: l.total_belanja
+                };
+            });
+            
+            allCustomers = dataPel.map(p => {
+                const lp = loyaltyMap[p.nama.toLowerCase()] || { total_order: 0, total_belanja: 0 };
+                return {
+                    id: p.id,
+                    nama: p.nama,
+                    telepon: p.telepon,
+                    total_order: lp.total_order,
+                    total_belanja: lp.total_belanja
+                };
+            });
+            
+            renderCustomerHoki();
+        } else {
+            document.getElementById('tabelCustomer').innerHTML = `<tr><td colspan="4" style="text-align:center;color:var(--red);">Gagal memuat data pelanggan</td></tr>`;
+        }
+    } catch(e) { 
+        console.error(e); 
+        document.getElementById('tabelCustomer').innerHTML = `<tr><td colspan="4" style="text-align:center;color:var(--red);">Koneksi server gagal</td></tr>`;
     }
 }
 
-async function muatBahan() {
-    try {
-        const res = await fetch(`${API_BASE}?action=get_bahan_baku`);
-        allBahan  = await res.json();
-        renderTabel();
-    } catch(e) { console.error(e); }
-}
-
-function renderTabel() {
-    const tbody = document.getElementById('tabelBahan');
-    if (!allBahan.length) {
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:32px;color:var(--text-light);">Belum ada data bahan baku</td></tr>';
+function renderCustomerHoki(filterText = '') {
+    const tbody = document.getElementById('tabelCustomer');
+    
+    let filtered = allCustomers;
+    if (filterText) {
+        const kw = filterText.toLowerCase();
+        filtered = allCustomers.filter(p => 
+            p.nama.toLowerCase().includes(kw) || 
+            (p.telepon && p.telepon.includes(kw))
+        );
+    }
+    
+    if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;padding:32px;color:var(--text-light);">${filterText ? 'Pelanggan tidak ditemukan' : 'Belum ada data pelanggan'}</td></tr>`;
         return;
     }
-    tbody.innerHTML = allBahan.map(b => {
-        const hs = parseFloat(b.harga_satuan) || 0;
+
+    tbody.innerHTML = filtered.map(c => {
+        const total = parseInt(c.total_order) || 0;
+        const totalBelanja = parseFloat(c.total_belanja) || 0;
+        const totalClass = total > 0 ? 'bold-number' : 'bold-number zero';
+        
         return `<tr>
-            <td><b>${b.nama}</b></td>
-            <td class="mono">Rp ${parseFloat(b.harga).toLocaleString('id-ID')}</td>
-            <td class="mono">${parseFloat(b.banyak).toLocaleString('id-ID')}</td>
-            <td>${b.satuan}</td>
-            <td class="mono red">Rp ${hs.toLocaleString('id-ID', {minimumFractionDigits:0, maximumFractionDigits:4})} <small style="color:var(--text-muted);font-weight:400;">/ ${b.satuan}</small></td>
+            <td><b style="font-size:12px;">${c.nama}</b></td>
+            <td class="mono" style="color:var(--text-muted);">${c.telepon || '-'}</td>
             <td>
-                <button class="btn-edit-icon" onclick="siapkanEdit(${b.id})" title="Edit Data">✏️</button>
-                <button class="btn-hapus-icon" onclick="hapusBahan(${b.id})" title="Hapus Data">🗑️</button>
+                <div class="${totalClass}">${total}x Order</div>
+                <div class="text-total">Rp ${totalBelanja.toLocaleString('id-ID')}</div>
+            </td>
+            <td>
+                <button class="btn-edit-icon" onclick="siapkanEditPelanggan(${c.id}, '${c.nama}', '${c.telepon}')" title="Edit Data">✏️</button>
+                <button class="btn-hapus-icon" onclick="hapusPelanggan(${c.id})" title="Hapus Data">🗑️</button>
             </td>
         </tr>`;
     }).join('');
 }
 
-function siapkanEdit(id) {
-    const b = allBahan.find(x => x.id == id);
-    if (!b) return;
-    editId = id;
-    document.getElementById('bNama').value   = b.nama;
-    document.getElementById('bHarga').value  = b.harga;
-    document.getElementById('bBanyak').value = b.banyak;
-    document.getElementById('bSatuan').value = b.satuan;
-    hitungHargaSatuan();
-    window.scrollTo({top:0, behavior:'smooth'});
-    document.querySelector('.btn-simpan').innerText = '💾 Update';
+function filterCustomer() {
+    const keyword = document.getElementById('searchCustomer').value;
+    renderCustomerHoki(keyword);
 }
 
-async function simpanBahan() {
-    const nama   = document.getElementById('bNama').value.trim();
-    const harga  = parseFloat(document.getElementById('bHarga').value) || 0;
-    const banyak = parseFloat(document.getElementById('bBanyak').value) || 0;
-    const satuan = document.getElementById('bSatuan').value.trim();
+function siapkanEditPelanggan(id, nama, telepon) {
+    document.getElementById('editId').value = id;
+    document.getElementById('editNama').value = nama;
+    document.getElementById('editTelepon').value = telepon;
+    document.getElementById('modalEditPelanggan').classList.add('open');
+    setTimeout(() => document.getElementById('editNama').focus(), 100);
+}
 
-    if (!nama || !harga || !banyak || !satuan) return toast.warning('Lengkapi semua field!');
-
-    const harga_satuan = harga / banyak;
-    const payload = { id: editId, nama, harga, banyak, satuan, harga_satuan };
-
+async function simpanEditPelanggan() {
+    const id = document.getElementById('editId').value;
+    const nama = document.getElementById('editNama').value.trim();
+    const telepon = document.getElementById('editTelepon').value.trim();
+    
+    if (!nama || !telepon) return toast.warning('Nama dan No. HP wajib diisi!');
+    
     try {
-        const res   = await fetch(`${API_BASE}?action=save_bahan_baku`, {
-            method:  'POST',
+        const res = await fetch(`${API_BASE}?action=update_pelanggan`, {
+            method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body:    JSON.stringify(payload)
+            body: JSON.stringify({ id, nama, telepon })
         });
-        const hasil = await res.json();
-        if (hasil.status === 'success') {
-            toast.success(editId ? 'Bahan diupdate!' : 'Bahan berhasil ditambah!');
-            editId = null;
-            ['bNama','bHarga','bBanyak','bSatuan','bHargaSatuan'].forEach(id => document.getElementById(id).value = '');
-            document.querySelector('.btn-simpan').innerText = '💾 Simpan';
-            muatBahan();
+        const json = await res.json();
+        if (json.status === 'success') {
+            toast.success('Data pelanggan berhasil diupdate!');
+            document.getElementById('modalEditPelanggan').classList.remove('open');
+            muatCustomerHoki();
         } else {
-            toast.error('Gagal menyimpan!');
+            toast.error(json.message || 'Gagal update pelanggan.');
         }
-    } catch(e) { toast.error('Gagal koneksi server!'); }
+    } catch(e) {
+        toast.error('Gagal koneksi ke server.');
+    }
 }
 
-async function hapusBahan(id) {
-    const ok = await showConfirm('Hapus bahan ini?', 'Ya, Hapus', 'Batal', '🗑️');
+async function hapusPelanggan(id) {
+    const ok = await showConfirm('Hapus pelanggan ini?', 'Ya, Hapus', 'Batal', '🗑️');
     if (!ok) return;
     try {
-        await fetch(`${API_BASE}?action=del_bahan_baku&id=${id}`);
-        toast.success('Bahan dihapus!');
-        muatBahan();
-    } catch(e) { toast.error('Gagal menghapus!'); }
+        const res = await fetch(`${API_BASE}?action=delete_pelanggan&id=${id}`);
+        const json = await res.json();
+        if (json.status === 'success') {
+            toast.success('Pelanggan berhasil dihapus!');
+            muatCustomerHoki();
+        } else {
+            toast.error(json.message || 'Gagal menghapus pelanggan.');
+        }
+    } catch(e) {
+        toast.error('Gagal koneksi ke server.');
+    }
 }
 
 async function logout() {
@@ -475,7 +602,7 @@ async function logout() {
     }
 }
 
-window.onload = () => { buildSidebar(); updateClock(); muatBahan(); };
+window.onload = () => { buildSidebar(); updateClock(); muatCustomerHoki(); };
 </script>
 
 <script src="session.js"></script>

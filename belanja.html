@@ -226,11 +226,11 @@
 <aside class="sidebar" id="sidebar">
     <div class="sidebar-brand" onclick="toggleSidebar()">
         <div class="sidebar-logo">
-            <img src="Assets/logobrand.png" alt="Hoki">
+            <img src="Assets/3.png" alt="Hoki">
         </div>
         <div class="sidebar-brand-text">
             <div class="sidebar-brand-name">Hoki Dimsum</div>
-            <div class="sidebar-brand-sub">POS System v2.0</div>
+            <div class="sidebar-brand-sub">POS System v3.0</div>
         </div>
     </div>
     <button class="sidebar-toggle" onclick="toggleSidebar()">‹</button>
@@ -252,7 +252,7 @@
 
     <header class="top-header">
         <div class="header-left">
-            <div class="header-page-title">💸 Belanja</div>
+            <div class="header-page-title">📝 Belanja</div>
         </div>
         <div class="header-right">
             <button class="btn-cetak-pdf" onclick="cetakPDF()">🖨️ Cetak PDF</button>
@@ -312,7 +312,7 @@
                         </button>
                         <div class="custom-dropdown" id="dropdownMode">
                             <div class="dropdown-item active" onclick="pilihMode('Credit','💰','Pemasukan (Credit)',this)"><span>Pemasukan (Credit)</span></div>
-                            <div class="dropdown-item" onclick="pilihMode('Debit','💸','Pengeluaran (Debit)',this)"><span>Pengeluaran (Debit)</span></div>
+                            <div class="dropdown-item" onclick="pilihMode('Debit','📝','Pengeluaran (Debit)',this)"><span>Pengeluaran (Debit)</span></div>
                         </div>
                         <input type="hidden" id="fMode" value="Credit">
                     </div>
@@ -398,7 +398,7 @@
                         <div class="custom-dropdown" id="dropdownFMode">
                             <div class="dropdown-item active" onclick="pilihFMode('','🔄','Semua',this)"><span>Semua</span></div>
                             <div class="dropdown-item" onclick="pilihFMode('Credit','💰','Credit (Masuk)',this)"><span>Credit (Masuk)</span></div>
-                            <div class="dropdown-item" onclick="pilihFMode('Debit','💸','Debit (Keluar)',this)"><span>Debit (Keluar)</span></div>
+                            <div class="dropdown-item" onclick="pilihFMode('Debit','📝','Debit (Keluar)',this)"><span>Debit (Keluar)</span></div>
                         </div>
                         <input type="hidden" id="filterMode" value="">
                     </div>
@@ -439,7 +439,7 @@
     <button class="bn-item" onclick="location.href='dashboard.html'"><span class="bn-icon">🛒</span><span class="bn-label">Kasir</span></button>
     <button class="bn-item" onclick="location.href='history.html'"><span class="bn-icon">📄</span><span class="bn-label">History</span></button>
     <button class="bn-item" onclick="location.href='stok.html'"><span class="bn-icon">📦</span><span class="bn-label">Stok</span></button>
-    <button class="bn-item" onclick="location.href='laporan_staff.html'"><span class="bn-icon">📊</span><span class="bn-label">Laporan</span></button>
+    <button class="bn-item" onclick="location.href='laporan_staff.html'"><span class="bn-icon">🚀</span><span class="bn-label">Laporan</span></button>
     <button class="bn-item active" onclick="openSheet('moreSheet')"><span class="bn-icon">☰</span><span class="bn-label">Lainnya</span></button>
 </nav>
 
@@ -481,7 +481,7 @@ function buildSidebar() {
     };
     const PAGES_FRONTLINE = ['dashboard.html','history.html','stok.html','restock.html','laporan_staff.html'];
     const PAGES_MGMT      = ['rekap.html','produk.html'];
-    const PAGES_EXEC      = ['laporan.html','statistik.html','bahan_baku.html','hpp_produk.html','belanja.html','warehouse.html','salary_staff.html'];
+    const PAGES_EXEC      = ['laporan.html','statistik.html','bahan_baku.html','hpp_produk.html','belanja.html','warehouse.html','salary_staff.html','customer_hoki.html'];
     const PAGES_VIP       = ['user.html','login_history.html'];
     const PAGES_INVESTOR  = ['investor_omset.html','investor_profit.html'];
     const inGroup = pages => pages.includes(cur);
@@ -510,14 +510,14 @@ function buildSidebar() {
         + navItem('📄','History Transaksi','history.html')
         + navItem('📦','Stok Harian','stok.html')
         + navItem('🚚','Restock Barang','restock.html')
-        + navItem('📊','Laporan Penjualan','laporan_staff.html');
+        + navItem('🚀','Laporan Penjualan','laporan_staff.html');
     let h = '';
     if (role !== 'Investor') {
         h += navGroup('frontline', 'Frontline', frontline, PAGES_FRONTLINE);
     }
 
     if (['Senior Staff','SPV','Owner','VIP'].includes(role)) {
-        let mgmt = navItem('📈','Rekapan Penjualan','rekap.html')
+        let mgmt = navItem('🗓️','Rekapan Penjualan','rekap.html')
             + navItem('🍱','Master Produk','produk.html');
         h += navGroup('management', 'Management', mgmt, PAGES_MGMT);
     }
@@ -525,19 +525,20 @@ function buildSidebar() {
         let exec = navItem('📊','Keuangan Global','laporan.html')
             + navItem('📈','Statistik','statistik.html')
             + navItem('🧂','Bahan Baku','bahan_baku.html')
-            + navItem('💰','HPP Produk','hpp_produk.html')
+            + navItem('🗃️','HPP Produk','hpp_produk.html')
             + navItem('🏭','Warehouse','warehouse.html')
-            + navItem('💸','Belanja','belanja.html')
-            + navItem('💵','Salary Staff','salary_staff.html');
+            + navItem('📝','Belanja','belanja.html')
+            + navItem('💵','Salary Staff','salary_staff.html')
+            + navItem('👨‍👩‍👦','Customer Hoki','customer_hoki.html');
         h += navGroup('executive', 'Executive', exec, PAGES_EXEC);
     }
     if (['Owner','VIP','Investor'].includes(role)) {
-        let inv = navItem('📈','Omset Cabang','investor_omset.html')
+        let inv = navItem('💹','Omset Cabang','investor_omset.html')
             + navItem('💰','Profit Sharing','investor_profit.html');
         h += navGroup('investor', 'Area Investor', inv, PAGES_INVESTOR);
     }
     if (role === 'VIP') {
-        let vip = navItem('👥','Manajemen User','user.html')
+        let vip = navItem('⚙️','manajemen User','user.html')
             + navItem('🔑','History Login','login_history.html');
         h += navGroup('vip', 'VIP Access', vip, PAGES_VIP);
     }
@@ -573,24 +574,25 @@ function buildMoreMenu() {
     const role = currentUser.role;
     const items = [{icon:'🚚',label:'Restock',link:'restock.html'}];
     if (['Senior Staff','SPV','Owner','VIP'].includes(role)) {
+        items.push({icon:'🍱',label:'Produk',link:'produk.html'});
         items.push({icon:'📈',label:'Rekapan',link:'rekap.html'});
     }
     if (['Owner','VIP'].includes(role)) {
-        items.push({icon:'🍱',label:'Produk',link:'produk.html'});
         items.push({icon:'🧂',label:'Bahan Baku',link:'bahan_baku.html'});
-        items.push({icon:'💰',label:'HPP Produk',link:'hpp_produk.html'});
+        items.push({icon:'🗃️',label:'HPP Produk',link:'hpp_produk.html'});
         items.push({icon:'🏭',label:'Warehouse',link:'warehouse.html'});
-        items.push({icon:'💸',label:'Belanja',link:'belanja.html'});
+        items.push({icon:'📝',label:'Belanja',link:'belanja.html'});
         items.push({icon:'💵',label:'Salary Staff',link:'salary_staff.html'});
         items.push({icon:'📊',label:'Keuangan',link:'laporan.html'});
         items.push({icon:'📈',label:'Statistik',link:'statistik.html'});
+        items.push({icon:'👨‍👩‍👦',label:'Customer Hoki',link:'customer_hoki.html'});
     }
     if (['Owner','VIP','Investor'].includes(role)) {
-        items.push({icon:'📈',label:'Omset Cabang',link:'investor_omset.html'});
+        items.push({icon:'💹',label:'Omset Cabang',link:'investor_omset.html'});
         items.push({icon:'💰',label:'Profit Sharing',link:'investor_profit.html'});
     }
     if (role === 'VIP') {
-        items.push({icon:'👥',label:'Users',link:'user.html'});
+        items.push({icon:'⚙️',label:'Users',link:'user.html'});
         items.push({icon:'🔑',label:'Login Log',link:'login_history.html'});
     }
     items.push({icon:'🚪',label:'Logout',link:'#',action:'logout()'});
@@ -840,8 +842,8 @@ async function muatTabel() {
                     <td style="font-family:'DM Mono',monospace;font-weight:700;color:${color};">${sign} Rp ${nom.toLocaleString()}</td>
                     <td><small style="color:var(--text-muted);">${d.ket || '-'}</small></td>
                     <td>${currentUser.role === 'VIP' ? `
-                        <button class="btn-del-kas" style="background:var(--blue); margin-right:4px;" onclick="editKas(${d.id})" title="Edit">✏️</button>
-                        <button class="btn-del-kas" onclick="hapusKas(${d.id})" title="Hapus">✖</button>
+                        <button class="btn-edit-icon" onclick="editKas(${d.id})" title="Edit Data">✏️</button>
+                        <button class="btn-hapus-icon" onclick="hapusKas(${d.id})" title="Hapus Data">🗑️</button>
                     ` : '—'}</td>
                 </tr>`;
         });

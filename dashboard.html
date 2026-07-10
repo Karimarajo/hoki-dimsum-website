@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
@@ -328,6 +328,11 @@
         box-shadow: none;
     }
 
+    .btn-bayar.green {
+        background: #25D366;
+        box-shadow: 0 4px 14px rgba(37,211,102,0.3);
+    }
+
     .btn-bayar:hover {
         filter: brightness(0.92);
         transform: translateY(-1px);
@@ -336,6 +341,240 @@
     .btn-bayar:active {
         transform: scale(0.98);
         filter: brightness(0.88);
+    }
+
+    /* ── PELANGGAN DROPDOWN ── */
+    .pelanggan-wrap {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-bottom: 10px;
+    }
+
+    .pelanggan-dropdown-wrap {
+        position: relative;
+        flex: 1;
+    }
+
+    .pelanggan-btn {
+        width: 100%;
+        background: var(--surface-2);
+        color: var(--text);
+        border: 1px solid var(--border);
+        border-radius: var(--r-md);
+        padding: 8px 12px;
+        font-family: 'DM Sans', sans-serif;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        display: flex;
+        align-items: flex-start;
+        line-height: 1.5;
+        justify-content: space-between;
+        min-height: 38px;
+        height: auto !important;
+        white-space: normal !important;
+        text-align: left;
+    }
+    
+    .pelanggan-btn svg {
+        flex-shrink: 0;
+        margin-top: 4px;
+        margin-left: 8px;
+    }
+
+    .pelanggan-dropdown-menu {
+        display: none;
+        position: absolute;
+        top: calc(100% + 6px);
+        left: 0;
+        right: 0;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--r-md);
+        box-shadow: 0 4px 14px rgba(0,0,0,0.1);
+        z-index: 100;
+        overflow: hidden;
+    }
+
+    .pelanggan-dropdown-wrap.open .pelanggan-dropdown-menu {
+        display: block;
+    }
+
+    .pelanggan-search-wrap {
+        padding: 8px;
+        border-bottom: 1px solid var(--border);
+        background: var(--surface-2);
+    }
+
+    .pelanggan-search {
+        width: 100%;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--r-sm);
+        padding: 6px 10px;
+        color: var(--text);
+        font-size: 12px;
+        font-family: 'DM Sans', sans-serif;
+        box-sizing: border-box;
+    }
+
+    .pelanggan-search:focus {
+        outline: none;
+        border-color: var(--red);
+    }
+
+    .pelanggan-list {
+        max-height: 200px;
+        overflow-y: auto;
+    }
+
+    .pelanggan-item {
+        padding: 10px;
+        font-size: 12px;
+        cursor: pointer;
+        border-bottom: 1px solid var(--border);
+        color: var(--text);
+    }
+
+    .pelanggan-item:last-child {
+        border-bottom: none;
+    }
+
+    .pelanggan-item:hover, .pelanggan-item.active {
+        background: var(--surface-2);
+        color: var(--red);
+        font-weight: 600;
+    }
+
+    .pelanggan-item-nama {
+        font-weight: 600;
+    }
+    
+    .pelanggan-item-telepon {
+        color: var(--text-muted);
+        font-size: 11px;
+    }
+
+    .pelanggan-empty-msg {
+        padding: 12px;
+        text-align: center;
+        color: var(--text-muted);
+        font-size: 12px;
+        font-style: italic;
+    }
+
+    .btn-add-pelanggan {
+        width: 36px;
+        height: 36px;
+        border-radius: var(--r-md);
+        border: 1.5px solid var(--red);
+        background: transparent;
+        color: var(--red);
+        font-size: 18px;
+        font-weight: 700;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        transition: all 0.15s;
+    }
+
+    .btn-add-pelanggan:hover {
+        background: var(--red);
+        color: white;
+    }
+
+    /* ── MODAL PELANGGAN ── */
+    .modal-pelanggan-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.6);
+        backdrop-filter: blur(4px);
+        z-index: 9999;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal-pelanggan-overlay.open {
+        display: flex;
+    }
+
+    .modal-pelanggan {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--r-lg);
+        padding: 28px 24px;
+        width: 90%;
+        max-width: 380px;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        animation: modalFadeIn 0.25s ease;
+    }
+
+    @keyframes modalFadeIn {
+        from { opacity: 0; transform: translateY(20px) scale(0.95); }
+        to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    .modal-pelanggan h3 {
+        margin: 0 0 18px;
+        font-size: 16px;
+        font-weight: 800;
+        color: var(--text);
+        text-align: center;
+    }
+
+    .modal-pelanggan input {
+        width: 100%;
+        padding: 12px 14px;
+        border: 1px solid var(--border);
+        border-radius: var(--r-md);
+        background: var(--surface-2);
+        color: var(--text);
+        font-family: 'DM Sans', sans-serif;
+        font-size: 13px;
+        margin-bottom: 10px;
+        box-sizing: border-box;
+    }
+
+    .modal-pelanggan input:focus {
+        outline: none;
+        border-color: var(--red);
+    }
+
+    .modal-pelanggan-btns {
+        display: flex;
+        gap: 8px;
+        margin-top: 8px;
+    }
+
+    .modal-pelanggan-btns button {
+        flex: 1;
+        padding: 12px;
+        border-radius: var(--r-md);
+        border: none;
+        font-family: 'DM Sans', sans-serif;
+        font-weight: 700;
+        font-size: 13px;
+        cursor: pointer;
+        transition: filter 0.15s;
+    }
+
+    .modal-pelanggan-btns button:hover {
+        filter: brightness(0.9);
+    }
+
+    .modal-pelanggan-btns .btn-cancel {
+        background: var(--surface-2);
+        color: var(--text-muted);
+        border: 1px solid var(--border);
+    }
+
+    .modal-pelanggan-btns .btn-save {
+        background: var(--red);
+        color: white;
     }
 
     /* ── CART BAR MOBILE ── */
@@ -555,11 +794,11 @@
 <aside class="sidebar" id="sidebar">
     <div class="sidebar-brand" onclick="toggleSidebar()">
         <div class="sidebar-logo">
-            <img src="Assets/logobrand.png" alt="Hoki">
+            <img src="Assets/3.png" alt="Hoki">
         </div>
         <div class="sidebar-brand-text">
             <div class="sidebar-brand-name">Hoki Dimsum</div>
-            <div class="sidebar-brand-sub">POS System v2.0</div>
+            <div class="sidebar-brand-sub">POS System v3.0</div>
         </div>
     </div>
     <button class="sidebar-toggle" onclick="toggleSidebar()">‹</button>
@@ -639,6 +878,22 @@
                     <span class="cart-total-label">Total</span>
                     <span class="cart-total-val" id="totalHarga">Rp 0</span>
                 </div>
+                <div class="pelanggan-wrap">
+                    <div class="pelanggan-dropdown-wrap" id="pelangganWrap">
+                        <button class="pelanggan-btn" onclick="toggleDropdownPelanggan('desktop')">
+                            <span id="pelangganLabel">👤 No Cust</span>
+                            <svg width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1l4 4 4-4" stroke="#888" stroke-width="1.5" stroke-linecap="round"/></svg>
+                        </button>
+                        <div class="pelanggan-dropdown-menu">
+                            <div class="pelanggan-search-wrap">
+                                <input type="text" id="pelangganSearch" class="pelanggan-search" placeholder="🔍 Cari nama / nomor HP..." oninput="filterPelanggan('desktop', this.value)">
+                            </div>
+                            <div class="pelanggan-list" id="pelangganList"></div>
+                        </div>
+                    </div>
+                    <input type="hidden" id="pelangganValue" value="|">
+                    <button class="btn-add-pelanggan" onclick="showModalPelanggan()" title="Daftar Member Baru">+</button>
+                </div>
                 <div class="custom-select-wrap" id="selectWrap">
                     <button class="custom-select-btn" onclick="toggleDropdown()">
                         <span id="selectedIcon">💵</span>
@@ -657,7 +912,7 @@
                 </div>
                 <input type="hidden" id="metodeBayar" value="CASH">
                 <button class="btn-bayar red" onclick="prosesTransaksi(false)">💾 Simpan Order</button>
-                <button class="btn-bayar dark" onclick="prosesTransaksi(true)">🖨️ Cetak Struk</button>
+                <button class="btn-bayar green" onclick="prosesTransaksi(true)">💬 Kirim Struk WA</button>
             </div>
         </div>
     </div>
@@ -680,7 +935,7 @@
     <button class="bn-item active" onclick="location.href='dashboard.html'"><span class="bn-icon">🛒</span><span class="bn-label">Kasir</span></button>
     <button class="bn-item" onclick="location.href='history.html'"><span class="bn-icon">📄</span><span class="bn-label">History</span></button>
     <button class="bn-item" onclick="location.href='stok.html'"><span class="bn-icon">📦</span><span class="bn-label">Stok</span></button>
-    <button class="bn-item" onclick="location.href='laporan_staff.html'"><span class="bn-icon">📊</span><span class="bn-label">Laporan</span></button>
+    <button class="bn-item" onclick="location.href='laporan_staff.html'"><span class="bn-icon">🚀</span><span class="bn-label">Laporan</span></button>
     <button class="bn-item" onclick="openSheet('moreSheet')"><span class="bn-icon">☰</span><span class="bn-label">Lainnya</span></button>
 </nav>
 
@@ -697,6 +952,22 @@
         <div class="cart-total">
             <span class="cart-total-label">Total</span>
             <span class="cart-total-val" id="totalHargaSheet">Rp 0</span>
+        </div>
+        <div class="pelanggan-wrap">
+            <div class="pelanggan-dropdown-wrap" id="pelangganWrapSheet">
+                <button class="pelanggan-btn" onclick="toggleDropdownPelanggan('mobile')">
+                    <span id="pelangganLabelSheet">👤 No Cust</span>
+                    <svg width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1l4 4 4-4" stroke="#888" stroke-width="1.5" stroke-linecap="round"/></svg>
+                </button>
+                <div class="pelanggan-dropdown-menu">
+                    <div class="pelanggan-search-wrap">
+                        <input type="text" id="pelangganSearchSheet" class="pelanggan-search" placeholder="🔍 Cari nama / nomor HP..." oninput="filterPelanggan('mobile', this.value)">
+                    </div>
+                    <div class="pelanggan-list" id="pelangganListSheet"></div>
+                </div>
+            </div>
+            <input type="hidden" id="pelangganValueSheet" value="|">
+            <button class="btn-add-pelanggan" onclick="showModalPelanggan()" title="Daftar Member Baru">+</button>
         </div>
         <!-- Custom dropdown metode di cart sheet mobile -->
         <div class="custom-select-wrap" id="selectWrapSheet" style="margin-bottom:12px;">
@@ -717,7 +988,7 @@
         </div>
         <input type="hidden" id="metodeBayarSheet" value="CASH">
         <button class="btn-bayar red" onclick="prosesTransaksiMobile(false)">💾 Simpan Order</button>
-        <button class="btn-bayar dark" onclick="prosesTransaksiMobile(true)">🖨️ Cetak Struk</button>
+        <button class="btn-bayar green" onclick="prosesTransaksiMobile(true)">💬 Kirim Struk WA</button>
     </div>
 </div>
 
@@ -741,6 +1012,19 @@
     <div style="text-align:center;font-size:10px;"><p id="p-waktu"></p><p>Terima Kasih!</p></div>
 </div>
 
+<!-- MODAL REGISTRASI PELANGGAN -->
+<div class="modal-pelanggan-overlay" id="modalPelanggan" onclick="if(event.target===this)this.classList.remove('open')">
+    <div class="modal-pelanggan">
+        <h3>👤 Daftar Member Baru</h3>
+        <input type="text" id="inputNamaPelanggan" placeholder="Nama Pelanggan" autocomplete="off">
+        <input type="tel" id="inputTeleponPelanggan" placeholder="No. WhatsApp / HP (cth: 08123456789)" autocomplete="off">
+        <div class="modal-pelanggan-btns">
+            <button class="btn-cancel" onclick="document.getElementById('modalPelanggan').classList.remove('open')">Batal</button>
+            <button class="btn-save" onclick="simpanPelanggan()">Simpan</button>
+        </div>
+    </div>
+</div>
+
 <script>
 const currentUser = JSON.parse(localStorage.getItem('currentUser'));
 const cabangHoki  = localStorage.getItem('cabangHoki') || 'Pusat';
@@ -748,6 +1032,148 @@ let keranjang = [], daftarProduk = [];
 if (!currentUser) window.location.href = 'index.html';
 
 let selectedMetode = 'CASH';
+let daftarPelanggan = [];
+
+/* ── PELANGGAN (MEMBER) ── */
+async function loadPelanggan() {
+    try {
+        const res = await fetch(`${API_BASE}?action=get_pelanggan`);
+        const json = await res.json();
+        if (json.status === 'success') {
+            daftarPelanggan = json.data || [];
+            renderPelangganList('desktop');
+            renderPelangganList('mobile');
+        }
+    } catch(e) { console.error('loadPelanggan:', e); }
+}
+
+function renderPelangganList(source, filterText = '') {
+    const listId = source === 'desktop' ? 'pelangganList' : 'pelangganListSheet';
+    const listEl = document.getElementById(listId);
+    if (!listEl) return;
+    
+    let html = `<div class="pelanggan-item" onclick="pilihPelanggan('|', 'No Cust', '')">👤 No Cust</div>`;
+    
+    let filtered = daftarPelanggan;
+    if (filterText) {
+        const kw = filterText.toLowerCase();
+        filtered = daftarPelanggan.filter(p => p.nama.toLowerCase().includes(kw) || (p.telepon && p.telepon.includes(kw)));
+    }
+    
+    if (filterText && filtered.length === 0) {
+        html = `<div class="pelanggan-empty-msg">Pelanggan tidak ditemukan</div>`;
+    } else {
+        html += filtered.map(p => 
+            `<div class="pelanggan-item" onclick="pilihPelanggan('${p.nama}|${p.telepon}', '${p.nama}', '${p.telepon}')">
+                <div class="pelanggan-item-nama">👤 ${p.nama}</div>
+                ${p.telepon ? `<div class="pelanggan-item-telepon">${p.telepon}</div>` : ''}
+            </div>`
+        ).join('');
+    }
+    
+    listEl.innerHTML = html;
+}
+
+function toggleDropdownPelanggan(source) {
+    const wrapId = source === 'desktop' ? 'pelangganWrap' : 'pelangganWrapSheet';
+    const searchId = source === 'desktop' ? 'pelangganSearch' : 'pelangganSearchSheet';
+    const wrap = document.getElementById(wrapId);
+    
+    // Close other dropdowns
+    if (source === 'desktop') document.getElementById('pelangganWrapSheet')?.classList.remove('open');
+    else document.getElementById('pelangganWrap')?.classList.remove('open');
+    
+    wrap.classList.toggle('open');
+    
+    if (wrap.classList.contains('open')) {
+        const searchInput = document.getElementById(searchId);
+        searchInput.value = '';
+        renderPelangganList(source);
+        setTimeout(() => searchInput.focus(), 100);
+    }
+}
+
+function filterPelanggan(source, keyword) {
+    renderPelangganList(source, keyword);
+}
+
+function pilihPelanggan(val, nama, telepon) {
+    document.getElementById('pelangganValue').value = val;
+    document.getElementById('pelangganValueSheet').value = val;
+    
+    const labelText = nama === 'No Cust' ? '👤 No Cust' : `👤 ${nama} (${telepon || '-'})`;
+    document.getElementById('pelangganLabel').innerText = labelText;
+    document.getElementById('pelangganLabelSheet').innerText = labelText;
+    
+    document.getElementById('pelangganWrap').classList.remove('open');
+    document.getElementById('pelangganWrapSheet').classList.remove('open');
+}
+
+function syncPelanggan(source) {
+    // Digantikan oleh pilihPelanggan()
+}
+
+function showModalPelanggan() {
+    document.getElementById('inputNamaPelanggan').value = '';
+    document.getElementById('inputTeleponPelanggan').value = '';
+    document.getElementById('modalPelanggan').classList.add('open');
+    setTimeout(() => document.getElementById('inputNamaPelanggan').focus(), 200);
+}
+
+async function simpanPelanggan() {
+    const nama = document.getElementById('inputNamaPelanggan').value.trim();
+    const telepon = document.getElementById('inputTeleponPelanggan').value.trim();
+    if (!nama || !telepon) return toast.warning('Nama dan No. HP wajib diisi!');
+    try {
+        const res = await fetch(`${API_BASE}?action=save_pelanggan`, {
+            method: 'POST',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({nama, telepon})
+        });
+        const json = await res.json();
+        if (json.status === 'success') {
+            toast.success('Member berhasil didaftarkan!');
+            document.getElementById('modalPelanggan').classList.remove('open');
+            await loadPelanggan();
+            const val = `${json.nama}|${json.telepon}`;
+            pilihPelanggan(val, json.nama, json.telepon);
+        } else {
+            toast.error(json.message || 'Gagal menyimpan!');
+        }
+    } catch(e) { toast.error('Gagal koneksi server!'); }
+}
+
+function getPelangganData() {
+    const val = document.getElementById('pelangganValue').value;
+    const [nama, telepon] = val.split('|');
+    return { nama: nama || 'No Cust', telepon: telepon || '' };
+}
+
+function buildStrukWA(orderId, cabang, pelanggan, items, total, metode) {
+    const grouped = {};
+    items.forEach(it => {
+        const key = it.nama || it.name;
+        if (!grouped[key]) grouped[key] = {nama: key, qty: 0, harga: it.harga};
+        grouped[key].qty++;
+    });
+    let itemLines = Object.values(grouped).map(g =>
+        `• ${g.nama} (x${g.qty}) : Rp ${(g.harga * g.qty).toLocaleString('id-ID')}`
+    ).join('\n');
+
+    return `*STRUK DIGITAL HOKI DIMSUM*\n` +
+        `No. Order: *#${orderId}*\n` +
+        `Cabang: ${cabang}\n` +
+        `Pelanggan: ${pelanggan.nama}\n` +
+        `No. HP: ${pelanggan.telepon || '-'}\n` +
+        `─────────────────\n` +
+        `${itemLines}\n` +
+        `─────────────────\n` +
+        `*Total: Rp ${total.toLocaleString('id-ID')}*\n` +
+        `Metode: ${metode}\n\n` +
+        `_Terima kasih atas kunjungan Anda!_\n` +
+        `_Hoki Dimsum - Kritik & Saran:_\n` +
+        `_WA Pusat: 08123456789_`;
+}
 
 /* ── DROPDOWN DESKTOP ── */
 function toggleDropdown() {
@@ -781,8 +1207,12 @@ function pilihMetodeSheet(value, icon, label) {
 document.addEventListener('click', function(e) {
     const wrap      = document.getElementById('selectWrap');
     const wrapSheet = document.getElementById('selectWrapSheet');
+    const pelWrap   = document.getElementById('pelangganWrap');
+    const pelWrapSh = document.getElementById('pelangganWrapSheet');
     if (wrap && !wrap.contains(e.target))           wrap.classList.remove('open');
     if (wrapSheet && !wrapSheet.contains(e.target)) wrapSheet.classList.remove('open');
+    if (pelWrap && !pelWrap.contains(e.target))     pelWrap.classList.remove('open');
+    if (pelWrapSh && !pelWrapSh.contains(e.target)) pelWrapSh.classList.remove('open');
 });
 
 /* ── SIDEBAR ── */
@@ -810,7 +1240,7 @@ function buildSidebar() {
     };
     const PAGES_FRONTLINE = ['dashboard.html','history.html','stok.html','restock.html','laporan_staff.html'];
     const PAGES_MGMT      = ['rekap.html','produk.html'];
-    const PAGES_EXEC      = ['laporan.html','statistik.html','bahan_baku.html','hpp_produk.html','belanja.html','warehouse.html','salary_staff.html'];
+    const PAGES_EXEC      = ['laporan.html','statistik.html','bahan_baku.html','hpp_produk.html','belanja.html','warehouse.html','salary_staff.html','customer_hoki.html'];
     const PAGES_VIP       = ['user.html','login_history.html'];
     const PAGES_INVESTOR  = ['investor_omset.html','investor_profit.html'];
     const inGroup = pages => pages.includes(cur);
@@ -839,14 +1269,14 @@ function buildSidebar() {
         + navItem('📄','History Transaksi','history.html')
         + navItem('📦','Stok Harian','stok.html')
         + navItem('🚚','Restock Barang','restock.html')
-        + navItem('📊','Laporan Penjualan','laporan_staff.html');
+        + navItem('🚀','Laporan Penjualan','laporan_staff.html');
     let h = '';
     if (role !== 'Investor') {
         h += navGroup('frontline', 'Frontline', frontline, PAGES_FRONTLINE);
     }
 
     if (['Senior Staff','SPV','Owner','VIP'].includes(role)) {
-        let mgmt = navItem('📈','Rekapan Penjualan','rekap.html')
+        let mgmt = navItem('🗓️','Rekapan Penjualan','rekap.html')
             + navItem('🍱','Master Produk','produk.html');
         h += navGroup('management', 'Management', mgmt, PAGES_MGMT);
     }
@@ -854,19 +1284,20 @@ function buildSidebar() {
         let exec = navItem('📊','Keuangan Global','laporan.html')
             + navItem('📈','Statistik','statistik.html')
             + navItem('🧂','Bahan Baku','bahan_baku.html')
-            + navItem('💰','HPP Produk','hpp_produk.html')
+            + navItem('🗃️','HPP Produk','hpp_produk.html')
             + navItem('🏭','Warehouse','warehouse.html')
-            + navItem('💸','Belanja','belanja.html')
-            + navItem('💵','Salary Staff','salary_staff.html');
+            + navItem('📝','Belanja','belanja.html')
+            + navItem('💵','Salary Staff','salary_staff.html')
+            + navItem('👨‍👩‍👦','Customer Hoki','customer_hoki.html');
         h += navGroup('executive', 'Executive', exec, PAGES_EXEC);
     }
     if (['Owner','VIP','Investor'].includes(role)) {
-        let inv = navItem('📈','Omset Cabang','investor_omset.html')
+        let inv = navItem('💹','Omset Cabang','investor_omset.html')
             + navItem('💰','Profit Sharing','investor_profit.html');
         h += navGroup('investor', 'Area Investor', inv, PAGES_INVESTOR);
     }
     if (role === 'VIP') {
-        let vip = navItem('👥','Manajemen User','user.html')
+        let vip = navItem('⚙️','manajemen User','user.html')
             + navItem('🔑','History Login','login_history.html');
         h += navGroup('vip', 'VIP Access', vip, PAGES_VIP);
     }
@@ -996,29 +1427,36 @@ async function prosesTransaksi(denganCetak, metodeOverride) {
     if (!keranjang.length) return toast.warning('Pilih menu dulu!');
     const total  = keranjang.reduce((s,i) => s+i.harga, 0);
     const metode = metodeOverride || document.getElementById('metodeBayar').value;
+    const pelanggan = getPelangganData();
     try {
         const res   = await fetch(`${API_BASE}?action=save_transaksi`, {
             method:  'POST',
             headers: {'Content-Type': 'application/json'},
-            body:    JSON.stringify({cabang:cabangHoki, petugas:currentUser.fullName||currentUser.user, total, metode, items:keranjang})
+            body:    JSON.stringify({
+                cabang: cabangHoki,
+                petugas: currentUser.fullName || currentUser.user,
+                total,
+                metode,
+                items: keranjang,
+                pelanggan_nama: pelanggan.nama,
+                pelanggan_telepon: pelanggan.telepon
+            })
         });
         const hasil = await res.json();
         if (hasil.status === 'success') {
             loadOmsetHarian();
             if (denganCetak) {
-                document.getElementById('p-cabang').innerText = 'Cabang: ' + cabangHoki;
-                document.getElementById('p-total').innerText  = 'Rp ' + total.toLocaleString('id-ID');
-                document.getElementById('p-metode').innerText = 'Metode: ' + metode;
-                document.getElementById('p-waktu').innerText  = new Date().toLocaleString('id-ID');
-                document.getElementById('p-items').innerHTML  = keranjang.map(it =>
-                    `<div style="display:flex;justify-content:space-between;"><span>${it.nama}</span><span>${it.harga.toLocaleString()}</span></div>`
-                ).join('');
-                setTimeout(() => {
-                    window.print();
-                    toast.success('Berhasil dicetak!');
-                    keranjang = [];
-                    renderCart();
-                }, 500);
+                // Kirim Struk via WhatsApp
+                const orderId = hasil.id;
+                const tekstStruk = buildStrukWA(orderId, cabangHoki, pelanggan, keranjang, total, metode);
+                const waNumber = pelanggan.telepon ? pelanggan.telepon.replace(/^0/, '62') : '';
+                const waUrl = waNumber
+                    ? `https://api.whatsapp.com/send?phone=${waNumber}&text=${encodeURIComponent(tekstStruk)}`
+                    : `https://api.whatsapp.com/send?text=${encodeURIComponent(tekstStruk)}`;
+                window.open(waUrl, '_blank');
+                toast.success('Struk WA terkirim! Order #' + orderId);
+                keranjang = [];
+                renderCart();
             } else {
                 toast.success('Berhasil Disimpan!');
                 keranjang = [];
@@ -1055,19 +1493,20 @@ function buildMoreMenu() {
     }
     if (['Owner','VIP'].includes(role)) {
         items.push({icon:'🧂',label:'Bahan Baku',link:'bahan_baku.html'});
-        items.push({icon:'💰',label:'HPP Produk',link:'hpp_produk.html'});
+        items.push({icon:'🗃️',label:'HPP Produk',link:'hpp_produk.html'});
         items.push({icon:'🏭',label:'Warehouse',link:'warehouse.html'});
-        items.push({icon:'💸',label:'Belanja',link:'belanja.html'});
+        items.push({icon:'📝',label:'Belanja',link:'belanja.html'});
         items.push({icon:'💵',label:'Salary Staff',link:'salary_staff.html'});
         items.push({icon:'📊',label:'Keuangan',link:'laporan.html'});
         items.push({icon:'📈',label:'Statistik',link:'statistik.html'});
+        items.push({icon:'👨‍👩‍👦',label:'Customer Hoki',link:'customer_hoki.html'});
     }
     if (['Owner','VIP','Investor'].includes(role)) {
-        items.push({icon:'📈',label:'Omset Cabang',link:'investor_omset.html'});
+        items.push({icon:'💹',label:'Omset Cabang',link:'investor_omset.html'});
         items.push({icon:'💰',label:'Profit Sharing',link:'investor_profit.html'});
     }
     if (role === 'VIP') {
-        items.push({icon:'👥',label:'Users',link:'user.html'});
+        items.push({icon:'⚙️',label:'Users',link:'user.html'});
         items.push({icon:'🔑',label:'Login Log',link:'login_history.html'});
     }
     items.push({icon:'🚪',label:'Logout',link:'#',action:'logout()'});
@@ -1087,7 +1526,7 @@ async function logout() {
     }
 }
 
-window.onload = () => { updateHeaderInfo(); buildSidebar(); renderKasir(); updateClock(); };
+window.onload = () => { updateHeaderInfo(); buildSidebar(); renderKasir(); updateClock(); loadPelanggan(); };
 </script>
 
 <script src="session.js"></script>

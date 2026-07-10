@@ -484,9 +484,8 @@
             body { flex-direction: column; overflow: hidden; height: 100dvh; }
             .left-panel { width: 100%; flex-shrink: 0; padding: 20px 20px 18px; justify-content: center; min-height: 35dvh; }
             .left-content { display: flex; flex-direction: column; align-items: center; }
-            .logo-box { width: 80px; height: 80px; margin-bottom: 6px; }
-            .brand-name { font-size: 18px; }
-            .brand-tagline { font-size: 9px; margin-top: 2px; margin-bottom: 10px; }
+            .logo-box { width: 200px; height: 200px; margin-bottom: 1px; }
+            .brand-tagline { font-size: 9px; margin-top: 2px; margin-bottom: 20px; }
             .clock-block { padding: 8px 20px; margin-bottom: 0; border-radius: 12px; }
             .clock-time { font-size: 22px; letter-spacing: 2px; }
             .clock-date { font-size: 9px; margin-top: 3px; }
@@ -514,10 +513,10 @@
         <div class="deco-circle deco-circle-3"></div>
         <div class="left-content">
             <div class="logo-box">
-                <img src="Assets/logobrand.png" alt="Hoki Dimsum">
+                <img src="Assets/2.png" alt="Hoki Dimsum">
             </div>
-            <div class="brand-name">Hoki <span>Dimsum</span></div>
-            <div class="brand-tagline">Sistem Keuangan Terpusat</div>
+             <div class="brand-name">Hoki <span>Dimsum</span></div>
+            <div class="brand-tagline">MANAJEMEN BISNIS HOKI DIMSUM</div>
             <div class="clock-block">
                 <div class="clock-time" id="clockTime">00:00:00</div>
                 <div class="clock-date" id="clockDate"></div>
@@ -527,7 +526,7 @@
                     <div class="info-pill-icon">🏪</div>
                     <div class="info-pill-text">
                         <div class="info-pill-label">Sistem</div>
-                        <div class="info-pill-value">POS v2.0</div>
+                        <div class="info-pill-value">POS v3.0</div>
                     </div>
                 </div>
                 <div class="info-pill">
@@ -535,13 +534,6 @@
                     <div class="info-pill-text">
                         <div class="info-pill-label">Status</div>
                         <div class="info-pill-value">Online</div>
-                    </div>
-                </div>
-                <div class="info-pill">
-                    <div class="info-pill-icon">📅</div>
-                    <div class="info-pill-text">
-                        <div class="info-pill-label">Shift</div>
-                        <div class="info-pill-value" id="shiftInfo">Pagi</div>
                     </div>
                 </div>
             </div>
@@ -554,7 +546,7 @@
         <div class="login-wrapper">
             <div class="login-heading">
                 <h1>Selamat Datang 👋</h1>
-                <p>Masuk untuk mengakses sistem kasir</p>
+                <p>Masuk untuk akses Hoki Dimsum</p>
             </div>
 
             <!-- Step 1: Login -->
@@ -566,7 +558,7 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="username">Nama Petugas</label>
+                    <label for="username">Username</label>
                     <div class="input-wrap">
                         <span class="input-icon">👤</span>
                         <input type="text" id="username" placeholder="Masukkan username..." autocomplete="username">

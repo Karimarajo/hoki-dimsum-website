@@ -211,6 +211,29 @@
     }
 
     /* ── RESPONSIVE MOBILE ── */
+    .badge-rank {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        font-weight: bold;
+        font-size: 12px;
+        color: white;
+        background: var(--text-light);
+    }
+    .badge-rank.gold { background: #FFD700; font-size: 14px; }
+    .badge-rank.silver { background: #C0C0C0; font-size: 14px; }
+    .badge-rank.bronze { background: #CD7F32; font-size: 14px; }
+    
+    .loyal-cell { padding: 8px 10px !important; vertical-align: top; }
+    .loyal-name { font-weight: 700; font-size: 13px; color: var(--text); }
+    .loyal-phone { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+    .loyal-order { font-weight: 800; font-size: 13px; color: var(--red); line-height: 1.2; }
+    .loyal-rupiah { font-size: 11px; color: var(--text-muted); line-height: 1.2; margin-top: 2px; }
+    .loyal-branch { font-size: 11px; color: var(--text-muted); background: var(--surface-2); padding: 4px 8px; border-radius: 4px; display: inline-block; }
+
     @media (max-width: 844px) {
 
         .grid-dashboard {
@@ -239,11 +262,11 @@
 <aside class="sidebar" id="sidebar">
     <div class="sidebar-brand" onclick="toggleSidebar()">
         <div class="sidebar-logo">
-            <img src="Assets/logobrand.png" alt="Hoki">
+            <img src="Assets/3.png" alt="Hoki">
         </div>
         <div class="sidebar-brand-text">
             <div class="sidebar-brand-name">Hoki Dimsum</div>
-            <div class="sidebar-brand-sub">POS System v2.0</div>
+            <div class="sidebar-brand-sub">POS System v3.0</div>
         </div>
     </div>
     <button class="sidebar-toggle" onclick="toggleSidebar()">‹</button>
@@ -350,12 +373,29 @@
                 </div>
             </div>
 
-            <div class="card-insight">
-                <h3>🔥 Jawara Menu (Top 10)</h3>
-                <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
-                <table class="top-menu-table">
-                    <tbody id="listProdukUnggulan"></tbody>
-                </table>
+            <div class="card-insight card-statistik">
+                <h3>🏆 Jawara Menu (Top 10)</h3>
+                <div class="table-wrap">
+                    <table class="top-menu-table">
+                        <tbody id="listProdukUnggulan"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="card-insight card-statistik">
+                <h3>🏆 Top 10 Loyal Customers (Berdasarkan Histori Transaksi)</h3>
+                <div class="table-wrap">
+                    <table class="top-menu-table">
+                        <thead>
+                            <tr>
+                                <th style="padding: 8px 10px; font-size: 11px; color: var(--text-muted);">Peringkat</th>
+                                <th style="padding: 8px 10px; font-size: 11px; color: var(--text-muted);">Pelanggan</th>
+                                <th style="padding: 8px 10px; font-size: 11px; color: var(--text-muted);">Total Order</th>
+                                <th style="padding: 8px 10px; font-size: 11px; color: var(--text-muted);">Cabang Belanja</th>
+                            </tr>
+                        </thead>
+                        <tbody id="listTopCustomers"></tbody>
+                    </table>
                 </div>
             </div>
 
@@ -368,7 +408,7 @@
     <button class="bn-item" onclick="location.href='dashboard.html'"><span class="bn-icon">🛒</span><span class="bn-label">Kasir</span></button>
     <button class="bn-item" onclick="location.href='history.html'"><span class="bn-icon">📄</span><span class="bn-label">History</span></button>
     <button class="bn-item" onclick="location.href='stok.html'"><span class="bn-icon">📦</span><span class="bn-label">Stok</span></button>
-    <button class="bn-item" onclick="location.href='laporan_staff.html'"><span class="bn-icon">📊</span><span class="bn-label">Laporan</span></button>
+    <button class="bn-item" onclick="location.href='laporan_staff.html'"><span class="bn-icon">🚀</span><span class="bn-label">Laporan</span></button>
     <button class="bn-item active" onclick="openSheet('moreSheet')"><span class="bn-icon">☰</span><span class="bn-label">Lainnya</span></button>
 </nav>
 
@@ -410,7 +450,7 @@ function buildSidebar() {
     };
     const PAGES_FRONTLINE = ['dashboard.html','history.html','stok.html','restock.html','laporan_staff.html'];
     const PAGES_MGMT      = ['rekap.html','produk.html'];
-    const PAGES_EXEC      = ['laporan.html','statistik.html','bahan_baku.html','hpp_produk.html','belanja.html','warehouse.html','salary_staff.html'];
+    const PAGES_EXEC      = ['laporan.html','statistik.html','bahan_baku.html','hpp_produk.html','belanja.html','warehouse.html','salary_staff.html','customer_hoki.html'];
     const PAGES_VIP       = ['user.html','login_history.html'];
     const PAGES_INVESTOR  = ['investor_omset.html','investor_profit.html'];
     const inGroup = pages => pages.includes(cur);
@@ -439,14 +479,14 @@ function buildSidebar() {
         + navItem('📄','History Transaksi','history.html')
         + navItem('📦','Stok Harian','stok.html')
         + navItem('🚚','Restock Barang','restock.html')
-        + navItem('📊','Laporan Penjualan','laporan_staff.html');
+        + navItem('🚀','Laporan Penjualan','laporan_staff.html');
     let h = '';
     if (role !== 'Investor') {
         h += navGroup('frontline', 'Frontline', frontline, PAGES_FRONTLINE);
     }
 
     if (['Senior Staff','SPV','Owner','VIP'].includes(role)) {
-        let mgmt = navItem('📈','Rekapan Penjualan','rekap.html')
+        let mgmt = navItem('🗓️','Rekapan Penjualan','rekap.html')
             + navItem('🍱','Master Produk','produk.html');
         h += navGroup('management', 'Management', mgmt, PAGES_MGMT);
     }
@@ -454,19 +494,20 @@ function buildSidebar() {
         let exec = navItem('📊','Keuangan Global','laporan.html')
             + navItem('📈','Statistik','statistik.html')
             + navItem('🧂','Bahan Baku','bahan_baku.html')
-            + navItem('💰','HPP Produk','hpp_produk.html')
+            + navItem('🗃️','HPP Produk','hpp_produk.html')
             + navItem('🏭','Warehouse','warehouse.html')
-            + navItem('💸','Belanja','belanja.html')
-            + navItem('💵','Salary Staff','salary_staff.html');
+            + navItem('📝','Belanja','belanja.html')
+            + navItem('💵','Salary Staff','salary_staff.html')
+            + navItem('👨‍👩‍👦','Customer Hoki','customer_hoki.html');
         h += navGroup('executive', 'Executive', exec, PAGES_EXEC);
     }
     if (['Owner','VIP','Investor'].includes(role)) {
-        let inv = navItem('📈','Omset Cabang','investor_omset.html')
+        let inv = navItem('💹','Omset Cabang','investor_omset.html')
             + navItem('💰','Profit Sharing','investor_profit.html');
         h += navGroup('investor', 'Area Investor', inv, PAGES_INVESTOR);
     }
     if (role === 'VIP') {
-        let vip = navItem('👥','Manajemen User','user.html')
+        let vip = navItem('⚙️','manajemen User','user.html')
             + navItem('🔑','History Login','login_history.html');
         h += navGroup('vip', 'VIP Access', vip, PAGES_VIP);
     }
@@ -507,19 +548,20 @@ function buildMoreMenu() {
     if (['Owner','VIP'].includes(role)) {
         items.push({icon:'🍱',label:'Produk',link:'produk.html'});
         items.push({icon:'🧂',label:'Bahan Baku',link:'bahan_baku.html'});
-        items.push({icon:'💰',label:'HPP Produk',link:'hpp_produk.html'});
+        items.push({icon:'🗃️',label:'HPP Produk',link:'hpp_produk.html'});
         items.push({icon:'🏭',label:'Warehouse',link:'warehouse.html'});
-        items.push({icon:'💸',label:'Belanja',link:'belanja.html'});
+        items.push({icon:'📝',label:'Belanja',link:'belanja.html'});
         items.push({icon:'💵',label:'Salary Staff',link:'salary_staff.html'});
         items.push({icon:'📊',label:'Keuangan',link:'laporan.html'});
         items.push({icon:'📈',label:'Statistik',link:'statistik.html'});
+        items.push({icon:'👨‍👩‍👦',label:'Customer Hoki',link:'customer_hoki.html'});
     }
     if (['Owner','VIP','Investor'].includes(role)) {
-        items.push({icon:'📈',label:'Omset Cabang',link:'investor_omset.html'});
+        items.push({icon:'💹',label:'Omset Cabang',link:'investor_omset.html'});
         items.push({icon:'💰',label:'Profit Sharing',link:'investor_profit.html'});
     }
     if (role === 'VIP') {
-        items.push({icon:'👥',label:'Users',link:'user.html'});
+        items.push({icon:'⚙️',label:'Users',link:'user.html'});
         items.push({icon:'🔑',label:'Login Log',link:'login_history.html'});
     }
     items.push({icon:'🚪',label:'Logout',link:'#',action:'logout()'});
@@ -714,6 +756,47 @@ async function loadStatistik() {
     } catch (e) { console.error("Gagal sinkron statistik cloud:", e); }
 }
 
+async function muatTopCustomers() {
+    const listTop = document.getElementById('listTopCustomers');
+    listTop.innerHTML = `<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--text-light);">Memuat data...</td></tr>`;
+    try {
+        const res = await fetch(`${API_BASE}?action=get_top_customers`);
+        const json = await res.json();
+        if (json.status === 'success' && json.data.length > 0) {
+            listTop.innerHTML = json.data.map((c, i) => {
+                const rank = i + 1;
+                let badgeClass = '';
+                if (rank === 1) badgeClass = 'gold';
+                else if (rank === 2) badgeClass = 'silver';
+                else if (rank === 3) badgeClass = 'bronze';
+                
+                const badge = badgeClass ? `<div class="badge-rank ${badgeClass}">${rank === 1 ? '🥇' : rank === 2 ? '🥈' : '🥉'}</div>` : `<div class="badge-rank">${rank}</div>`;
+                
+                return `
+                <tr>
+                    <td class="loyal-cell" style="text-align:center; vertical-align:middle;">${badge}</td>
+                    <td class="loyal-cell">
+                        <div class="loyal-name">${c.nama || 'Tanpa Nama'}</div>
+                        <div class="loyal-phone">${c.telepon || '-'}</div>
+                    </td>
+                    <td class="loyal-cell">
+                        <div class="loyal-order">${c.total_order}x Order</div>
+                        <div class="loyal-rupiah">Rp ${(c.total_rupiah || 0).toLocaleString('id-ID')}</div>
+                    </td>
+                    <td class="loyal-cell">
+                        <span class="loyal-branch">${c.cabang_belanja || '-'}</span>
+                    </td>
+                </tr>`;
+            }).join('');
+        } else {
+            listTop.innerHTML = `<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--text-light);">Belum ada riwayat transaksi pelanggan member</td></tr>`;
+        }
+    } catch(e) {
+        console.error('muatTopCustomers:', e);
+        listTop.innerHTML = `<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--red);">Gagal memuat data pelanggan</td></tr>`;
+    }
+}
+
 function resetFilter() {
     document.getElementById('startDate').value = '';
     document.getElementById('endDate').value   = '';
@@ -743,6 +826,7 @@ window.onload = async () => {
     document.getElementById('endDate').value   = '';
     
     loadStatistik();
+    muatTopCustomers();
 };
 </script>
 
