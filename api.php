@@ -666,7 +666,36 @@ switch ($action) {
     // ── PRODUK ────────────────────────────────────────
     case 'get_produk':
         $res = $conn->query("SELECT * FROM produk ORDER BY urutan ASC, nama ASC");
-        echo json_encode($res ? $res->fetch_all(MYSQLI_ASSOC) : []);
+        $produk_list = $res ? $res->fetch_all(MYSQLI_ASSOC) : [];
+        
+        // Fetch all HPP formulas to build a real-time calculated HPP map by SKU
+        $hpp_res = $conn->query("SELECT sku, id FROM hpp_produk");
+        $hpp_list = $hpp_res ? $hpp_res->fetch_all(MYSQLI_ASSOC) : [];
+        $hpp_map = [];
+        foreach ($hpp_list as $hp) {
+            $hid = (int)$hp['id'];
+            $dr  = $conn->query("SELECT d.qty, b.harga_satuan
+                                 FROM hpp_produk_detail d
+                                 LEFT JOIN bahan_baku b ON b.id = d.bahan_id
+                                 WHERE d.hpp_id = $hid");
+            $real_hpp = 0;
+            if ($dr) {
+                while ($d = $dr->fetch_assoc()) {
+                    $real_hpp += (float)($d['harga_satuan'] ?? 0) * (float)($d['qty'] ?? 0);
+                }
+            }
+            $hpp_map[$hp['sku']] = $real_hpp;
+        }
+        
+        // Override product HPP dynamically if SKU matches
+        foreach ($produk_list as &$p) {
+            if (!empty($p['sku']) && isset($hpp_map[$p['sku']])) {
+                $p['hpp'] = $hpp_map[$p['sku']];
+            }
+        }
+        unset($p);
+        
+        echo json_encode($produk_list);
         break;
 
     case 'save_produk':
@@ -1147,7 +1176,15 @@ switch ($action) {
                                  FROM hpp_produk_detail d
                                  LEFT JOIN bahan_baku b ON b.id = d.bahan_id
                                  WHERE d.hpp_id = $hid");
-            $h['detail_json'] = json_encode($dr ? $dr->fetch_all(MYSQLI_ASSOC) : []);
+            $details = $dr ? $dr->fetch_all(MYSQLI_ASSOC) : [];
+            
+            // Recalculate real HPP dynamically based on current raw material prices
+            $real_hpp = 0;
+            foreach ($details as $d) {
+                $real_hpp += (float)($d['harga_satuan'] ?? 0) * (float)($d['qty'] ?? 0);
+            }
+            $h['harga_pokok'] = $real_hpp;
+            $h['detail_json'] = json_encode($details);
         }
         unset($h);
         echo json_encode($list);
