@@ -534,7 +534,7 @@ function buildSidebar() {
         h += navGroup('investor', 'Area Investor', inv, PAGES_INVESTOR);
     }
     if (role === 'VIP') {
-        let vip = navItem('⚙️','manajemen User','user.html')
+        let vip = navItem('⚙️','Manajemen User','user.html')
             + navItem('🔑','History Login','login_history.html');
         h += navGroup('vip', 'VIP Access', vip, PAGES_VIP);
     }
@@ -849,9 +849,20 @@ window.onload = async () => {
     updateClock();
     await loadFilters();
     
-    // Kosongkan filter tanggal default agar menarik semua data terbaru
-    document.getElementById('startDate').value = '';
-    document.getElementById('endDate').value   = '';
+    // Set default date range to show the last 7 days (today and the previous 6 days)
+    const today = new Date();
+    const pastDate = new Date();
+    pastDate.setDate(today.getDate() - 6); // Hari ini + 6 hari sebelumnya = 7 hari
+
+    const formatDate = (date) => {
+        const yyyy = date.getFullYear();
+        const mm = String(date.getMonth() + 1).padStart(2, '0');
+        const dd = String(date.getDate()).padStart(2, '0');
+        return `${yyyy}-${mm}-${dd}`;
+    };
+
+    document.getElementById('startDate').value = formatDate(pastDate);
+    document.getElementById('endDate').value = formatDate(today);
     
     loadStatistik();
     muatTopCustomers();
