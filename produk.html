@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
@@ -417,9 +417,19 @@ function closeSheetOutside(e,id) { if(e.target===document.getElementById(id)) do
 
 /* ── LOGIKA PRODUK (TIDAK BERUBAH) ── */
 async function muatProduk() {
-    const res    = await fetch(`${API_BASE}?action=get_produk`);
-    const produk = await res.json();
+    const [resProduk, resHPP] = await Promise.all([
+        fetch(`${API_BASE}?action=get_produk`),
+        fetch(`${API_BASE}?action=get_hpp_produk`)
+    ]);
+    const produk  = await resProduk.json();
+    const hppList = await resHPP.json();
     window.allProduk = produk;
+
+    // Build HPP map by SKU (case-insensitive) from hpp_produk real-time data
+    const hppMap = {};
+    hppList.forEach(h => {
+        if (h.sku) hppMap[h.sku.toUpperCase()] = parseFloat(h.harga_pokok) || 0;
+    });
 
     const tbody = document.getElementById('tabelProduk');
     tbody.innerHTML = '';
@@ -428,7 +438,9 @@ async function muatProduk() {
         const tr = document.createElement('tr');
         tr.setAttribute('draggable', 'true');
         tr.setAttribute('data-id', p.id);
-        const hpp    = parseInt(p.hpp) || 0;
+        // Prioritas: HPP real-time dari hpp_produk (by SKU), fallback ke p.hpp statis
+        const skuKey = (p.sku || '').toUpperCase();
+        const hpp    = (skuKey && hppMap[skuKey] !== undefined) ? Math.round(hppMap[skuKey]) : (parseInt(p.hpp) || 0);
         const harga  = parseInt(p.harga) || 0;
         const margin = harga > 0 ? Math.round((harga - hpp) / harga * 100) : 0;
         const mColor = margin >= 30 ? 'var(--green)' : margin >= 15 ? 'var(--orange)' : 'var(--red)';
