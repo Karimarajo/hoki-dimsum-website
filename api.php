@@ -971,15 +971,29 @@ switch ($action) {
     case 'get_kas_data':
         $role  = $_GET['role'] ?? '';
         $akses = $_GET['cabang'] ?? '';
-        if ($role === 'Owner' || $role === 'VIP' || $akses === 'Semua') {
-            // VIP/Owner: load semua data tanpa batas (atau limit besar)
-            $sql = "SELECT * FROM hoki_kas_data ORDER BY waktu DESC LIMIT 2000";
-        } else {
+        $tglMulai   = isset($_GET['tgl_mulai']) ? $conn->real_escape_string($_GET['tgl_mulai']) : '';
+        $tglSelesai = isset($_GET['tgl_selesai']) ? $conn->real_escape_string($_GET['tgl_selesai']) : '';
+        
+        $where = [];
+        if (!($role === 'Owner' || $role === 'VIP' || $akses === 'Semua')) {
             $cabangArr  = explode(',', $akses);
             $cleanCabang = array_map(fn($i) => "'".$conn->real_escape_string(trim($i))."'", $cabangArr);
             $cabangList  = implode(',', $cleanCabang);
-            $sql = "SELECT * FROM hoki_kas_data WHERE cabang IN ($cabangList) ORDER BY waktu DESC LIMIT 500";
+            $where[] = "cabang IN ($cabangList)";
         }
+
+        if ($tglMulai) {
+            $where[] = "waktu >= '{$tglMulai} 00:00:00'";
+        }
+        if ($tglSelesai) {
+            $where[] = "waktu <= '{$tglSelesai} 23:59:59'";
+        }
+
+        $whereClause = count($where) > 0 ? "WHERE " . implode(" AND ", $where) : "";
+        $limitClause = ($tglMulai || $tglSelesai) ? "" : "LIMIT 2000";
+
+        $sql = "SELECT * FROM hoki_kas_data $whereClause ORDER BY waktu DESC $limitClause";
+        
         $res = $conn->query($sql);
         echo json_encode($res ? $res->fetch_all(MYSQLI_ASSOC) : []);
         break;

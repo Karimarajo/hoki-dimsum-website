@@ -1077,8 +1077,8 @@ async function hitungLaporan() {
 
     try {
         const [resSet, resKas, resTrx, resPrd] = await Promise.all([
-            fetch(`${API_BASE}?action=get_laporan_history&role=${currentUser.role}&cabang=${encodeURIComponent(currentUser.cabang)}`),
-            fetch(`${API_BASE}?action=get_kas_data&role=${currentUser.role}&cabang=${encodeURIComponent(currentUser.cabang)}`),
+            fetch(`${API_BASE}?action=get_laporan_history&role=${currentUser.role}&cabang=${encodeURIComponent(currentUser.cabang)}&tgl_mulai=${startStr}&tgl_selesai=${endStr}`),
+            fetch(`${API_BASE}?action=get_kas_data&role=${currentUser.role}&cabang=${encodeURIComponent(currentUser.cabang)}&tgl_mulai=${startStr}&tgl_selesai=${endStr}`),
             fetch(`${API_BASE}?action=get_history&tgl_mulai=${startStr}&tgl_selesai=${endStr}`),
             fetch(`${API_BASE}?action=get_produk`)
         ]);

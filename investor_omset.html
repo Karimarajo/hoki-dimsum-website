@@ -400,7 +400,7 @@ async function loadInvestorOmset() {
     const end = `${year}-${month}-${lastDay}`;
 
     try {
-        const res = await fetch(`${API_BASE}?action=get_history&tgl_mulai=${start}&tgl_selesai=${end}&cabang=${encodeURIComponent(cabang)}`);
+        const res = await fetch(`${API_BASE}?action=get_laporan_history&tgl_mulai=${start}&tgl_selesai=${end}&cabang=${encodeURIComponent(cabang)}&role=${encodeURIComponent(currentUser.role)}`);
         const transaksi = await res.json();
         
         allTransactionsData = transaksi;
@@ -409,7 +409,8 @@ async function loadInvestorOmset() {
         let count = 0;
         
         allTransactionsData.forEach(t => {
-            gross += parseInt(t.total || 0, 10);
+            gross += parseInt(t.grand_total || 0, 10);
+            // count di sini adalah jumlah Laporan Harian (Shift), bukan struk individu
             count++;
         });
         
@@ -439,12 +440,16 @@ function renderTransactions(limit) {
     
     let toRender = allTransactionsData.slice(0, limit);
     toRender.forEach(t => {
+        let m = {};
+        try { m = JSON.parse(t.metode_json || '{}'); } catch(e){}
+        const strMetode = Object.entries(m).filter(([k,v]) => v > 0).map(([k,v]) => `${k}`).join(', ');
+
         tbody.innerHTML += `<tr>
             <td>${t.waktu}</td>
             <td><b>${t.cabang}</b></td>
             <td>${t.petugas}</td>
-            <td style="font-family:'DM Mono',monospace; font-weight:600;">Rp ${parseInt(t.total).toLocaleString('id-ID')}</td>
-            <td><span style="padding:2px 6px; background:var(--surface-2); border-radius:4px; font-size:11px;">${t.metode}</span></td>
+            <td style="font-family:'DM Mono',monospace; font-weight:600;">Rp ${parseInt(t.grand_total).toLocaleString('id-ID')}</td>
+            <td><span style="padding:2px 6px; background:var(--surface-2); border-radius:4px; font-size:11px;">${strMetode || '-'}</span></td>
         </tr>`;
     });
     

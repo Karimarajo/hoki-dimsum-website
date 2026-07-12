@@ -695,14 +695,17 @@ async function loadStatistik() {
         barEl.style.background = profit >= 0 ? 'var(--green)' : 'var(--red)';
         document.getElementById('profitInfo').innerText = `Laba Bersih: Rp ${profit.toLocaleString()} (${ratio.toFixed(1)}%)`;
 
-        /* B. PERFORMA CABANG DARI TRANSAKSI */
-        const trxArr = Array.isArray(transaksi) ? transaksi : [];
+        /* B. PERFORMA CABANG DARI TRANSAKSI -> DIUBAH KE LAPORAN STAFF */
         let perCabang = {};
-        trxArr.forEach(t => {
-            if (cabFilter === 'Semua' || t.cabang === cabFilter) {
-                perCabang[t.cabang] = (perCabang[t.cabang] || 0) + parseFloat(t.total || 0);
-            }
-        });
+        if (Array.isArray(lapStaff)) {
+            lapStaff.forEach(t => {
+                if (cabFilter === 'Semua' || t.cabang === cabFilter) {
+                    perCabang[t.cabang] = (perCabang[t.cabang] || 0) + parseFloat(t.grand_total || 0);
+                }
+            });
+        }
+        
+        const trxArr = Array.isArray(transaksi) ? transaksi : [];
         const chartCab = document.getElementById('chartCabang');
         chartCab.innerHTML = '';
         const maxCab = Math.max(...Object.values(perCabang), 1);
