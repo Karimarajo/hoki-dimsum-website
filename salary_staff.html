@@ -6,7 +6,7 @@
     <title>Hoki POS - Salary Staff</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🥟</text></svg>">
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700;9..800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css?v=20260501">
     
     <script src="html2pdf.bundle.min.js"></script>
@@ -70,7 +70,7 @@
         border: 1.5px solid var(--border);
         border-radius: var(--r-md);
         font-size: 13px;
-        font-family: 'DM Sans', sans-serif;
+        font-family: 'Nunito', sans-serif;
         background: var(--surface);
         color: var(--text);
         outline: none;
@@ -118,7 +118,7 @@
         padding: 24px;
         background: #ffffff;
         color: #1a1a1a;
-        font-family: 'DM Sans', sans-serif;
+        font-family: 'Nunito', sans-serif;
     }
 
     .slip-header {
@@ -271,8 +271,8 @@
             <img src="Assets/3.png" alt="Hoki">
         </div>
         <div class="sidebar-brand-text">
-            <div class="sidebar-brand-name">Hoki Dimsum</div>
-            <div class="sidebar-brand-sub">POS System v3.0</div>
+            <div class="sidebar-brand-name">Hoki Dimsum V4.1</div>
+            <div class="sidebar-brand-sub">POS System v4.1</div>
         </div>
     </div>
     <button class="sidebar-toggle" onclick="toggleSidebar()">‹</button>
@@ -552,7 +552,7 @@
             <div style="display:flex; justify-content:space-between; font-size:12px; margin-top:30px; padding:0 12px;">
                 <div style="text-align:center; width:150px;">
                     <p style="margin:0 0 50px;">Disiapkan Oleh,</p>
-                    <p style="margin:0; font-weight:700; border-top:1px solid #333; padding-top:4px;">F & A Hoki Dimsum</p>
+                    <p style="margin:0; font-weight:700; border-top:1px solid #333; padding-top:4px;">F & A Hoki Dimsum V4.1</p>
                 </div>
                 <div style="text-align:center; width:150px;">
                     <p style="margin:0 0 50px;">Diterima Oleh Karyawan,</p>
@@ -561,7 +561,7 @@
             </div>
 
             <div class="slip-footer">
-                <p>Terima kasih atas dedikasi dan kerja keras Anda bersama Hoki Dimsum.</p>
+                <p>Terima kasih atas dedikasi dan kerja keras Anda bersama Hoki Dimsum V4.1.</p>
                 <p style="font-size:9px; margin-top:4px;">Generated automatically by Hoki POS system.</p>
             </div>
         </div>
@@ -1009,8 +1009,8 @@ function kirimWAPayroll() {
     text += `-------------------------------\n`;
     text += `💰 *TAKE HOME PAY (BERSIH): Rp ${p.total_gaji.toLocaleString('id-ID')}*\n\n`;
     
-    text += `Terima kasih atas dedikasi dan kerja keras Anda bersama Hoki Dimsum 🙏\n\n`;
-    text += `_Dokumen ini resmi dan dicetak otomatis oleh Hoki POS System v3.0_`;
+    text += `Terima kasih atas dedikasi dan kerja keras Anda bersama Hoki Dimsum V4.1 🙏\n\n`;
+    text += `_Dokumen ini resmi dan dicetak otomatis oleh Hoki POS System v4.1_`;
     
     window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
 }

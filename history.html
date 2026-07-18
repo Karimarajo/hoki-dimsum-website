@@ -6,7 +6,7 @@
     <title>Hoki POS - History Transaksi</title>
         <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🥟</text></svg>">
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&family=DM+Mono:wght@400;500&family=Playfair+Display:wght@700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=DM+Mono:wght@400;500&family=Poppins:wght@700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css?v=20260501">
     <style>
 
@@ -40,7 +40,7 @@
         background: var(--surface);
         outline: none;
         width: 100%;
-        font-family: 'DM Sans', sans-serif;
+        font-family: 'Nunito', sans-serif;
         transition: border-color var(--ease);
     }
 
@@ -171,8 +171,8 @@
             <img src="Assets/3.png" alt="Hoki">
         </div>
         <div class="sidebar-brand-text">
-            <div class="sidebar-brand-name">Hoki Dimsum</div>
-            <div class="sidebar-brand-sub">POS System v3.0</div>
+            <div class="sidebar-brand-name">Hoki Dimsum V4.1</div>
+            <div class="sidebar-brand-sub">POS System v4.1</div>
         </div>
     </div>
     <button class="sidebar-toggle" onclick="toggleSidebar()">‹</button>
@@ -514,8 +514,9 @@ async function renderHistory() {
         const fragment = document.createDocumentFragment();
         let count = 0;
         
-        // Cek apakah user yang login punya hak akses menghapus (Hanya Owner & VIP)
-        const canDelete = ['VIP', 'Owner'].includes(role);
+        // Owner & VIP bisa hapus transaksi kapan saja, role lain hanya dalam 5 menit sejak transaksi dibuat
+        const isUnlimitedDelete = ['VIP', 'Owner'].includes(role);
+        const BATAS_HAPUS_MENIT = 5;
 
         transaksiList.forEach(t => {
             const cabangTrx = (t.cabang || '').trim().toLowerCase();
@@ -524,6 +525,9 @@ async function renderHistory() {
             if (!['VIP', 'Owner'].includes(role)) {
                 if (cabangTrx !== cabangLoginRaw) return;
             }
+
+            const menitSejakTransaksi = t.waktu ? (Date.now() - new Date(t.waktu.replace(' ', 'T')).getTime()) / 60000 : Infinity;
+            const canDelete = isUnlimitedDelete || menitSejakTransaksi <= BATAS_HAPUS_MENIT;
 
             let items = [];
             try { items = JSON.parse(t.items_json || '[]'); } catch(_) { items = []; }
@@ -546,7 +550,7 @@ async function renderHistory() {
                 <td><span class="item-text">${namaItems}</span></td>
                 <td><span class="total-text">Rp ${parseInt(t.total || 0).toLocaleString('id-ID')}</span></td>
                 <td><span class="tag-metode">${t.metode || '—'}</span></td>
-                <td><button class="btn-hapus-icon" onclick="hapusTransaksi(${t.id})" title="Hapus Data">🗑️</button></td>
+                <td>${canDelete ? `<button class="btn-hapus-icon" onclick="hapusTransaksi(${t.id})" title="Hapus Data">🗑️</button>` : ''}</td>
             `;
             fragment.appendChild(tr);
             count++;

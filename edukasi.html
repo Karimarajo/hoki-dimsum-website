@@ -6,7 +6,7 @@
     <title>Hoki POS - Edukasi & SOP</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🥟</text></svg>">
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&family=DM+Mono:wght@400;500&family=Playfair+Display:wght@700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=DM+Mono:wght@400;500&family=Poppins:wght@700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css?v=20260501">
     <style>
     .main-content { overflow-x: hidden; }
@@ -56,7 +56,7 @@
         border: 1.5px solid var(--border);
         border-radius: var(--r-md);
         font-size: 13px;
-        font-family: 'DM Sans', sans-serif;
+        font-family: 'Nunito', sans-serif;
         background: var(--surface);
         color: var(--text);
         outline: none;
@@ -77,7 +77,7 @@
         font-weight: 700;
         cursor: pointer;
         white-space: nowrap;
-        font-family: 'DM Sans', sans-serif;
+        font-family: 'Nunito', sans-serif;
         transition: filter 0.15s;
     }
     .btn-tambah:hover { filter: brightness(0.9); }
@@ -224,8 +224,8 @@
     <div class="sidebar-brand" onclick="toggleSidebar()">
         <div class="sidebar-logo"><img src="Assets/3.png" alt="Hoki"></div>
         <div class="sidebar-brand-text">
-            <div class="sidebar-brand-name">Hoki Dimsum</div>
-            <div class="sidebar-brand-sub">POS System v3.0</div>
+            <div class="sidebar-brand-name">Hoki Dimsum V4.1</div>
+            <div class="sidebar-brand-sub">POS System v4.1</div>
         </div>
     </div>
     <button class="sidebar-toggle" onclick="toggleSidebar()">‹</button>
@@ -278,14 +278,15 @@
                     <label>URL File PDF</label>
                     <input type="url" id="inputUrl" placeholder="https://drive.google.com/file/d/...">
                 </div>
-                <div class="form-group" style="max-width:200px;">
-                    <label>Akses Role</label>
-                    <select id="inputRoleAccess">
-                        <option value="Semua">Semua Role (Staff+)</option>
-                        <option value="Senior Staff,SPV,Owner,VIP">Senior Staff Keatas</option>
-                        <option value="SPV,Owner,VIP">SPV Keatas</option>
-                        <option value="Owner,VIP">Hanya Owner & VIP</option>
-                    </select>
+                <div class="form-group">
+                    <label>Akses Role (centang yang boleh lihat)</label>
+                    <div id="inputRoleAccess" style="display:flex;flex-wrap:wrap;gap:10px;padding:8px 0;">
+                        <label style="display:flex;align-items:center;gap:4px;font-weight:normal;"><input type="checkbox" value="Staff" checked> Staff</label>
+                        <label style="display:flex;align-items:center;gap:4px;font-weight:normal;"><input type="checkbox" value="Senior Staff" checked> Senior Staff</label>
+                        <label style="display:flex;align-items:center;gap:4px;font-weight:normal;"><input type="checkbox" value="SPV" checked> SPV</label>
+                        <label style="display:flex;align-items:center;gap:4px;font-weight:normal;"><input type="checkbox" value="Owner" checked> Owner</label>
+                        <label style="display:flex;align-items:center;gap:4px;font-weight:normal;"><input type="checkbox" value="VIP" checked> VIP</label>
+                    </div>
                 </div>
                 <div class="form-group" style="flex:0;">
                     <label style="visibility:hidden;">x</label>
@@ -557,13 +558,22 @@ function viewPdf(encodedUrl, title) {
     document.getElementById('modalPdfViewer').classList.add('open');
 }
 
+const ALL_ROLES = ['Staff','Senior Staff','SPV','Owner','VIP'];
+
+function getRoleAccessChecked() {
+    const checked = Array.from(document.querySelectorAll('#inputRoleAccess input[type="checkbox"]:checked')).map(c => c.value);
+    if (checked.length === ALL_ROLES.length) return 'Semua';
+    return checked.join(',');
+}
+
 async function simpanEdukasi() {
     const judul = document.getElementById('inputJudul').value.trim();
     const kategori = document.getElementById('inputKategori').value;
     const url_pdf = document.getElementById('inputUrl').value.trim();
-    const role_access = document.getElementById('inputRoleAccess').value;
+    const role_access = getRoleAccessChecked();
 
     if (!judul || !url_pdf) return toast.warning('Judul dan URL PDF wajib diisi!');
+    if (!role_access) return toast.warning('Pilih minimal satu role yang boleh melihat!');
 
     try {
         const res = await fetch(`${API_BASE}?action=save_edukasi`, {
@@ -576,7 +586,7 @@ async function simpanEdukasi() {
             toast.success('Dokumen berhasil ditambahkan!');
             document.getElementById('inputJudul').value = '';
             document.getElementById('inputUrl').value = '';
-            document.getElementById('inputRoleAccess').value = 'Semua';
+            document.querySelectorAll('#inputRoleAccess input[type="checkbox"]').forEach(c => c.checked = true);
             muatEdukasi();
         } else {
             toast.error(json.message || 'Gagal menyimpan dokumen.');

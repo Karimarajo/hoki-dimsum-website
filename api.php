@@ -782,7 +782,34 @@ switch ($action) {
         break;
 
     case 'del_transaksi':
+        // ── GUARD: Owner/VIP kapan saja, role lain hanya dalam 5 menit setelah transaksi dibuat ──
+        $tkn  = $conn->real_escape_string($_GET['token'] ?? '');
+        $uname= $conn->real_escape_string($_GET['user']  ?? '');
+        $chk  = $conn->query("SELECT role FROM users WHERE LOWER(username)=LOWER('$uname') AND session_token='$tkn'");
+        $actor= ($chk && $chk->num_rows > 0) ? $chk->fetch_assoc() : null;
+        if (!$actor) {
+            http_response_code(403);
+            echo json_encode(["status"=>"error","message"=>"Akses ditolak! Sesi tidak valid."]);
+            break;
+        }
+
         $id = (int)($_GET['id'] ?? 0);
+        $trx = $conn->query("SELECT waktu FROM transaksi WHERE id=$id");
+        $trxRow = ($trx && $trx->num_rows > 0) ? $trx->fetch_assoc() : null;
+        if (!$trxRow) {
+            echo json_encode(["status"=>"error","message"=>"Transaksi tidak ditemukan."]);
+            break;
+        }
+
+        if (!in_array($actor['role'], ['Owner', 'VIP'])) {
+            $menit = (time() - strtotime($trxRow['waktu'])) / 60;
+            if ($menit > 5) {
+                http_response_code(403);
+                echo json_encode(["status"=>"error","message"=>"Batas waktu hapus (5 menit) sudah lewat. Hubungi Owner/VIP."]);
+                break;
+            }
+        }
+
         $conn->query("DELETE FROM transaksi WHERE id=$id");
         echo json_encode(["status"=>"success"]);
         break;
@@ -1906,11 +1933,7 @@ switch ($action) {
     // ── EDUKASI & SOP ─────────────────────────────────
     case 'get_edukasi':
         $role = $conn->real_escape_string($_GET['role'] ?? '');
-        $sql = "SELECT * FROM hoki_edukasi";
-        if ($role !== 'VIP' && $role !== 'Owner') {
-            $sql .= " WHERE role_access = 'Semua' OR FIND_IN_SET('$role', role_access)";
-        }
-        $sql .= " ORDER BY id DESC";
+        $sql = "SELECT * FROM hoki_edukasi WHERE role_access = 'Semua' OR FIND_IN_SET('$role', role_access) ORDER BY id DESC";
         $res = $conn->query($sql);
         $data = [];
         if ($res) { while ($r = $res->fetch_assoc()) $data[] = $r; }
