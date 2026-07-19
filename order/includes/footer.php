@@ -42,7 +42,7 @@ $waPusat = get_setting('wa_pusat', '');
       </div>
     </div>
     <div class="footer-bottom">
-      &copy; <?= date('Y') ?> <?= e(APP_NAME) ?>. Dimsum homemade, hoki setiap gigitan.
+      &copy; <?= date('Y') ?> <?= e(APP_NAME) ?>. Sekali Coba, Ketagihan Selamanya.
     </div>
   </div>
 </footer>

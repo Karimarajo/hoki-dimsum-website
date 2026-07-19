@@ -21,6 +21,15 @@ CREATE TABLE IF NOT EXISTS site_settings (
     setting_value TEXT
 ) ENGINE=InnoDB;
 
+-- Slider gambar hero di homepage
+CREATE TABLE IF NOT EXISTS hero_slides (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    gambar VARCHAR(255) NOT NULL,
+    urutan INT DEFAULT 0,
+    is_active TINYINT(1) DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
 -- Cabang
 CREATE TABLE IF NOT EXISTS branches (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -138,7 +147,7 @@ INSERT INTO site_settings (setting_key, setting_value) VALUES
 ('nama_bank', 'BCA'),
 ('nama_rekening', 'PT Hoki Dimsum Sejahtera'),
 ('qris_image_path', ''),
-('tagline', 'Dimsum Homemade, Hoki Setiap Gigitan'),
+('tagline', 'Sekali Coba, Ketagihan Selamanya'),
 ('tentang', 'Hoki Dimsum menghadirkan dimsum homemade dengan resep rahasia turun-temurun, dibuat fresh setiap hari tanpa pengawet. Dari kukusan hangat kami ke meja makanmu.'),
 ('instagram', 'https://instagram.com/hokidimsum'),
 ('meta_description', 'Order dimsum homemade Hoki Dimsum secara online. Fresh, halal, dan hoki di setiap gigitan.');

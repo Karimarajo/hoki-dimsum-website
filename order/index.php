@@ -11,6 +11,7 @@ $articles = db()->query("SELECT * FROM articles WHERE is_published = 1 ORDER BY 
 $heroHeadline = get_setting('hero_headline', '');
 $heroSubtext  = get_setting('hero_subtext', get_setting('tentang', ''));
 $promoText    = get_setting('promo_text', '🔥 Fresh dikukus setiap hari');
+$heroSlides   = db()->query('SELECT * FROM hero_slides WHERE is_active = 1 ORDER BY urutan ASC')->fetchAll();
 
 require __DIR__ . '/includes/header.php';
 ?>
@@ -27,12 +28,31 @@ require __DIR__ . '/includes/header.php';
       </div>
       <div class="hero-stats">
         <div class="stat"><b>9+</b><span>Menu Dimsum</span></div>
-        <div class="stat"><b><?= count($branches) > 0 ? count($branches) . '+' : '2+' ?></b><span>Cabang Aktif</span></div>
-        <div class="stat"><b>100%</b><span>Homemade Fresh</span></div>
+        <div class="stat"><b><?= count($branches) > 0 ? count($branches) . '+' : '2+' ?></b><span>Outlet Kami</span></div>
+        <div class="stat"><b>100%</b><span>Halal</span></div>
       </div>
     </div>
     <div class="hero-visual">
+      <?php if ($heroSlides): ?>
+      <div class="hero-slider" id="heroSlider">
+        <div class="hero-slider-track">
+          <?php foreach ($heroSlides as $i => $s): ?>
+          <div class="hero-slide<?= $i === 0 ? ' active' : '' ?>"><img src="<?= UPLOAD_URL . '/' . e($s['gambar']) ?>" alt="Hoki Dimsum" loading="<?= $i === 0 ? 'eager' : 'lazy' ?>"></div>
+          <?php endforeach; ?>
+        </div>
+        <?php if (count($heroSlides) > 1): ?>
+        <button type="button" class="hero-slider-arrow prev" onclick="heroSliderNav(-1)" aria-label="Sebelumnya">‹</button>
+        <button type="button" class="hero-slider-arrow next" onclick="heroSliderNav(1)" aria-label="Berikutnya">›</button>
+        <div class="hero-slider-dots">
+          <?php foreach ($heroSlides as $i => $s): ?>
+          <button type="button" class="hero-slider-dot<?= $i === 0 ? ' active' : '' ?>" onclick="heroSliderGoTo(<?= $i ?>)" aria-label="Slide <?= $i + 1 ?>"></button>
+          <?php endforeach; ?>
+        </div>
+        <?php endif; ?>
+      </div>
+      <?php else: ?>
       <span class="steam-icon">🥟💨</span>
+      <?php endif; ?>
     </div>
   </div>
 </section>
@@ -126,5 +146,32 @@ require __DIR__ . '/includes/header.php';
 <?php endif; ?>
 
 <?php include __DIR__ . '/includes/partials/sticky-cartbar.php'; ?>
+
+<?php if (count($heroSlides) > 1): ?>
+<script>
+(function () {
+    let index = 0;
+    let timer = null;
+    const slides = document.querySelectorAll('.hero-slide');
+    const dots = document.querySelectorAll('.hero-slider-dot');
+
+    function show(i) {
+        index = (i + slides.length) % slides.length;
+        slides.forEach((el, n) => el.classList.toggle('active', n === index));
+        dots.forEach((el, n) => el.classList.toggle('active', n === index));
+    }
+
+    function resetTimer() {
+        if (timer) clearInterval(timer);
+        timer = setInterval(() => show(index + 1), 4000);
+    }
+
+    window.heroSliderNav = function (delta) { show(index + delta); resetTimer(); };
+    window.heroSliderGoTo = function (i) { show(i); resetTimer(); };
+
+    resetTimer();
+})();
+</script>
+<?php endif; ?>
 
 <?php require __DIR__ . '/includes/footer.php'; ?>
