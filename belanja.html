@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Hoki POS - Belanja</title>
-        <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🥟</text></svg>">
+        <link rel="icon" href="Assets/2.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=DM+Mono:wght@400;500&family=Poppins:wght@700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css?v=20260501">
@@ -479,9 +479,15 @@ function buildSidebar() {
             <span class="nav-label">${label}</span>
         </button>`;
     };
-    const PAGES_FRONTLINE = ['dashboard.html','history.html','stok.html','restock.html','laporan_staff.html','edukasi.html'];
+    const navItemExternal = (icon, label, url) => {
+        return `<button class="nav-item" onclick="window.open('${url}', '_blank')">
+            <span class="nav-icon">${icon}</span>
+            <span class="nav-label">${label}</span>
+        </button>`;
+    };
+    const PAGES_FRONTLINE = ['kelola-order.html','dashboard.html','history.html','stok.html','restock.html','laporan_staff.html','edukasi.html'];
     const PAGES_MGMT      = ['rekap.html','produk.html'];
-    const PAGES_EXEC      = ['laporan.html','statistik.html','bahan_baku.html','hpp_produk.html','belanja.html','warehouse.html','salary_staff.html','customer_hoki.html'];
+    const PAGES_EXEC      = ['laporan.html','statistik.html','promo.html','bahan_baku.html','hpp_produk.html','belanja.html','warehouse.html','salary_staff.html','customer_hoki.html'];
     const PAGES_VIP       = ['user.html','login_history.html'];
     const PAGES_INVESTOR  = ['investor_omset.html','investor_profit.html'];
     const inGroup = pages => pages.includes(cur);
@@ -506,7 +512,8 @@ function buildSidebar() {
         </div>`;
     };
 
-    let frontline = navItem('🛒','Kasir','dashboard.html')
+    let frontline = navItem('🔔','Order Online','kelola-order.html')
+        + navItem('🛒','Kasir','dashboard.html')
         + navItem('📄','History Transaksi','history.html')
         + navItem('📦','Stok Harian','stok.html')
         + navItem('🚚','Restock Barang','restock.html')
@@ -526,6 +533,7 @@ function buildSidebar() {
     if (['Owner','VIP'].includes(role)) {
         let exec = navItem('📊','Keuangan Global','laporan.html')
             + navItem('📈','Statistik','statistik.html')
+            + navItem('🏷️','Promo','promo.html')
             + navItem('🧂','Bahan Baku','bahan_baku.html')
             + navItem('🗃️','HPP Produk','hpp_produk.html')
             + navItem('🏭','Warehouse','warehouse.html')
@@ -541,7 +549,8 @@ function buildSidebar() {
     }
     if (role === 'VIP') {
         let vip = navItem('⚙️','Manajemen User','user.html')
-            + navItem('🔑','History Login','login_history.html');
+            + navItem('🔑','History Login','login_history.html')
+            + navItemExternal('🍱','Menu Order','https://order.pos-hokidimsum.com/admin/dashboard.php');
         h += navGroup('vip', 'VIP Access', vip, PAGES_VIP);
     }
     document.getElementById('sidebarNav').innerHTML = h;
@@ -574,13 +583,14 @@ setInterval(updateClock, 1000);
 /* ── MORE MENU ── */
 function buildMoreMenu() {
     const role = currentUser.role;
-    const items = [{icon:'🚚',label:'Restock',link:'restock.html'}];
+    const items = [{icon:'🔔',label:'Order Online',link:'kelola-order.html'}, {icon:'🚚',label:'Restock',link:'restock.html'}];
     items.push({icon:'📚',label:'Edukasi & SOP',link:'edukasi.html'});
     if (['Senior Staff','SPV','Owner','VIP'].includes(role)) {
         items.push({icon:'🍱',label:'Produk',link:'produk.html'});
         items.push({icon:'📈',label:'Rekapan',link:'rekap.html'});
     }
     if (['Owner','VIP'].includes(role)) {
+        items.push({icon:'🏷️',label:'Promo',link:'promo.html'});
         items.push({icon:'🧂',label:'Bahan Baku',link:'bahan_baku.html'});
         items.push({icon:'🗃️',label:'HPP Produk',link:'hpp_produk.html'});
         items.push({icon:'🏭',label:'Warehouse',link:'warehouse.html'});
@@ -597,6 +607,7 @@ function buildMoreMenu() {
     if (role === 'VIP') {
         items.push({icon:'⚙️',label:'Users',link:'user.html'});
         items.push({icon:'🔑',label:'Login Log',link:'login_history.html'});
+        items.push({icon:'🍱',label:'Menu Order',link:'#',action:"window.open('https://order.pos-hokidimsum.com/admin/dashboard.php','_blank')"});
     }
     items.push({icon:'🚪',label:'Logout',link:'#',action:'logout()'});
     document.getElementById('moreGrid').innerHTML = items.map(i =>

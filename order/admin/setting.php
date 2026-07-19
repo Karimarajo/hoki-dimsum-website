@@ -4,19 +4,11 @@ $activeMenu = 'setting';
 require __DIR__ . '/includes/admin-header.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_settings']) && csrf_check()) {
-    $fields = ['wa_pusat', 'no_rekening', 'nama_bank', 'nama_rekening', 'tagline', 'tentang', 'instagram', 'meta_description'];
+    $fields = ['wa_pusat', 'tagline', 'tentang', 'instagram', 'meta_description'];
     foreach ($fields as $f) {
         set_setting($f, trim($_POST[$f] ?? ''));
     }
-    try {
-        if (!empty($_FILES['qris_image']['name'])) {
-            $qris = upload_image($_FILES['qris_image'], 'qris');
-            set_setting('qris_image_path', $qris);
-        }
-        flash('success', 'Pengaturan berhasil disimpan.');
-    } catch (RuntimeException $e) {
-        flash('error', $e->getMessage());
-    }
+    flash('success', 'Pengaturan berhasil disimpan.');
     redirect(BASE_URL . '/admin/setting.php');
 }
 
@@ -47,7 +39,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['change_password']) &&
 <div class="panel">
   <div class="panel-head"><h3>Informasi Pembayaran &amp; Kontak</h3></div>
   <div class="panel-body">
-    <form method="post" enctype="multipart/form-data" class="admin-form">
+    <form method="post" class="admin-form">
       <input type="hidden" name="csrf_token" value="<?= e(csrf_token()) ?>">
 
       <div class="form-row cols-2">
@@ -61,29 +53,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['change_password']) &&
         </div>
       </div>
 
-      <div class="form-row cols-2">
-        <div class="form-group">
-          <label>Nama Bank</label>
-          <input type="text" name="nama_bank" class="form-control" value="<?= e(get_setting('nama_bank')) ?>">
-        </div>
-        <div class="form-group">
-          <label>Nomor Rekening</label>
-          <input type="text" name="no_rekening" class="form-control" value="<?= e(get_setting('no_rekening')) ?>">
-        </div>
-      </div>
-
-      <div class="form-group">
-        <label>Nama Pemilik Rekening</label>
-        <input type="text" name="nama_rekening" class="form-control" value="<?= e(get_setting('nama_rekening')) ?>">
-      </div>
-
-      <div class="form-group">
-        <label>Gambar QRIS</label>
-        <input type="file" name="qris_image" accept="image/png,image/jpeg,image/webp" class="form-control" data-image-input="qrisPreview">
-      </div>
-      <div class="image-preview" id="qrisPreview">
-        <?php if (get_setting('qris_image_path')): ?><img src="<?= UPLOAD_URL . '/' . e(get_setting('qris_image_path')) ?>" alt=""><?php else: ?>Belum ada QRIS<?php endif; ?>
-      </div>
+      <div class="form-hint" style="margin-bottom:14px;">💡 QRIS pembayaran sekarang diatur per cabang, lihat menu <a href="<?= BASE_URL ?>/admin/cabang.php">Cabang</a>.</div>
 
       <div class="form-group">
         <label>Tagline Website</label>

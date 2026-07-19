@@ -11,6 +11,7 @@ $activeMenu = $activeMenu ?? '';
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title><?= e($pageTitle) ?> — Admin <?= e(APP_NAME) ?></title>
+<link rel="icon" href="<?= BASE_URL ?>/assets/2.png">
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/style.css">
 <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/admin.css">
@@ -20,7 +21,7 @@ $activeMenu = $activeMenu ?? '';
 <div class="admin-shell">
   <div class="sidebar-overlay" id="sidebarOverlay"></div>
   <aside class="admin-sidebar" id="adminSidebar">
-    <div class="brand"><span class="logo-mark">🥟</span><span><?= e(APP_NAME) ?></span></div>
+    <div class="brand"><span class="logo-mark"><img src="<?= BASE_URL ?>/assets/2.png" alt="<?= e(APP_NAME) ?>" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;"></span><span><?= e(APP_NAME) ?></span></div>
     <nav class="admin-nav">
       <a href="<?= BASE_URL ?>/admin/dashboard.php" class="<?= $activeMenu === 'dashboard' ? 'active' : '' ?>"><span class="ic">📊</span> Dashboard</a>
       <a href="<?= BASE_URL ?>/admin/pesanan.php" class="<?= $activeMenu === 'pesanan' ? 'active' : '' ?>"><span class="ic">🧾</span> Pesanan</a>

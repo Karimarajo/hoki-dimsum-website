@@ -8,15 +8,19 @@ $products = db()->query("SELECT * FROM products WHERE is_available = 1 ORDER BY 
 $branches = db()->query("SELECT * FROM branches WHERE is_active = 1 ORDER BY id LIMIT 2")->fetchAll();
 $articles = db()->query("SELECT * FROM articles WHERE is_published = 1 ORDER BY published_at DESC LIMIT 2")->fetchAll();
 
+$heroHeadline = get_setting('hero_headline', '');
+$heroSubtext  = get_setting('hero_subtext', get_setting('tentang', ''));
+$promoText    = get_setting('promo_text', '🔥 Fresh dikukus setiap hari');
+
 require __DIR__ . '/includes/header.php';
 ?>
 
 <section class="hero">
   <div class="container">
     <div>
-      <div class="hero-badge">🔥 Fresh dikukus setiap hari</div>
-      <h1>Dimsum Homemade,<br><span>Hoki</span> Setiap Gigitan</h1>
-      <p class="lead"><?= e(get_setting('tentang', '')) ?></p>
+      <div class="hero-badge"><?= e($promoText) ?></div>
+      <h1><?php if ($heroHeadline !== ''): ?><?= e($heroHeadline) ?><?php else: ?>Dimsum Homemade,<br><span>Hoki</span> Setiap Gigitan<?php endif; ?></h1>
+      <p class="lead"><?= e($heroSubtext) ?></p>
       <div class="hero-actions">
         <a href="<?= BASE_URL ?>/menu.php" class="btn btn-primary">🥟 Lihat Menu &amp; Order</a>
         <a href="<?= BASE_URL ?>/cabang.php" class="btn btn-outline">📍 Cari Cabang Terdekat</a>

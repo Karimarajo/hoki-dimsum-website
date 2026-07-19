@@ -13,6 +13,7 @@ $pageDesc = $pageDesc ?? get_setting('meta_description', 'Order dimsum homemade 
 <title><?= e($pageTitle) ?></title>
 <meta name="description" content="<?= e($pageDesc) ?>">
 <meta name="theme-color" content="#c8372d">
+<link rel="icon" href="<?= BASE_URL ?>/assets/2.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/style.css">
@@ -22,7 +23,7 @@ $pageDesc = $pageDesc ?? get_setting('meta_description', 'Order dimsum homemade 
 <header class="site-header">
   <div class="container">
     <a href="<?= BASE_URL ?>/index.php" class="brand">
-      <span class="logo-mark">🥟</span>
+      <span class="logo-mark"><img src="<?= BASE_URL ?>/assets/2.png" alt="<?= e(APP_NAME) ?>" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;"></span>
       <span><?= e(APP_NAME) ?></span>
     </a>
 
@@ -53,7 +54,7 @@ $pageDesc = $pageDesc ?? get_setting('meta_description', 'Order dimsum homemade 
   <div class="overlay" id="drawerOverlay"></div>
   <div class="panel">
     <div class="panel-head">
-      <span class="brand"><span class="logo-mark">🥟</span><?= e(APP_NAME) ?></span>
+      <span class="brand"><span class="logo-mark"><img src="<?= BASE_URL ?>/assets/2.png" alt="<?= e(APP_NAME) ?>" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;"></span><?= e(APP_NAME) ?></span>
       <button class="menu-toggle" id="drawerClose" aria-label="Tutup menu">✕</button>
     </div>
     <nav>

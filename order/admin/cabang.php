@@ -16,14 +16,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_branch']) && csr
 
     if ($nama === '' || $alamat === '') {
         flash('error', 'Nama dan alamat cabang wajib diisi.');
-    } elseif ($id > 0) {
-        db()->prepare('UPDATE branches SET nama=?, alamat=?, jam_operasional=?, wa_number=?, gofood_link=?, grabfood_link=?, shopeefood_link=?, is_active=? WHERE id=?')
-            ->execute([$nama, $alamat, $jam, $wa ?: null, $gofood ?: null, $grabfood ?: null, $shopeefood ?: null, $isActive, $id]);
-        flash('success', 'Cabang berhasil diperbarui.');
     } else {
-        db()->prepare('INSERT INTO branches (nama, alamat, jam_operasional, wa_number, gofood_link, grabfood_link, shopeefood_link, is_active) VALUES (?,?,?,?,?,?,?,?)')
-            ->execute([$nama, $alamat, $jam, $wa ?: null, $gofood ?: null, $grabfood ?: null, $shopeefood ?: null, $isActive]);
-        flash('success', 'Cabang berhasil ditambahkan.');
+        try {
+            $qris = null;
+            if (!empty($_FILES['qris_image']['name'])) {
+                $qris = upload_image($_FILES['qris_image'], 'qris');
+            }
+
+            if ($id > 0) {
+                if ($qris) {
+                    db()->prepare('UPDATE branches SET nama=?, alamat=?, jam_operasional=?, wa_number=?, gofood_link=?, grabfood_link=?, shopeefood_link=?, qris_image=?, is_active=? WHERE id=?')
+                        ->execute([$nama, $alamat, $jam, $wa ?: null, $gofood ?: null, $grabfood ?: null, $shopeefood ?: null, $qris, $isActive, $id]);
+                } else {
+                    db()->prepare('UPDATE branches SET nama=?, alamat=?, jam_operasional=?, wa_number=?, gofood_link=?, grabfood_link=?, shopeefood_link=?, is_active=? WHERE id=?')
+                        ->execute([$nama, $alamat, $jam, $wa ?: null, $gofood ?: null, $grabfood ?: null, $shopeefood ?: null, $isActive, $id]);
+                }
+                flash('success', 'Cabang berhasil diperbarui.');
+            } else {
+                db()->prepare('INSERT INTO branches (nama, alamat, jam_operasional, wa_number, gofood_link, grabfood_link, shopeefood_link, qris_image, is_active) VALUES (?,?,?,?,?,?,?,?,?)')
+                    ->execute([$nama, $alamat, $jam, $wa ?: null, $gofood ?: null, $grabfood ?: null, $shopeefood ?: null, $qris, $isActive]);
+                flash('success', 'Cabang berhasil ditambahkan.');
+            }
+        } catch (RuntimeException $e) {
+            flash('error', $e->getMessage());
+        }
     }
     redirect(BASE_URL . '/admin/cabang.php');
 }
@@ -56,7 +72,7 @@ if (!empty($_GET['edit'])) {
     <?php if ($editBranch): ?><a href="<?= BASE_URL ?>/admin/cabang.php" class="btn btn-outline btn-sm">Batal Edit</a><?php endif; ?>
   </div>
   <div class="panel-body">
-    <form method="post" class="admin-form">
+    <form method="post" enctype="multipart/form-data" class="admin-form">
       <input type="hidden" name="csrf_token" value="<?= e(csrf_token()) ?>">
       <?php if ($editBranch): ?><input type="hidden" name="id" value="<?= $editBranch['id'] ?>"><?php endif; ?>
 
@@ -79,6 +95,14 @@ if (!empty($_GET['edit'])) {
       <div class="form-group">
         <label>Nomor WA Khusus Cabang (opsional, kosongkan untuk pakai WA pusat)</label>
         <input type="text" name="wa_number" class="form-control" placeholder="6281234567890" value="<?= e($editBranch['wa_number'] ?? '') ?>">
+      </div>
+
+      <div class="form-group">
+        <label>QRIS Khusus Cabang (opsional, kosongkan untuk pakai QRIS pusat)</label>
+        <input type="file" name="qris_image" accept="image/png,image/jpeg,image/webp" class="form-control" data-image-input="qrisBranchPreview">
+      </div>
+      <div class="image-preview" id="qrisBranchPreview">
+        <?php if (!empty($editBranch['qris_image'])): ?><img src="<?= UPLOAD_URL . '/' . e($editBranch['qris_image']) ?>" alt=""><?php else: ?>Belum ada QRIS khusus<?php endif; ?>
       </div>
 
       <div class="form-row cols-2">
@@ -109,13 +133,14 @@ if (!empty($_GET['edit'])) {
   <div class="panel-head"><h3>Daftar Cabang (<?= count($branches) ?>)</h3></div>
   <div class="panel-body table-wrap">
     <table class="data-table">
-      <thead><tr><th>Nama</th><th>Alamat</th><th>Status</th><th></th></tr></thead>
+      <thead><tr><th>Nama</th><th>Alamat</th><th>QRIS</th><th>Status</th><th></th></tr></thead>
       <tbody>
-        <?php if (!$branches): ?><tr><td colspan="4">Belum ada cabang.</td></tr><?php endif; ?>
+        <?php if (!$branches): ?><tr><td colspan="5">Belum ada cabang.</td></tr><?php endif; ?>
         <?php foreach ($branches as $b): ?>
         <tr>
           <td><?= e($b['nama']) ?></td>
           <td><?= e($b['alamat']) ?></td>
+          <td><span class="status-pill <?= !empty($b['qris_image']) ? 'status-ready' : 'status-pending_payment' ?>"><?= !empty($b['qris_image']) ? 'Ada' : 'Pakai Pusat' ?></span></td>
           <td><span class="status-pill <?= $b['is_active'] ? 'status-ready' : 'status-cancelled' ?>"><?= $b['is_active'] ? 'Aktif' : 'Nonaktif' ?></span></td>
           <td>
             <div class="table-actions">

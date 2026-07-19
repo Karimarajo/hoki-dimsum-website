@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS branches (
     gofood_link VARCHAR(255) NULL,
     grabfood_link VARCHAR(255) NULL,
     shopeefood_link VARCHAR(255) NULL,
+    qris_image VARCHAR(255) NULL,
     is_active TINYINT(1) DEFAULT 1,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
@@ -55,6 +56,7 @@ CREATE TABLE IF NOT EXISTS products (
     harga DECIMAL(10,2) NOT NULL,
     foto VARCHAR(255),
     is_available TINYINT(1) DEFAULT 1,
+    pos_sku VARCHAR(20) NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (category_id) REFERENCES product_categories(id) ON DELETE SET NULL
 ) ENGINE=InnoDB;
@@ -72,6 +74,8 @@ CREATE TABLE IF NOT EXISTS orders (
     catatan TEXT NULL,
     subtotal DECIMAL(10,2) NOT NULL,
     kode_unik INT NOT NULL,
+    kupon_kode VARCHAR(50) NULL,
+    diskon DECIMAL(10,2) DEFAULT 0,
     total_bayar DECIMAL(10,2) NOT NULL,
     status ENUM('pending_payment','paid','preparing','ready','completed','cancelled') DEFAULT 'pending_payment',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

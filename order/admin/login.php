@@ -31,6 +31,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Login Admin — <?= e(APP_NAME) ?></title>
+<link rel="icon" href="<?= BASE_URL ?>/assets/2.png">
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/style.css">
 <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/admin.css">
@@ -38,7 +39,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <body>
 <div class="login-shell">
   <div class="login-card">
-    <div class="brand"><span class="logo-mark">🥟</span><span><?= e(APP_NAME) ?></span></div>
+    <div class="brand"><span class="logo-mark"><img src="<?= BASE_URL ?>/assets/2.png" alt="<?= e(APP_NAME) ?>" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;"></span><span><?= e(APP_NAME) ?></span></div>
     <p class="sub">Login ke Dashboard Admin</p>
     <?php if ($error): ?><div class="alert alert-error"><?= e($error) ?></div><?php endif; ?>
     <form method="post">

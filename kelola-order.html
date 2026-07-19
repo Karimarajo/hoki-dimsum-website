@@ -1,0 +1,934 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Hoki POS - Order Online</title>
+        <link rel="icon" href="Assets/2.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=DM+Mono:wght@400;500&family=Poppins:wght@700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css?v=20260501">
+    <style>
+
+    /* ── INFO BAR SIMPLE ── */
+    .info-bar-simple {
+        background: var(--surface);
+        border-bottom: 1px solid var(--border);
+        padding: 0 24px;
+        display: flex;
+        align-items: center;
+        height: 40px;
+        flex-shrink: 0;
+    }
+
+    .ib-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 0 16px;
+        height: 100%;
+    }
+
+    .ib-item:first-child { padding-left: 0; }
+
+    .ib-divider {
+        width: 1px;
+        height: 20px;
+        background: var(--border);
+        flex-shrink: 0;
+    }
+
+    .ib-label {
+        font-size: 11px;
+        color: var(--text-light);
+        font-weight: 500;
+        white-space: nowrap;
+    }
+
+    .ib-val {
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--text);
+        white-space: nowrap;
+    }
+
+    @media (max-width: 844px) {
+        .info-bar-simple { padding: 6px 14px; height: auto; gap: 16px; }
+        .ib-item { padding: 0; }
+    }
+
+    /* ── ORDER GRID ── */
+    .order-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 16px;
+    }
+
+    .order-card {
+        background: var(--surface);
+        border: 1.5px solid var(--border);
+        border-radius: var(--r-lg);
+        box-shadow: var(--sh-sm);
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        transition: box-shadow var(--ease), border-color var(--ease);
+    }
+
+    .order-card.is-new {
+        border-color: var(--red);
+        animation: orderPulse 1.6s ease-in-out 2;
+    }
+
+    @keyframes orderPulse {
+        0%, 100% { box-shadow: var(--sh-sm); }
+        50% { box-shadow: 0 0 0 4px var(--red-soft), var(--sh-md); }
+    }
+
+    .order-card-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 8px;
+    }
+
+    .order-code {
+        font-family: 'DM Mono', monospace;
+        font-weight: 700;
+        font-size: 15px;
+        color: var(--text);
+    }
+
+    .order-status {
+        font-size: 10px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.6px;
+        padding: 4px 10px;
+        border-radius: 999px;
+        white-space: nowrap;
+    }
+
+    .order-status.pending_payment { background: var(--surface-2); color: var(--text-muted); }
+    .order-status.paid       { background: var(--blue-soft); color: var(--blue); }
+    .order-status.preparing  { background: #fff7e6; color: #b45309; }
+
+    .order-card-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        font-size: 13px;
+        color: var(--text);
+    }
+
+    .order-card-row .label {
+        color: var(--text-muted);
+        flex-shrink: 0;
+    }
+
+    .order-card-row .val {
+        text-align: right;
+        font-weight: 600;
+    }
+
+    .order-total {
+        font-size: 17px;
+        font-weight: 800;
+        color: var(--red);
+    }
+
+    .order-card-footer {
+        margin-top: 4px;
+        display: flex;
+        gap: 8px;
+    }
+
+    .btn-order-action {
+        flex: 1;
+        height: 40px;
+        border: none;
+        border-radius: var(--r-md);
+        font-family: 'Nunito', sans-serif;
+        font-weight: 700;
+        font-size: 13px;
+        cursor: pointer;
+        transition: filter var(--ease);
+    }
+
+    .btn-order-action:hover { filter: brightness(0.95); }
+    .btn-order-action:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    .btn-order-action.action-pending   { background: var(--blue); color: #fff; }
+    .btn-order-action.action-paid      { background: var(--red); color: #fff; }
+    .btn-order-action.action-preparing { background: var(--green); color: #fff; }
+
+    .order-updated-label {
+        font-size: 11px;
+        color: var(--text-muted);
+    }
+
+    /* ── TABS ── */
+    .kmo-tabs {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 20px;
+        border-bottom: 1.5px solid var(--border);
+    }
+
+    .kmo-tab-btn {
+        padding: 10px 18px;
+        border: none;
+        background: none;
+        font-family: 'Nunito', sans-serif;
+        font-weight: 700;
+        font-size: 13px;
+        color: var(--text-muted);
+        cursor: pointer;
+        border-bottom: 3px solid transparent;
+        transition: color var(--ease), border-color var(--ease);
+    }
+
+    .kmo-tab-btn.active {
+        color: var(--red);
+        border-bottom-color: var(--red);
+    }
+
+    .kmo-panel { display: none; }
+    .kmo-panel.active { display: block; }
+
+    /* ── STATUS BADGE TAMBAHAN UNTUK HISTORY ── */
+    .order-status.ready     { background: var(--green-soft); color: var(--green); }
+    .order-status.completed { background: var(--surface-2); color: var(--text); }
+    .order-status.cancelled { background: var(--red-soft); color: var(--red); }
+
+    /* ── TOMBOL LIHAT DETAIL ── */
+    .btn-icon-view {
+        width: 32px;
+        height: 32px;
+        border-radius: var(--r-sm);
+        border: 1.5px solid var(--border);
+        background: var(--surface);
+        cursor: pointer;
+        font-size: 14px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        transition: border-color var(--ease), background var(--ease);
+    }
+    .btn-icon-view:hover { border-color: var(--red); background: var(--red-soft); }
+
+    /* ── MODAL DETAIL ORDER ── */
+    .modal-detail-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.6);
+        backdrop-filter: blur(4px);
+        z-index: 9999;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+    }
+    .modal-detail-overlay.open { display: flex; }
+    .modal-detail {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--r-lg);
+        padding: 24px;
+        width: 100%;
+        max-width: 480px;
+        max-height: 90vh;
+        overflow-y: auto;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        animation: modalDetailFadeIn 0.25s ease;
+    }
+    @keyframes modalDetailFadeIn {
+        from { opacity: 0; transform: translateY(20px) scale(0.95); }
+        to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .modal-detail-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 16px;
+    }
+    .modal-detail-head h3 { margin: 0; font-size: 16px; font-weight: 800; color: var(--text); }
+    .modal-detail-close { border: none; background: none; font-size: 20px; cursor: pointer; color: var(--text-muted); line-height: 1; }
+
+    .detail-item-row {
+        display: flex;
+        justify-content: space-between;
+        font-size: 13px;
+        padding: 5px 0;
+        border-bottom: 1px dashed var(--border);
+    }
+    .detail-item-row:last-child { border-bottom: none; }
+
+    .modal-detail-btns { display: flex; gap: 8px; margin-top: 16px; }
+    .modal-detail-btns .btn-close-detail {
+        flex: 1;
+        padding: 12px;
+        border-radius: var(--r-md);
+        border: 1px solid var(--border);
+        background: var(--surface-2);
+        color: var(--text-muted);
+        font-family: 'Nunito', sans-serif;
+        font-weight: 700;
+        font-size: 13px;
+        cursor: pointer;
+    }
+    .modal-detail-btns .btn-wa-chat {
+        flex: 1;
+        padding: 12px;
+        border-radius: var(--r-md);
+        border: none;
+        background: #25D366;
+        color: #fff;
+        font-family: 'Nunito', sans-serif;
+        font-weight: 700;
+        font-size: 13px;
+        cursor: pointer;
+        text-align: center;
+        text-decoration: none;
+        display: inline-block;
+    }
+    </style>
+  <script src="config.js"></script>
+</head>
+<body>
+
+<!-- ── SIDEBAR ── -->
+<aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand" onclick="toggleSidebar()">
+        <div class="sidebar-logo">
+            <img src="Assets/3.png" alt="Hoki">
+        </div>
+        <div class="sidebar-brand-text">
+            <div class="sidebar-brand-name">Hoki Dimsum V4.1</div>
+            <div class="sidebar-brand-sub">POS System v4.1</div>
+        </div>
+    </div>
+    <button class="sidebar-toggle" onclick="toggleSidebar()">‹</button>
+    <nav class="sidebar-nav" id="sidebarNav"></nav>
+    <div class="sidebar-user">
+        <div class="user-card">
+            <div class="user-avatar" id="userAvatarInitial">?</div>
+            <div class="user-info">
+                <div class="user-name" id="sidebarUserName">Loading...</div>
+                <div class="user-role" id="sidebarUserRole">—</div>
+            </div>
+            <button class="btn-logout-icon" onclick="logout()" title="Logout">🚪</button>
+        </div>
+    </div>
+</aside>
+
+<!-- ── MAIN CONTENT ── -->
+<div class="main-content" id="mainContent">
+
+    <header class="top-header">
+        <div class="header-left">
+            <div class="header-page-title">🔔 Order Online</div>
+        </div>
+        <div class="header-right">
+            <div class="clock-pill">
+                <div id="realtimeClock">00:00:00</div>
+                <div id="realtimeDate">...</div>
+            </div>
+        </div>
+    </header>
+
+    <!-- INFO BAR -->
+    <div class="info-bar-simple">
+        <div class="ib-item"><span class="ib-label">👤 Petugas</span><span class="ib-val" id="infoPetugas">—</span></div>
+        <div class="ib-divider"></div>
+        <div class="ib-item"><span class="ib-label">📍 Cabang</span><span class="ib-val" id="infoCabang">—</span></div>
+        <div class="ib-divider"></div>
+        <div class="ib-item"><span class="ib-label">🔄 Update</span><span class="ib-val order-updated-label" id="lastUpdateLabel">—</span></div>
+    </div>
+
+    <div class="page-body">
+
+        <div class="kmo-tabs">
+            <button class="kmo-tab-btn active" data-tab="aktif" onclick="switchTab('aktif')">🔔 Order Aktif</button>
+            <button class="kmo-tab-btn" data-tab="history" onclick="switchTab('history')">📜 History</button>
+        </div>
+
+        <div class="kmo-panel active" id="panel-aktif">
+            <div id="orderGrid" class="order-grid"></div>
+            <div class="empty-state" id="orderEmptyState" style="display:none;">
+                <span class="icon">🔔</span>
+                <p>Belum ada order masuk yang perlu diproses</p>
+            </div>
+        </div>
+
+        <div class="kmo-panel" id="panel-history">
+            <div class="filter-bar">
+                <div class="filter-group">
+                    <label for="histStatus">Status</label>
+                    <select id="histStatus">
+                        <option value="">Semua Status</option>
+                        <option value="pending_payment">Menunggu Pembayaran</option>
+                        <option value="paid">Menunggu Diproses</option>
+                        <option value="preparing">Sedang Disiapkan</option>
+                        <option value="ready">Siap</option>
+                        <option value="completed">Selesai</option>
+                        <option value="cancelled">Batal</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="histCabang">Cabang</label>
+                    <select id="histCabang">
+                        <option value="">Semua Cabang</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="histTanggal">Tanggal</label>
+                    <input type="date" id="histTanggal">
+                </div>
+                <button class="btn-cari" onclick="loadHistory()">🔍 Cari</button>
+                <button class="btn-kosongkan" onclick="resetHistoryFilter()">⚠️ Reset</button>
+            </div>
+
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Kode</th>
+                            <th>Customer</th>
+                            <th>Cabang</th>
+                            <th>Total</th>
+                            <th>Status</th>
+                            <th>Waktu Masuk</th>
+                            <th>Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="historyTableBody">
+                        <tr><td colspan="7"><div class="empty-state"><span class="icon">📜</span><p>Belum ada data</p></div></td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- MODAL DETAIL ORDER -->
+<div class="modal-detail-overlay" id="modalDetailOrder" onclick="if(event.target===this)tutupDetailOrder()">
+    <div class="modal-detail">
+        <div class="modal-detail-head">
+            <h3 id="detailOrderTitle">Detail Order</h3>
+            <button class="modal-detail-close" onclick="tutupDetailOrder()">&times;</button>
+        </div>
+        <div id="detailOrderBody"></div>
+        <div class="modal-detail-btns">
+            <button class="btn-close-detail" onclick="tutupDetailOrder()">Tutup</button>
+            <a id="detailWaChatBtn" class="btn-wa-chat" href="#" target="_blank" style="display:none;">💬 Chat Customer</a>
+        </div>
+    </div>
+</div>
+
+<!-- BOTTOM NAV -->
+<nav class="bottom-nav">
+    <button class="bn-item" onclick="location.href='dashboard.html'"><span class="bn-icon">🛒</span><span class="bn-label">Kasir</span></button>
+    <button class="bn-item" onclick="location.href='history.html'"><span class="bn-icon">📄</span><span class="bn-label">History</span></button>
+    <button class="bn-item" onclick="location.href='stok.html'"><span class="bn-icon">📦</span><span class="bn-label">Stok</span></button>
+    <button class="bn-item" onclick="location.href='laporan_staff.html'"><span class="bn-icon">🚀</span><span class="bn-label">Laporan</span></button>
+    <button class="bn-item" onclick="openSheet('moreSheet')"><span class="bn-icon">☰</span><span class="bn-label">Lainnya</span></button>
+</nav>
+
+<!-- MORE SHEET -->
+<div class="sheet-overlay" id="moreSheet" onclick="closeSheetOutside(event,'moreSheet')">
+    <div class="bottom-sheet" onclick="event.stopPropagation()">
+        <div class="sheet-handle"></div>
+        <p style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:14px;">Menu Lainnya</p>
+        <div class="more-grid" id="moreGrid"></div>
+    </div>
+</div>
+
+<!-- AUDIO NOTIFIKASI ORDER BARU -->
+<audio id="notifBeep" preload="auto">
+    <source src="data:audio/wav;base64,UklGRiYfAABXQVZFZm10IBAAAAABAAEAIlYAAESsAAACABAAZGF0YQIfAAAAAAwAMgBqAK8A9wA3AWUBeQFqATQB1QBSALH/+v47/oT95Pxr/Cb8IPxf/Of8s/26/u7/PAGRAtMD6wTDBUcGaAYeBmgFSwTUAhkBM/9A/WD7tvlf+Hf3Evc39/z3SPkS+0L9tv9IAtAEIQcTCYMKUwtwC9IKfAl/B/UEBALb/qn7pPgA9urzi/L98VDyhfOP9VP4p/ta/zAD7QZSCiYNNg9bEH4QlA+nDdAKOAcUA6f+NfoH9mPyiO+o7ejsWu397r3xc/Xp+dj+8wPpCGcNIxHbE18VkBVkFOgRPg6cCUkEmf7k+Inz4O4368/o0+db6GPq0u118gj4Mv6SBMMKXxAJFXIYXRqlGkAZPRbHESEMoQWv/rf3LPF36/rmAOTA4lTjueXP6VnvBPZm/QwFegw5E9gY+RxUH70fKB6mGmwVxw4eB+v+rvbu7iro0OI937DdRt7/4LTlH+zd83b8YQUQDvUVjxxwIUQk2CQbIyMfKxmMEb4IS//J9dLs9+S73obaotgz2TbcguHH6JXxYfuRBYIPkhguINclLCnzKRgosyMFHXIUggrR/wn11+rh4bva3NWY0xnUdtd23Z7lbe9G+nkFVhAtGmEibij0K7ostCoCJu8e7RWMC3IAUvXc6rjhedqU1VXT4tMy1w/dG+XW7qT51wS9D6cZ9yEmKNMrwizkKlcmZB97FikMFQHx9WzrMeLU2snVY9PH0+/WqdyZ5EDuAvk0BCQPIRmMId0nsCvILBIrqybYHwgXxgy5AZD2/uus4jDbAdZz067Tr9ZG3Bjkqu1h+JIDig6ZGB4hkSeLK8ssPiv8JkogkxdjDVwCMPeR7Cjjjts71oXTmNNx1uTbmeMV7cD37wLvDRAYryBEJ2MrzCxnK0wnuyAeGP4N/wLR9yTtpuPu23fWmtOD0zXWhNsc44LsIPdLAlMNhRc/IPQmOSvLLI8rmScpIacYmQ6iA3H4ue0l5FDctdax03HT+9Um26Di7+uA9qgBtwz6Fs0foiYNK8cstCvkJ5YhLhkzD0UEE/lP7qbks9z21srTYdPE1craJeJe6+H1BQEaDG0WWR9PJt8qwSzWKy4oAiK1Gc0P5wS0+eXuKOUZ3TjX5dNU047VcNqs4c3qQvViAHwL3xXjHvklryq5LPcrdShrIjoaZRCJBVb6fe+s5YDdfdcD1EnTW9UY2jXhPuqj9L//3gpQFWweoSV8Kq4sFSy6KNMivhr9ECsG+PoV8DDm6d3E1yPUQNMq1cLZv+Cw6Qb0HP8/Cr8U8x1IJUcqoSwxLP0oOSNAG5MRzQab+67wt+ZU3g3YRdQ60/zUbtlK4CLpafN4/qAJLhR5HewkECqSLEssPimdI8EbKRJuBz78SPE+58HeWNhq1DbTz9Qc2djfl+jM8tX9AAmcE/0cjyTXKYEsYix9Kf8jQRy+Eg8I4fzj8cfnL9+l2JHUNNOl1MzYZ98M6DDyMv1gCAgTgBwvJJspbSx3LLkpXyS/HFITsAiE/X7yUeif3/TYutQ1033Uftj43oLnlfGP/L8HdBIBHM4jXSlXLIos9Cm+JDsd5RNQCSf+GvPc6BHgRdnl1DjTV9Qy2Ire+ub78Oz7HgfeEYEbayMeKT4smiwsKholth13FPAJyv6382nphOCY2RPVPdM01OjXHt5z5mHwSvt8BkgR/xoGI9woIyyoLGIqdSUwHggVjwpt/1X09un54O3ZQ9VE0xPUoNe03e7lye+n+toFsRB8Gp8imCgGLLQslirNJagelRUpCxAA/PSc6pfhfdq/1afTVdS+16ndt+Vl7xn6JgXbD44ZpCGbJxYr3ivoKVQlbR6jFYILrwDW9aXrveKv2+jWttQ51WjYD97T5TXvoPlrBOsOdxh3IGwm9ynhKh0pxyQoHqkV1AtGAar2qOzg497cEtjH1SDWGNl83vblDe8u+bcDAA5kF00fPiXXKOIpTSg1JNwdqBUeDNYBePem7f7kC9472dnWC9fM2e/eIObs7sX4CwMcDVYWJx4RJLcn4Ch6J54jiR2fFWAMXwI++J7uGOY232Pa7df514baaN9S5tPuYvhmAj4MThUEHeYilybcJ6MmACMwHY8VmgzgAv74kO8u513gi9sC2erYRNvo34vmwe4I+MgBZwtKFOUbvSF2JdYmyCVeItAceBXNDFkDtvl88D/og+Gx3Bja3tkG3G3gyua37rX3MQGWCkwTyRqWIFUkziXpJLYhahxaFfgMywNo+mLxTOml4tfdL9vU2s3c+OAR57XuaveiAMwJVBKyGXAfNSPFJAckCSH9GzQVGw02BBP7Q/JU6sTj+95G3M3bmN2J4V7nuu4m9xoACAlgEZ4YTh4VIrkjISNXIIobBxU3DZgEtvsd81fr4OQe4F7dydxo3h/isufG7ur2mv9LCHMQjhctHfYgrSI4IqEfERvTFEsN8wRT/PHzVez45UDhdt7H3Tvfu+IM6NrutvYh/5UHiw+DFg8c1x+fIU0h5h6SGpgUWA1HBej8vvRO7Q3nYOKP38beEuBc423o9e6J9rD+5QaoDnwV9Bq5HpEgXiAmHg0aVhRdDZMFdv2G9ULuH+h946fgyN/t4ALk1egX72T2Rf49BswNehTbGZwdgR9sH2EdghkNFFsN1wX9/Ub2Me8s6ZnkwOHM4MvhreRD6UHvRvbj/ZsF9gx8E8YYgBxwHngemRzxGL0TUQ0UBnz+APca8Dbqs+XY4tHhreJe5bfpce8w9oj9AQUlDIMStBdmG18dgh3MG1sYZxNADUoG9P609/7wPOvL5u/j1+KS4xPmMeqp7yL2NP1tBFsLjhGlFk0aThyJHPsavxcKEygNdwZl/2H43PE+7ODnB+Xf43rkzeax6ufvG/bo/OEDlwqfEJkVNRk8G44bJxoeF6cSCA2dBs//B/m08jvt8ugd5ujkZeWM5zfrLfAb9qP8WwPZCbUPkRQgGCoakRpPGXgWPRLhDLwGMACm+YfzNO4C6jLn8uVT5k/ow+t58CP2ZvzdAiIJ0A6MEwwXGRmSGXMYzRXNEbMM0waKAD/6VPQo7w7rR+j95kTnFulV7MzwMvYx/GYCcQjwDYsS+hUHGJIYkxcdFVcRfgzjBt0A0fob9RjwGOxa6QjoN+jh6ezsJvFJ9gP89wHHBxYNjxHrFPYWkBexFmgU2hBCDOsGKQFb+9z1A/Ef7WzqFOks6bHqie2G8Wb23PuOASMHQQyWEN4T5RWNFssVrhNYEP8L6wZtAd/7lvbp8SLufOsg6iPqhOsr7u3xjPa9+y0BhgZyC6EP0xLVFIgV4hTvEs8PtQvlBqoBW/xL98ryIu+K7CzrHetb7NLuWvK49qb70wDwBagKsQ7MEcYTgxT3EywSQQ9lC9cG4AHR/Pn3pvMe8JftOewY7Dbtf+/N8uv2lvuBAGAF5AnGDcYQuBJ8EwkTZRGtDg0LwQYNAj/9ofh99Bbxou5F7RXtFO4w8EfzJfeN+zYA2AQmCd4MxA+rEXUSGBKZEBMOrwqkBjQCpv1C+U/1C/Kq71HuFO727ufwx/Nn94z79P9WBG8I/AvFDp8QbhElEcoPdA1LCoAGUwIG/t35G/b88rDwXO8U79rvovFN9K/3kvu3/9sDvQceC8oNlQ9mEC8Q9g7QDOAJVQZqAl7+cfri9ujztPFn8BXwwvBh8tj0/veg+4P/ZwMRB0UK0QyNDl4POA8fDiYMbgkjBnoCsP7/+qL30fS18nHxGPGt8SbzavVU+LX7Vf/6AmwGcgncC4YNVQ4+DkQNeAv2COkFgwL6/oX7Xvi19bTze/Ib8pry7vMB9rH40fsv/5UCzQWjCOsKgQxNDUMNZgzECngIqQWEAjz/BfwT+ZT2r/SD8x/zivO79J72FPn1+xH/NgI0BdoH/Ql+C0UMRwyECwsK9AdhBX0CeP9+/ML5b/eo9Yn0JPR89Iz1Qfd++R/8+v7fAaIEFgcUCX4KPQtIC58KTQlqBxMFcAKs//H8bPpF+J32j/Up9XH1Yfbp9+/5Ufzq/o8BFgRXBi4Ifwk2CkkKtwmLCNkGvgRbAtj/XP0P+xb5j/eT9i72aPY695b4ZfqL/OL+RgGRA54FTQeECDAJSAnMCMUHQwZiBD4C/f/A/az74vl++JX3NPdg9xb4SPnj+sv84v4EARMD6wRwBosHKwhHCN4H+QaoBf8DGwIaAB7+Q/yq+mn5lfg6+Fv49vj/+Wb7Ev3o/soAmwI9BJcFlQYmB0QH7gYqBgYFlgPwATAAdP7U/Gz7UPqT+T/5V/nZ+bz67/tg/fb+lwAqApYDwwShBSMGQQb7BVcFXwQmA74BPwDD/l79KPw0+4/6RPpV+sD6fft//LX9DP9rAMAB9AL0A7EEIQU9BQYFfwSzA68ChAFHAAr/4v3f/BP8iftI+1T7qftD/BX9Ef4p/0cAXQFYAikDxAMhBDkEDgSkAwEDMgJEAUcAS/9f/pH97/yB/Ez8VPyW/A39sP10/k3/KgABAcMBZALbAiIDNQMVA8UCSgKvAfwAPwCE/9X+Pf7G/XX9T/1V/Yb93P1R/t7+eP8VAKwAMwGjAfUBJQIxAhoC4gGOASUBrgAxALb/Rf/k/pn+Z/5S/lj+eP6v/vj+Tv+r/wcAXgCrAOgAEwEqAS0BHQH8AM0AlQBYABoA4f+u/4T/Z/9W/1L/Wv9t/4b/pf/F/+X/AAAXACgAMgA0ADEAKQAeABIACAA=" type="audio/wav">
+</audio>
+
+<script>
+const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+const cabangLogin = localStorage.getItem('cabangHoki');
+if (!currentUser) window.location.href = 'index.html';
+
+const orderToken = localStorage.getItem('sessionToken') || currentUser.token || '';
+
+let seenOrderIds = new Set();
+let firstLoad = true;
+let pollingTimer = null;
+let historyLoadedOnce = false;
+let historyBranchesLoaded = false;
+
+/* ── SIDEBAR ── */
+function toggleSidebar() {
+    const sb = document.getElementById('sidebar');
+    const mc = document.getElementById('mainContent');
+    sb.classList.toggle('collapsed');
+    mc.classList.toggle('expanded');
+    localStorage.setItem('sidebarState', sb.classList.contains('collapsed') ? 'small' : 'large');
+}
+
+function buildSidebar() {
+    if (localStorage.getItem('sidebarState') === 'small') {
+        document.getElementById('sidebar').classList.add('collapsed');
+        document.getElementById('mainContent').classList.add('expanded');
+    }
+    const role = currentUser.role;
+    const cur  = window.location.pathname.split('/').pop() || 'dashboard.html';
+    const navItem = (icon, label, link) => {
+        const active = cur === link ? 'active' : '';
+        return `<button class="nav-item ${active}" onclick="location.href='${link}'">
+            <span class="nav-icon">${icon}</span>
+            <span class="nav-label">${label}</span>
+        </button>`;
+    };
+    const navItemExternal = (icon, label, url) => {
+        return `<button class="nav-item" onclick="window.open('${url}', '_blank')">
+            <span class="nav-icon">${icon}</span>
+            <span class="nav-label">${label}</span>
+        </button>`;
+    };
+    const PAGES_FRONTLINE = ['kelola-order.html','dashboard.html','history.html','stok.html','restock.html','laporan_staff.html','edukasi.html'];
+    const PAGES_MGMT      = ['rekap.html','produk.html'];
+    const PAGES_EXEC      = ['laporan.html','statistik.html','promo.html','bahan_baku.html','hpp_produk.html','belanja.html','warehouse.html','salary_staff.html','customer_hoki.html'];
+    const PAGES_VIP       = ['user.html','login_history.html'];
+    const PAGES_INVESTOR  = ['investor_omset.html','investor_profit.html'];
+    const inGroup = pages => pages.includes(cur);
+    const getOpen = (id, pages) => {
+        const s = localStorage.getItem('navGroup_' + id);
+        return s !== null ? s === '1' : true;
+    };
+    const GROUP_ICONS = { frontline:'🛒', management:'📊', executive:'📋', vip:'👑', investor:'🤝' };
+    const navGroup = (id, label, items, pages) => {
+        const open      = getOpen(id, pages);
+        const hasActive = inGroup(pages);
+        const icon      = GROUP_ICONS[id] || '📁';
+        return `<div class="nav-group-wrap">
+            <button class="nav-group-label${hasActive ? ' has-active' : ''}" onclick="toggleNavGroup('${id}')">
+                <span class="nav-group-icon">${icon}</span>
+                <span class="nav-group-text">${label}</span>
+                <span class="nav-group-ti">${open ? '−' : '+'}</span>
+            </button>
+            <div class="nav-group-items" id="navg-${id}"${open ? '' : ' style="display:none"'}>
+                ${items}
+            </div>
+        </div>`;
+    };
+
+    let frontline = navItem('🔔','Order Online','kelola-order.html')
+        + navItem('🛒','Kasir','dashboard.html')
+        + navItem('📄','History Transaksi','history.html')
+        + navItem('📦','Stok Harian','stok.html')
+        + navItem('🚚','Restock Barang','restock.html')
+        + navItem('🚀','Laporan Penjualan','laporan_staff.html');
+    let edukasiItem = navItem('📚','Edukasi & SOP','edukasi.html');
+    frontline += edukasiItem;
+    let h = '';
+    if (role !== 'Investor') {
+        h += navGroup('frontline', 'Frontline', frontline, PAGES_FRONTLINE);
+    }
+
+    if (['Senior Staff','SPV','Owner','VIP'].includes(role)) {
+        let mgmt = navItem('🗓️','Rekapan Penjualan','rekap.html')
+            + navItem('🍱','Master Produk','produk.html');
+        h += navGroup('management', 'Management', mgmt, PAGES_MGMT);
+    }
+    if (['Owner','VIP'].includes(role)) {
+        let exec = navItem('📊','Keuangan Global','laporan.html')
+            + navItem('📈','Statistik','statistik.html')
+            + navItem('🏷️','Promo','promo.html')
+            + navItem('🧂','Bahan Baku','bahan_baku.html')
+            + navItem('🗃️','HPP Produk','hpp_produk.html')
+            + navItem('🏭','Warehouse','warehouse.html')
+            + navItem('📝','Belanja','belanja.html')
+            + navItem('💵','Salary Staff','salary_staff.html')
+            + navItem('👨‍👩‍👦','Customer Hoki','customer_hoki.html');
+        h += navGroup('executive', 'Executive', exec, PAGES_EXEC);
+    }
+    if (['Owner','VIP','Investor'].includes(role)) {
+        let inv = navItem('💹','Omset Cabang','investor_omset.html')
+            + navItem('💰','Profit Sharing','investor_profit.html');
+        h += navGroup('investor', 'Area Investor', inv, PAGES_INVESTOR);
+    }
+    if (role === 'VIP') {
+        let vip = navItem('⚙️','Manajemen User','user.html')
+            + navItem('🔑','History Login','login_history.html')
+            + navItemExternal('🍱','Menu Order','https://order.pos-hokidimsum.com/admin/dashboard.php');
+        h += navGroup('vip', 'VIP Access', vip, PAGES_VIP);
+    }
+    document.getElementById('sidebarNav').innerHTML = h;
+    const name = currentUser.user || '?';
+    document.getElementById('userAvatarInitial').innerText = name.charAt(0).toUpperCase();
+    document.getElementById('sidebarUserName').innerText   = name;
+    document.getElementById('sidebarUserRole').innerText   = role;
+}
+
+function toggleNavGroup(id) {
+    const items = document.getElementById('navg-' + id);
+    const btn   = items.previousElementSibling;
+    const ti    = btn.querySelector('.nav-group-ti');
+    const open  = items.style.display !== 'none';
+    items.style.display = open ? 'none' : '';
+    if (ti) ti.textContent = open ? '+' : '−';
+    localStorage.setItem('navGroup_' + id, open ? '0' : '1');
+}
+
+/* ── CLOCK ── */
+function updateClock() {
+    const now = new Date();
+    document.getElementById('realtimeClock').innerText = now.toLocaleTimeString('id-ID');
+    document.getElementById('realtimeDate').innerText  = now.toLocaleDateString('id-ID',{weekday:'short',year:'numeric',month:'short',day:'numeric'});
+}
+setInterval(updateClock, 1000);
+
+/* ── MORE MENU ── */
+function buildMoreMenu() {
+    const role = currentUser.role;
+    const items = [{icon:'🔔',label:'Order Online',link:'kelola-order.html'}];
+    items.push({icon:'🚚',label:'Restock',link:'restock.html'});
+    items.push({icon:'📚',label:'Edukasi & SOP',link:'edukasi.html'});
+    if (['Senior Staff','SPV','Owner','VIP'].includes(role)) {
+        items.push({icon:'🍱',label:'Produk',link:'produk.html'});
+        items.push({icon:'📈',label:'Rekapan',link:'rekap.html'});
+    }
+    if (['Owner','VIP'].includes(role)) {
+        items.push({icon:'🏷️',label:'Promo',link:'promo.html'});
+        items.push({icon:'🧂',label:'Bahan Baku',link:'bahan_baku.html'});
+        items.push({icon:'🗃️',label:'HPP Produk',link:'hpp_produk.html'});
+        items.push({icon:'🏭',label:'Warehouse',link:'warehouse.html'});
+        items.push({icon:'📝',label:'Belanja',link:'belanja.html'});
+        items.push({icon:'💵',label:'Salary Staff',link:'salary_staff.html'});
+        items.push({icon:'📊',label:'Keuangan',link:'laporan.html'});
+        items.push({icon:'📈',label:'Statistik',link:'statistik.html'});
+        items.push({icon:'👨‍👩‍👦',label:'Customer Hoki',link:'customer_hoki.html'});
+    }
+    if (['Owner','VIP','Investor'].includes(role)) {
+        items.push({icon:'💹',label:'Omset Cabang',link:'investor_omset.html'});
+        items.push({icon:'💰',label:'Profit Sharing',link:'investor_profit.html'});
+    }
+    if (role === 'VIP') {
+        items.push({icon:'⚙️',label:'Users',link:'user.html'});
+        items.push({icon:'🔑',label:'Login Log',link:'login_history.html'});
+        items.push({icon:'🍱',label:'Menu Order',link:'#',action:"window.open('https://order.pos-hokidimsum.com/admin/dashboard.php','_blank')"});
+    }
+    items.push({icon:'🚪',label:'Logout',link:'#',action:'logout()'});
+    document.getElementById('moreGrid').innerHTML = items.map(i =>
+        `<button class="more-btn" onclick="${i.action||`location.href='${i.link}'`}">
+            <span class="more-btn-icon">${i.icon}</span>
+            <span class="more-btn-label">${i.label}</span>
+        </button>`).join('');
+}
+
+function openSheet(id) { if(id==='moreSheet') buildMoreMenu(); document.getElementById(id).classList.add('open'); }
+function closeSheetOutside(e,id) { if(e.target===document.getElementById(id)) document.getElementById(id).classList.remove('open'); }
+
+async function logout() {
+    const ok = await showConfirm('Logout dari sistem?', 'Ya, Logout', 'Batal', '🚪');
+    if (ok) {
+        localStorage.removeItem('currentUser');
+        localStorage.removeItem('cabangHoki');
+        window.location.href = 'index.html';
+    }
+}
+
+/* ── ORDER POLLING & RENDER ── */
+function formatRupiah(n) {
+    return 'Rp' + Math.round(Number(n) || 0).toLocaleString('id-ID');
+}
+
+function formatWaktu(ts) {
+    if (!ts) return '—';
+    const d = new Date(ts.replace(' ', 'T'));
+    if (isNaN(d.getTime())) return ts;
+    return d.toLocaleString('id-ID', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' });
+}
+
+const PICKUP_LABEL = { sendiri: 'Ambil Sendiri', ojol: 'Ojek Online' };
+const STATUS_LABEL = {
+    pending_payment: 'Menunggu Pembayaran', paid: 'Menunggu Diproses', preparing: 'Sedang Disiapkan',
+    ready: 'Siap', completed: 'Selesai', cancelled: 'Batal'
+};
+
+function esc(s) {
+    return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+/* ── TABS ── */
+function switchTab(tab) {
+    document.querySelectorAll('.kmo-tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+    document.querySelectorAll('.kmo-panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('panel-' + tab).classList.add('active');
+    if (tab === 'history' && !historyLoadedOnce) {
+        historyLoadedOnce = true;
+        loadHistory();
+    }
+}
+
+function renderOrders(orders) {
+    const grid  = document.getElementById('orderGrid');
+    const empty = document.getElementById('orderEmptyState');
+
+    if (!orders.length) {
+        grid.innerHTML = '';
+        empty.style.display = '';
+        return;
+    }
+    empty.style.display = 'none';
+
+    grid.innerHTML = orders.map(o => {
+        const isNew    = !seenOrderIds.has(String(o.id)) && !firstLoad;
+        const pickup   = PICKUP_LABEL[o.pickup_method] || o.pickup_method || '—';
+        const statusLb = STATUS_LABEL[o.status] || o.status;
+
+        let actionBtn = '';
+        if (o.status === 'pending_payment') {
+            actionBtn = `<button class="btn-order-action action-pending" onclick="ubahStatus(${o.id}, 'paid', this)">✅ Konfirmasi Bayar</button>`;
+        } else if (o.status === 'paid') {
+            actionBtn = `<button class="btn-order-action action-paid" onclick="ubahStatus(${o.id}, 'preparing', this)">Terima &amp; Proses</button>`;
+        } else if (o.status === 'preparing') {
+            actionBtn = `<button class="btn-order-action action-preparing" onclick="ubahStatus(${o.id}, 'ready', this)">Selesai</button>`;
+        }
+
+        const kodeUnikRow = o.status === 'pending_payment'
+            ? `<div class="order-card-row"><span class="label">Kode Unik</span><span class="val">+${esc(o.kode_unik)} (cocokkan ke mutasi transfer)</span></div>`
+            : '';
+
+        return `<div class="order-card ${isNew ? 'is-new' : ''}" data-order-id="${o.id}">
+            <div class="order-card-head">
+                <span class="order-code">${esc(o.order_code)}</span>
+                <span class="order-status ${o.status}">${esc(statusLb)}</span>
+            </div>
+            <div class="order-card-row"><span class="label">Customer</span><span class="val">${esc(o.nama_customer)}</span></div>
+            <div class="order-card-row"><span class="label">No. WA</span><span class="val">${esc(o.no_wa)}</span></div>
+            <div class="order-card-row"><span class="label">Cabang</span><span class="val">${esc(o.cabang)}</span></div>
+            <div class="order-card-row"><span class="label">Pickup</span><span class="val">${esc(pickup)} · ${esc(o.pickup_date || '')} ${o.pickup_time ? esc(o.pickup_time.slice(0,5)) : ''}</span></div>
+            <div class="order-card-row"><span class="label">Masuk</span><span class="val">${formatWaktu(o.created_at)}</span></div>
+            ${kodeUnikRow}
+            <div class="order-card-row"><span class="label">Total Bayar</span><span class="val order-total">${formatRupiah(o.total_bayar)}</span></div>
+            <div class="order-card-footer">${actionBtn}</div>
+        </div>`;
+    }).join('');
+}
+
+function notifyNewOrders(newOrders) {
+    const beep = document.getElementById('notifBeep');
+    if (beep) { beep.currentTime = 0; beep.play().catch(() => {}); }
+
+    if ('Notification' in window && Notification.permission === 'granted') {
+        newOrders.forEach(o => {
+            new Notification('🔔 Order Baru Masuk', {
+                body: `${o.order_code} · ${o.nama_customer} · ${formatRupiah(o.total_bayar)}`,
+                tag: 'order-' + o.id
+            });
+        });
+    }
+
+    newOrders.forEach(o => toast.info(`Order baru: ${o.order_code}`, o.nama_customer));
+}
+
+async function fetchOrders() {
+    try {
+        const url = `api-cek-order-baru.php?user=${encodeURIComponent(currentUser.user)}&token=${encodeURIComponent(orderToken)}`;
+        const res  = await fetch(url);
+        const json = await res.json();
+
+        if (json.status !== 'success') {
+            console.error('fetchOrders error:', json.message);
+            return;
+        }
+
+        const orders = json.orders || [];
+        const newOrders = firstLoad ? [] : orders.filter(o => !seenOrderIds.has(String(o.id)));
+
+        renderOrders(orders);
+
+        if (newOrders.length) notifyNewOrders(newOrders);
+
+        orders.forEach(o => seenOrderIds.add(String(o.id)));
+        firstLoad = false;
+
+        document.getElementById('lastUpdateLabel').innerText = new Date().toLocaleTimeString('id-ID');
+    } catch (e) {
+        console.error('fetchOrders:', e);
+    }
+}
+
+async function ubahStatus(orderId, statusBaru, btnEl) {
+    if (btnEl) btnEl.disabled = true;
+    try {
+        const body = new URLSearchParams({
+            user: currentUser.user,
+            token: orderToken,
+            order_id: orderId,
+            status_baru: statusBaru
+        });
+        const res  = await fetch('api-update-status-order.php', { method: 'POST', body });
+        const json = await res.json();
+
+        if (json.status === 'success') {
+            toast.success('Status order berhasil diubah!');
+            fetchOrders();
+        } else {
+            toast.error(json.message || 'Gagal mengubah status order!');
+            if (btnEl) btnEl.disabled = false;
+        }
+    } catch (e) {
+        console.error('ubahStatus:', e);
+        toast.error('Gagal mengubah status order! Periksa koneksi internet.');
+        if (btnEl) btnEl.disabled = false;
+    }
+}
+
+/* ── HISTORY ── */
+async function loadHistory() {
+    const tbody = document.getElementById('historyTableBody');
+    tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><span class="icon">⏳</span><p>Memuat data...</p></div></td></tr>`;
+
+    try {
+        const params = new URLSearchParams({ user: currentUser.user, token: orderToken });
+        const status = document.getElementById('histStatus').value;
+        const branch = document.getElementById('histCabang').value;
+        const date   = document.getElementById('histTanggal').value;
+        if (status) params.set('status', status);
+        if (branch) params.set('branch_id', branch);
+        if (date)   params.set('date', date);
+
+        const res  = await fetch(`api-history-order.php?${params.toString()}`);
+        const json = await res.json();
+
+        if (json.status !== 'success') {
+            tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><span class="icon">⚠️</span><p>${esc(json.message || 'Gagal memuat history')}</p></div></td></tr>`;
+            return;
+        }
+
+        if (!historyBranchesLoaded) {
+            historyBranchesLoaded = true;
+            const cabangSelect = document.getElementById('histCabang');
+            (json.branches || []).forEach(b => {
+                cabangSelect.innerHTML += `<option value="${b.id}">${esc(b.nama)}</option>`;
+            });
+        }
+
+        renderHistoryTable(json.orders || []);
+    } catch (e) {
+        console.error('loadHistory:', e);
+        tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><span class="icon">⚠️</span><p>Gagal memuat history. Periksa koneksi internet.</p></div></td></tr>`;
+    }
+}
+
+function renderHistoryTable(orders) {
+    const tbody = document.getElementById('historyTableBody');
+    if (!orders.length) {
+        tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><span class="icon">📜</span><p>Tidak ada order sesuai filter</p></div></td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = orders.map(o => {
+        const statusLb = STATUS_LABEL[o.status] || o.status;
+        return `<tr>
+            <td>${esc(o.order_code)}</td>
+            <td>${esc(o.nama_customer)}</td>
+            <td>${esc(o.cabang)}</td>
+            <td>${formatRupiah(o.total_bayar)}</td>
+            <td><span class="order-status ${esc(o.status)}">${esc(statusLb)}</span></td>
+            <td>${formatWaktu(o.created_at)}</td>
+            <td><button class="btn-icon-view" onclick="lihatDetailOrder(${o.id})" title="Lihat detail">👁️</button></td>
+        </tr>`;
+    }).join('');
+}
+
+/* ── DETAIL ORDER (MODAL) ── */
+function waLink(number, message) {
+    let clean = String(number || '').replace(/[^0-9]/g, '');
+    if (clean.charAt(0) === '0') clean = '62' + clean.slice(1);
+    return `https://wa.me/${clean}?text=${encodeURIComponent(message)}`;
+}
+
+async function lihatDetailOrder(orderId) {
+    try {
+        const params = new URLSearchParams({ user: currentUser.user, token: orderToken, order_id: orderId });
+        const res  = await fetch(`api-detail-order.php?${params.toString()}`);
+        const json = await res.json();
+
+        if (json.status !== 'success') {
+            toast.error(json.message || 'Gagal memuat detail order');
+            return;
+        }
+
+        const o = json.order;
+        const items = json.items || [];
+        const statusLb = STATUS_LABEL[o.status] || o.status;
+        const pickup = PICKUP_LABEL[o.pickup_method] || o.pickup_method || '—';
+
+        document.getElementById('detailOrderTitle').innerText = o.order_code;
+
+        const itemRows = items.map(it =>
+            `<div class="detail-item-row"><span>${esc(it.nama_produk_snapshot)} x${it.qty}</span><span>${formatRupiah(it.harga_snapshot * it.qty)}</span></div>`
+        ).join('') || `<div class="detail-item-row"><span>Tidak ada item</span></div>`;
+
+        document.getElementById('detailOrderBody').innerHTML = `
+            <div class="detail-item-row"><span>Status</span><span class="order-status ${esc(o.status)}">${esc(statusLb)}</span></div>
+            <div class="detail-item-row"><span>Customer</span><span>${esc(o.nama_customer)}</span></div>
+            <div class="detail-item-row"><span>No. WA</span><span>${esc(o.no_wa)}</span></div>
+            <div class="detail-item-row"><span>Cabang</span><span>${esc(o.cabang)}</span></div>
+            <div class="detail-item-row"><span>Metode Ambil</span><span>${esc(pickup)}</span></div>
+            <div class="detail-item-row"><span>Jadwal</span><span>${esc(o.pickup_date)}, ${o.pickup_time ? esc(o.pickup_time.slice(0,5)) : ''}</span></div>
+            ${o.catatan ? `<div class="detail-item-row"><span>Catatan</span><span>${esc(o.catatan)}</span></div>` : ''}
+            <h4 style="font-size:13px;margin:14px 0 6px;">Item Pesanan</h4>
+            ${itemRows}
+            <div class="detail-item-row"><span>Subtotal</span><span>${formatRupiah(o.subtotal)}</span></div>
+            <div class="detail-item-row"><span>Kode Unik</span><span>+${esc(o.kode_unik)}</span></div>
+            <div class="detail-item-row"><span><strong>Total Bayar</strong></span><span class="order-total">${formatRupiah(o.total_bayar)}</span></div>
+        `;
+
+        const waBtn = document.getElementById('detailWaChatBtn');
+        const waNumber = o.no_wa || '';
+        if (waNumber) {
+            waBtn.href = waLink(waNumber, `Halo ${o.nama_customer}, terkait order ${o.order_code}`);
+            waBtn.style.display = '';
+        } else {
+            waBtn.style.display = 'none';
+        }
+
+        document.getElementById('modalDetailOrder').classList.add('open');
+    } catch (e) {
+        console.error('lihatDetailOrder:', e);
+        toast.error('Gagal memuat detail order! Periksa koneksi internet.');
+    }
+}
+
+function tutupDetailOrder() {
+    document.getElementById('modalDetailOrder').classList.remove('open');
+}
+
+function resetHistoryFilter() {
+    document.getElementById('histStatus').value = '';
+    document.getElementById('histCabang').value = '';
+    document.getElementById('histTanggal').value = '';
+    loadHistory();
+}
+
+window.onload = async function() {
+    buildSidebar();
+    updateClock();
+    document.getElementById('infoPetugas').innerText = currentUser.fullName || currentUser.user || '—';
+    document.getElementById('infoCabang').innerText  = cabangLogin || '—';
+
+    if ('Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission();
+    }
+
+    await fetchOrders();
+    pollingTimer = setInterval(fetchOrders, 5000);
+};
+</script>
+
+<script src="session.js"></script>
+<script src="toast.js"></script>
+</body>
+</html>

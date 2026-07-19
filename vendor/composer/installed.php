@@ -3,7 +3,7 @@
         'name' => 'fadlandevv/hoki',
         'pretty_version' => 'dev-main',
         'version' => 'dev-main',
-        'reference' => '4240d506af6d3e004d604e9217a70b5a4eed954f',
+        'reference' => 'e549a2b4b10067ca2ce1aefc6b1a1768299774db',
         'type' => 'project',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -13,7 +13,7 @@
         'fadlandevv/hoki' => array(
             'pretty_version' => 'dev-main',
             'version' => 'dev-main',
-            'reference' => '4240d506af6d3e004d604e9217a70b5a4eed954f',
+            'reference' => 'e549a2b4b10067ca2ce1aefc6b1a1768299774db',
             'type' => 'project',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),

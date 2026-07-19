@@ -3,15 +3,18 @@ require_once __DIR__ . '/includes/db_order.php';
 
 header('Content-Type: application/json');
 
-$user  = trim($_GET['user']  ?? '');
-$token = trim($_GET['token'] ?? '');
+$user   = trim($_GET['user']   ?? '');
+$token  = trim($_GET['token']  ?? '');
+$status = trim($_GET['status'] ?? '');
+$branchFilter = (int)($_GET['branch_id'] ?? 0);
+$date   = trim($_GET['date'] ?? '');
 
 if ($user === '' || $token === '') {
     echo json_encode(['status' => 'error', 'message' => 'Sesi tidak valid']);
     exit;
 }
 
-// ── Koneksi database utama (sama seperti api.php) ──
+// ── Koneksi database utama (sama seperti api-cek-order-baru.php) ──
 $host  = $_SERVER['HTTP_HOST'] ?? '';
 $isDev = (
     $host === 'localhost' ||
@@ -52,37 +55,61 @@ $cabangList = array_values(array_filter(array_map('trim', explode(',', $cabangRa
 
 $pdo = order_db();
 
-// ── Cocokkan nama cabang milik user ke branch_id di database order ──
-// Hanya nilai literal "Semua" yang berarti akses ke semua cabang.
-// Cabang kosong/belum di-assign HARUS berarti tidak ada akses (bukan akses semua).
+// ── Cabang yang boleh diakses user ini (sama aturan seperti api-cek-order-baru.php) ──
 if ($cabangRaw === 'Semua') {
-    $branchStmt = $pdo->query('SELECT id FROM branches');
-    $branchIds  = $branchStmt->fetchAll(PDO::FETCH_COLUMN);
+    $branchStmt = $pdo->query('SELECT id, nama FROM branches ORDER BY nama ASC');
+    $accessibleBranches = $branchStmt->fetchAll();
 } elseif (empty($cabangList)) {
-    $branchIds = [];
+    $accessibleBranches = [];
 } else {
     $placeholders = implode(',', array_fill(0, count($cabangList), '?'));
-    $branchStmt   = $pdo->prepare("SELECT id FROM branches WHERE nama IN ($placeholders)");
+    $branchStmt   = $pdo->prepare("SELECT id, nama FROM branches WHERE nama IN ($placeholders) ORDER BY nama ASC");
     $branchStmt->execute($cabangList);
-    $branchIds = $branchStmt->fetchAll(PDO::FETCH_COLUMN);
+    $accessibleBranches = $branchStmt->fetchAll();
 }
 
-if (empty($branchIds)) {
-    echo json_encode(['status' => 'success', 'orders' => []]);
+$accessibleIds = array_map(fn($b) => (int)$b['id'], $accessibleBranches);
+
+if (empty($accessibleIds)) {
+    echo json_encode(['status' => 'success', 'orders' => [], 'branches' => []]);
     exit;
 }
 
-// ── Ambil order dengan status aktif (menunggu bayar, sudah bayar, disiapkan) untuk cabang-cabang tersebut ──
+// Kalau ada filter branch_id, pastikan tetap dalam batas cabang yang diizinkan
+$branchIds = $accessibleIds;
+if ($branchFilter > 0) {
+    $branchIds = in_array($branchFilter, $accessibleIds, true) ? [$branchFilter] : [];
+}
+
+if (empty($branchIds)) {
+    echo json_encode(['status' => 'success', 'orders' => [], 'branches' => $accessibleBranches]);
+    exit;
+}
+
+$validStatuses = ['pending_payment', 'paid', 'preparing', 'ready', 'completed', 'cancelled'];
+
 $idPlaceholders = implode(',', array_fill(0, count($branchIds), '?'));
+$where  = ["orders.branch_id IN ($idPlaceholders)"];
+$params = $branchIds;
+
+if ($status !== '' && in_array($status, $validStatuses, true)) {
+    $where[] = 'orders.status = ?';
+    $params[] = $status;
+}
+if ($date !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+    $where[] = 'DATE(orders.created_at) = ?';
+    $params[] = $date;
+}
+
 $sql = "SELECT orders.*, branches.nama AS cabang
         FROM orders
         JOIN branches ON branches.id = orders.branch_id
-        WHERE orders.branch_id IN ($idPlaceholders)
-        AND orders.status IN ('pending_payment', 'paid', 'preparing')
-        ORDER BY orders.id DESC";
+        WHERE " . implode(' AND ', $where) . "
+        ORDER BY orders.id DESC
+        LIMIT 200";
 
 $orderStmt = $pdo->prepare($sql);
-$orderStmt->execute($branchIds);
+$orderStmt->execute($params);
 $orders = $orderStmt->fetchAll();
 
-echo json_encode(['status' => 'success', 'orders' => $orders]);
+echo json_encode(['status' => 'success', 'orders' => $orders, 'branches' => $accessibleBranches]);

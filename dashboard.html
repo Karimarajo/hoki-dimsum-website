@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Hoki POS 2026 - Kasir</title>
-        <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🥟</text></svg>">
+        <link rel="icon" href="Assets/2.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=DM+Mono:wght@400;500&family=Poppins:wght@700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css?v=20260501">
@@ -296,6 +296,55 @@
         font-weight: 700;
         color: var(--red);
     }
+
+    /* ── KUPON ── */
+    .kupon-wrap { margin-bottom: 4px; }
+    .kupon-input-row { display: flex; gap: 6px; }
+    .kupon-input-row input {
+        flex: 1;
+        padding: 9px 11px;
+        border: 1.5px solid var(--border);
+        border-radius: var(--r-sm);
+        font-size: 12px;
+        text-transform: uppercase;
+        font-family: 'DM Mono', monospace;
+        background: var(--surface-2);
+        color: var(--text);
+    }
+    .kupon-input-row input:focus { outline: none; border-color: var(--red); }
+    .btn-terapkan-kupon {
+        padding: 9px 14px;
+        border: none;
+        border-radius: var(--r-sm);
+        background: var(--text);
+        color: #fff;
+        font-family: 'Nunito', sans-serif;
+        font-weight: 700;
+        font-size: 11px;
+        cursor: pointer;
+        white-space: nowrap;
+    }
+    .kupon-applied {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: var(--green-soft);
+        border: 1px solid var(--green);
+        border-radius: var(--r-sm);
+        padding: 8px 11px;
+        font-size: 12px;
+        color: var(--green);
+        font-weight: 700;
+    }
+    .kupon-applied button {
+        border: none;
+        background: none;
+        color: var(--green);
+        font-weight: 800;
+        cursor: pointer;
+        font-size: 14px;
+    }
+    .cart-total.diskon-row .cart-total-val { color: var(--green); }
 
     .btn-bayar {
         width: 100%;
@@ -874,6 +923,20 @@
                 <div class="cart-items" id="cartItems">
                     <div class="cart-empty"><span>🍱</span>Belum ada pesanan</div>
                 </div>
+                <div class="kupon-wrap">
+                    <div class="kupon-input-row" id="kuponInputRow">
+                        <input type="text" id="inputKupon" placeholder="Kode kupon (opsional)">
+                        <button class="btn-terapkan-kupon" onclick="terapkanKupon('desktop')">Terapkan</button>
+                    </div>
+                    <div class="kupon-applied" id="kuponAppliedRow" style="display:none;">
+                        <span id="kuponAppliedLabel"></span>
+                        <button onclick="batalkanKupon()" title="Batalkan kupon">✕</button>
+                    </div>
+                </div>
+                <div class="cart-total diskon-row" id="cartDiskonRow" style="display:none;">
+                    <span class="cart-total-label">Diskon</span>
+                    <span class="cart-total-val" id="cartDiskonVal">-Rp 0</span>
+                </div>
                 <div class="cart-total">
                     <span class="cart-total-label">Total</span>
                     <span class="cart-total-val" id="totalHarga">Rp 0</span>
@@ -949,6 +1012,20 @@
             <span class="cart-badge show" id="cartBadgeSheet">0</span>
         </div>
         <div id="cartItemsSheet" style="min-height:60px;max-height:38vh;overflow-y:auto;"></div>
+        <div class="kupon-wrap">
+            <div class="kupon-input-row" id="kuponInputRowSheet">
+                <input type="text" id="inputKuponSheet" placeholder="Kode kupon (opsional)">
+                <button class="btn-terapkan-kupon" onclick="terapkanKupon('mobile')">Terapkan</button>
+            </div>
+            <div class="kupon-applied" id="kuponAppliedRowSheet" style="display:none;">
+                <span id="kuponAppliedLabelSheet"></span>
+                <button onclick="batalkanKupon()" title="Batalkan kupon">✕</button>
+            </div>
+        </div>
+        <div class="cart-total diskon-row" id="cartDiskonRowSheet" style="display:none;">
+            <span class="cart-total-label">Diskon</span>
+            <span class="cart-total-val" id="cartDiskonValSheet">-Rp 0</span>
+        </div>
         <div class="cart-total">
             <span class="cart-total-label">Total</span>
             <span class="cart-total-val" id="totalHargaSheet">Rp 0</span>
@@ -1029,6 +1106,7 @@
 const currentUser = JSON.parse(localStorage.getItem('currentUser'));
 const cabangHoki  = localStorage.getItem('cabangHoki') || 'Pusat';
 let keranjang = [], daftarProduk = [];
+let kuponAktif = null; // {kode, diskon}
 if (!currentUser) window.location.href = 'index.html';
 
 let selectedMetode = 'CASH';
@@ -1240,9 +1318,15 @@ function buildSidebar() {
             <span class="nav-label">${label}</span>
         </button>`;
     };
-    const PAGES_FRONTLINE = ['dashboard.html','history.html','stok.html','restock.html','laporan_staff.html','edukasi.html'];
+    const navItemExternal = (icon, label, url) => {
+        return `<button class="nav-item" onclick="window.open('${url}', '_blank')">
+            <span class="nav-icon">${icon}</span>
+            <span class="nav-label">${label}</span>
+        </button>`;
+    };
+    const PAGES_FRONTLINE = ['kelola-order.html','dashboard.html','history.html','stok.html','restock.html','laporan_staff.html','edukasi.html'];
     const PAGES_MGMT      = ['rekap.html','produk.html'];
-    const PAGES_EXEC      = ['laporan.html','statistik.html','bahan_baku.html','hpp_produk.html','belanja.html','warehouse.html','salary_staff.html','customer_hoki.html'];
+    const PAGES_EXEC      = ['laporan.html','statistik.html','promo.html','bahan_baku.html','hpp_produk.html','belanja.html','warehouse.html','salary_staff.html','customer_hoki.html'];
     const PAGES_VIP       = ['user.html','login_history.html'];
     const PAGES_INVESTOR  = ['investor_omset.html','investor_profit.html'];
     const inGroup = pages => pages.includes(cur);
@@ -1267,7 +1351,8 @@ function buildSidebar() {
         </div>`;
     };
 
-    let frontline = navItem('🛒','Kasir','dashboard.html')
+    let frontline = navItem('🔔','Order Online','kelola-order.html')
+        + navItem('🛒','Kasir','dashboard.html')
         + navItem('📄','History Transaksi','history.html')
         + navItem('📦','Stok Harian','stok.html')
         + navItem('🚚','Restock Barang','restock.html')
@@ -1287,6 +1372,7 @@ function buildSidebar() {
     if (['Owner','VIP'].includes(role)) {
         let exec = navItem('📊','Keuangan Global','laporan.html')
             + navItem('📈','Statistik','statistik.html')
+            + navItem('🏷️','Promo','promo.html')
             + navItem('🧂','Bahan Baku','bahan_baku.html')
             + navItem('🗃️','HPP Produk','hpp_produk.html')
             + navItem('🏭','Warehouse','warehouse.html')
@@ -1302,7 +1388,8 @@ function buildSidebar() {
     }
     if (role === 'VIP') {
         let vip = navItem('⚙️','Manajemen User','user.html')
-            + navItem('🔑','History Login','login_history.html');
+            + navItem('🔑','History Login','login_history.html')
+            + navItemExternal('🍱','Menu Order','https://order.pos-hokidimsum.com/admin/dashboard.php');
         h += navGroup('vip', 'VIP Access', vip, PAGES_VIP);
     }
     document.getElementById('sidebarNav').innerHTML = h;
@@ -1400,7 +1487,9 @@ function tambahItem(p) { keranjang.push({sku:p.sku,nama:p.nama,harga:parseInt(p.
 function hapusItem(i)  { keranjang.splice(i,1); renderCart(); }
 
 function renderCart() {
-    const total = keranjang.reduce((s,i) => s+i.harga, 0);
+    const subtotal = keranjang.reduce((s,i) => s+i.harga, 0);
+    const diskon = kuponAktif ? Math.min(kuponAktif.diskon, subtotal) : 0;
+    const total = subtotal - diskon;
     const empty = `<div class="cart-empty"><span>🍱</span>Belum ada pesanan</div>`;
     const rows  = keranjang.length
         ? keranjang.map((it,i) =>
@@ -1424,6 +1513,55 @@ function renderCart() {
 
     document.getElementById('cartBarCount').innerText = keranjang.length;
     document.getElementById('cartBarTotal').innerText = fmt;
+
+    ['', 'Sheet'].forEach(suf => {
+        document.getElementById('cartDiskonRow' + suf).style.display = diskon > 0 ? '' : 'none';
+        document.getElementById('cartDiskonVal' + suf).innerText = '-Rp ' + diskon.toLocaleString('id-ID');
+        document.getElementById('kuponInputRow' + suf).style.display = kuponAktif ? 'none' : '';
+        document.getElementById('kuponAppliedRow' + suf).style.display = kuponAktif ? 'flex' : 'none';
+        const lbl = document.getElementById('kuponAppliedLabel' + suf);
+        if (lbl) lbl.innerText = kuponAktif ? `🏷️ ${kuponAktif.kode} diterapkan` : '';
+    });
+}
+
+/* ── KUPON ── */
+async function terapkanKupon(source) {
+    if (!keranjang.length) return toast.warning('Pilih menu dulu sebelum pakai kupon!');
+    const inputEl = document.getElementById(source === 'mobile' ? 'inputKuponSheet' : 'inputKupon');
+    const kode = inputEl.value.trim().toUpperCase();
+    if (!kode) return toast.warning('Masukkan kode kupon dulu!');
+
+    const subtotal = keranjang.reduce((s,i) => s+i.harga, 0);
+    const items = keranjang.map(it => ({ sku: it.sku }));
+
+    try {
+        const params = new URLSearchParams({
+            action: 'cek_kupon',
+            kode,
+            cabang: cabangHoki,
+            subtotal,
+            items: JSON.stringify(items)
+        });
+        const res  = await fetch(`${API_BASE}?${params.toString()}`);
+        const json = await res.json();
+        if (json.valid) {
+            kuponAktif = { kode: json.kode, diskon: json.diskon };
+            toast.success(`Kupon ${json.kode} diterapkan! Diskon Rp${json.diskon.toLocaleString('id-ID')}`);
+        } else {
+            kuponAktif = null;
+            toast.error(json.message || 'Kupon tidak valid');
+        }
+    } catch (e) {
+        toast.error('Gagal cek kupon! Periksa koneksi internet.');
+    }
+    renderCart();
+}
+
+function batalkanKupon() {
+    kuponAktif = null;
+    document.getElementById('inputKupon').value = '';
+    document.getElementById('inputKuponSheet').value = '';
+    renderCart();
 }
 
 /* ── TRANSAKSI ── */
@@ -1443,16 +1581,23 @@ async function prosesTransaksi(denganCetak, metodeOverride) {
                 metode,
                 items: keranjang,
                 pelanggan_nama: pelanggan.nama,
-                pelanggan_telepon: pelanggan.telepon
+                pelanggan_telepon: pelanggan.telepon,
+                kupon_kode: kuponAktif ? kuponAktif.kode : ''
             })
         });
         const hasil = await res.json();
         if (hasil.status === 'success') {
             loadOmsetHarian();
+            const totalFinal = hasil.total ?? total;
+            if (hasil.diskon > 0) {
+                toast.info(`Diskon kupon Rp${hasil.diskon.toLocaleString('id-ID')} diterapkan`);
+            } else if (kuponAktif) {
+                toast.warning('Kupon tidak lagi berlaku saat transaksi disimpan, dilanjutkan tanpa diskon.');
+            }
             if (denganCetak) {
                 // Kirim Struk via WhatsApp
                 const orderId = hasil.id;
-                const tekstStruk = buildStrukWA(orderId, cabangHoki, pelanggan, keranjang, total, metode);
+                const tekstStruk = buildStrukWA(orderId, cabangHoki, pelanggan, keranjang, totalFinal, metode);
                 const waNumber = pelanggan.telepon ? pelanggan.telepon.replace(/^0/, '62') : '';
                 const waUrl = waNumber
                     ? `https://api.whatsapp.com/send?phone=${waNumber}&text=${encodeURIComponent(tekstStruk)}`
@@ -1460,10 +1605,16 @@ async function prosesTransaksi(denganCetak, metodeOverride) {
                 window.open(waUrl, '_blank');
                 toast.success('Struk WA terkirim! Order #' + orderId);
                 keranjang = [];
+                kuponAktif = null;
+                document.getElementById('inputKupon').value = '';
+                document.getElementById('inputKuponSheet').value = '';
                 renderCart();
             } else {
                 toast.success('Berhasil Disimpan!');
                 keranjang = [];
+                kuponAktif = null;
+                document.getElementById('inputKupon').value = '';
+                document.getElementById('inputKuponSheet').value = '';
                 renderCart();
             }
         }
@@ -1490,13 +1641,15 @@ function closeSheetOutside(e, id) {
 
 function buildMoreMenu() {
     const role = currentUser.role;
-    const items = [{icon:'🚚',label:'Restock',link:'restock.html'}];
+    const items = [{icon:'🔔',label:'Order Online',link:'kelola-order.html'}];
+    items.push({icon:'🚚',label:'Restock',link:'restock.html'});
     items.push({icon:'📚',label:'Edukasi & SOP',link:'edukasi.html'});
     if (['Senior Staff','SPV','Owner','VIP'].includes(role)) {
         items.push({icon:'🍱',label:'Produk',link:'produk.html'});
         items.push({icon:'📈',label:'Rekapan',link:'rekap.html'});
     }
     if (['Owner','VIP'].includes(role)) {
+        items.push({icon:'🏷️',label:'Promo',link:'promo.html'});
         items.push({icon:'🧂',label:'Bahan Baku',link:'bahan_baku.html'});
         items.push({icon:'🗃️',label:'HPP Produk',link:'hpp_produk.html'});
         items.push({icon:'🏭',label:'Warehouse',link:'warehouse.html'});
@@ -1513,6 +1666,7 @@ function buildMoreMenu() {
     if (role === 'VIP') {
         items.push({icon:'⚙️',label:'Users',link:'user.html'});
         items.push({icon:'🔑',label:'Login Log',link:'login_history.html'});
+        items.push({icon:'🍱',label:'Menu Order',link:'#',action:"window.open('https://order.pos-hokidimsum.com/admin/dashboard.php','_blank')"});
     }
     items.push({icon:'🚪',label:'Logout',link:'#',action:'logout()'});
     document.getElementById('moreGrid').innerHTML = items.map(i =>

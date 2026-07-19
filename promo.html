@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Hoki POS - Promo & Kupon</title>
+        <link rel="icon" href="Assets/2.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=DM+Mono:wght@400;500&family=Poppins:wght@700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css?v=20260501">
+    <style>
+
+    /* ── INFO BAR SIMPLE ── */
+    .info-bar-simple {
+        background: var(--surface);
+        border-bottom: 1px solid var(--border);
+        padding: 0 24px;
+        display: flex;
+        align-items: center;
+        height: 40px;
+        flex-shrink: 0;
+    }
+    .ib-item { display: flex; align-items: center; gap: 8px; padding: 0 16px; height: 100%; }
+    .ib-item:first-child { padding-left: 0; }
+    .ib-divider { width: 1px; height: 20px; background: var(--border); flex-shrink: 0; }
+    .ib-label { font-size: 11px; color: var(--text-light); font-weight: 500; white-space: nowrap; }
+    .ib-val { font-size: 12px; font-weight: 700; color: var(--text); white-space: nowrap; }
+
+    /* ── TABS ── */
+    .kmo-tabs {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 20px;
+        border-bottom: 1.5px solid var(--border);
+    }
+    .kmo-tab-btn {
+        padding: 10px 18px;
+        border: none;
+        background: none;
+        font-family: 'Nunito', sans-serif;
+        font-weight: 700;
+        font-size: 13px;
+        color: var(--text-muted);
+        cursor: pointer;
+        border-bottom: 3px solid transparent;
+        transition: color var(--ease), border-color var(--ease);
+    }
+    .kmo-tab-btn.active { color: var(--red); border-bottom-color: var(--red); }
+    .kmo-panel { display: none; }
+    .kmo-panel.active { display: block; }
+
+    /* ── KUPON GRID ── */
+    .kupon-toolbar { display: flex; justify-content: flex-end; margin-bottom: 16px; }
+
+    .kupon-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 16px;
+    }
+
+    .kupon-card {
+        background: var(--surface);
+        border: 1.5px solid var(--border);
+        border-radius: var(--r-lg);
+        box-shadow: var(--sh-sm);
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .kupon-card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+    .kupon-kode { font-family: 'DM Mono', monospace; font-weight: 800; font-size: 16px; color: var(--red); }
+    .kupon-nama { font-size: 12px; color: var(--text-muted); margin-top: -4px; }
+
+    .kupon-badge {
+        font-size: 10px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        padding: 3px 9px;
+        border-radius: 999px;
+        white-space: nowrap;
+    }
+    .kupon-badge.aktif { background: var(--green-soft); color: var(--green); }
+    .kupon-badge.terjadwal { background: var(--blue-soft); color: var(--blue); }
+    .kupon-badge.nonaktif { background: var(--surface-2); color: var(--text-muted); }
+
+    .kupon-row { display: flex; justify-content: space-between; font-size: 12.5px; color: var(--text); }
+    .kupon-row .label { color: var(--text-muted); }
+    .kupon-diskon { font-size: 18px; font-weight: 800; color: var(--red); }
+
+    .kupon-tags { display: flex; flex-wrap: wrap; gap: 4px; }
+    .kupon-tag {
+        font-size: 10.5px;
+        background: var(--surface-2);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 2px 7px;
+        color: var(--text-muted);
+    }
+
+    .kupon-foot { display: flex; gap: 6px; margin-top: 6px; }
+    .btn-kupon-mini {
+        flex: 1;
+        padding: 8px 6px;
+        border: 1.5px solid var(--border);
+        background: var(--surface);
+        border-radius: var(--r-sm);
+        font-size: 11px;
+        font-weight: 700;
+        cursor: pointer;
+        color: var(--text);
+    }
+    .btn-kupon-mini.btn-danger { color: var(--red); }
+
+    /* ── FORM ── */
+    .form-field { margin-bottom: 14px; }
+    .form-field label {
+        display: block;
+        font-size: 11px;
+        font-weight: 700;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.6px;
+        margin-bottom: 6px;
+    }
+    .form-field input[type="text"],
+    .form-field input[type="number"],
+    .form-field input[type="date"],
+    .form-field input[type="time"],
+    .form-field select {
+        width: 100%;
+        padding: 11px 13px;
+        border: 1.5px solid var(--border);
+        border-radius: var(--r-md);
+        background: var(--surface-2);
+        color: var(--text);
+        font-family: 'Nunito', sans-serif;
+        font-size: 13px;
+        box-sizing: border-box;
+    }
+    .form-field input:focus, .form-field select:focus { outline: none; border-color: var(--red); }
+    .form-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .form-check { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
+    .form-check label { font-size: 13px; font-weight: 600; color: var(--text); }
+    .form-hint-sm { font-size: 11px; color: var(--text-muted); margin-top: -8px; margin-bottom: 14px; }
+
+    .checklist-box {
+        max-height: 160px;
+        overflow-y: auto;
+        border: 1.5px solid var(--border);
+        border-radius: var(--r-md);
+        padding: 10px 12px;
+        background: var(--surface-2);
+    }
+    .checklist-item { display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: 13px; }
+    .checklist-empty { font-size: 12px; color: var(--text-muted); }
+
+    /* ── MODAL ── */
+    .modal-kupon-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.6);
+        backdrop-filter: blur(4px);
+        z-index: 9999;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+    }
+    .modal-kupon-overlay.open { display: flex; }
+    .modal-kupon {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--r-lg);
+        padding: 24px;
+        width: 100%;
+        max-width: 520px;
+        max-height: 90vh;
+        overflow-y: auto;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        animation: modalFadeIn 0.25s ease;
+    }
+    @keyframes modalFadeIn {
+        from { opacity: 0; transform: translateY(20px) scale(0.95); }
+        to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .modal-kupon h3 { margin: 0 0 18px; font-size: 16px; font-weight: 800; color: var(--text); text-align: center; }
+    .modal-kupon-btns { display: flex; gap: 8px; margin-top: 8px; }
+    .modal-kupon-btns button {
+        flex: 1;
+        padding: 12px;
+        border-radius: var(--r-md);
+        border: none;
+        font-family: 'Nunito', sans-serif;
+        font-weight: 700;
+        font-size: 13px;
+        cursor: pointer;
+    }
+    .modal-kupon-btns .btn-cancel { background: var(--surface-2); color: var(--text-muted); border: 1px solid var(--border); }
+    .modal-kupon-btns .btn-save { background: var(--red); color: white; }
+    </style>
+  <script src="config.js"></script>
+</head>
+<body>
+
+<!-- ── SIDEBAR ── -->
+<aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand" onclick="toggleSidebar()">
+        <div class="sidebar-logo">
+            <img src="Assets/3.png" alt="Hoki">
+        </div>
+        <div class="sidebar-brand-text">
+            <div class="sidebar-brand-name">Hoki Dimsum V4.1</div>
+            <div class="sidebar-brand-sub">POS System v4.1</div>
+        </div>
+    </div>
+    <button class="sidebar-toggle" onclick="toggleSidebar()">‹</button>
+    <nav class="sidebar-nav" id="sidebarNav"></nav>
+    <div class="sidebar-user">
+        <div class="user-card">
+            <div class="user-avatar" id="userAvatarInitial">?</div>
+            <div class="user-info">
+                <div class="user-name" id="sidebarUserName">Loading...</div>
+                <div class="user-role" id="sidebarUserRole">—</div>
+            </div>
+            <button class="btn-logout-icon" onclick="logout()" title="Logout">🚪</button>
+        </div>
+    </div>
+</aside>
+
+<!-- ── MAIN CONTENT ── -->
+<div class="main-content" id="mainContent">
+
+    <header class="top-header">
+        <div class="header-left">
+            <div class="header-page-title">🏷️ Promo &amp; Kupon</div>
+        </div>
+        <div class="header-right">
+            <div class="clock-pill">
+                <div id="realtimeClock">00:00:00</div>
+                <div id="realtimeDate">...</div>
+            </div>
+        </div>
+    </header>
+
+    <div class="info-bar-simple">
+        <div class="ib-item"><span class="ib-label">👤 Petugas</span><span class="ib-val" id="infoPetugas">—</span></div>
+        <div class="ib-divider"></div>
+        <div class="ib-item"><span class="ib-label">👑 Role</span><span class="ib-val" id="infoRole">—</span></div>
+    </div>
+
+    <div class="page-body">
+
+        <div class="kmo-tabs">
+            <button class="kmo-tab-btn active" data-tab="aktif" onclick="switchTab('aktif')">🟢 Aktif</button>
+            <button class="kmo-tab-btn" data-tab="terjadwal" onclick="switchTab('terjadwal')">🗓️ Terjadwal</button>
+            <button class="kmo-tab-btn" data-tab="riwayat" onclick="switchTab('riwayat')">📜 Riwayat</button>
+        </div>
+
+        <div class="kupon-toolbar">
+            <button class="btn-cari" onclick="bukaModalKupon()">+ Buat Kupon</button>
+        </div>
+
+        <div class="kmo-panel active" id="panel-aktif"><div class="kupon-grid" id="gridAktif"></div></div>
+        <div class="kmo-panel" id="panel-terjadwal"><div class="kupon-grid" id="gridTerjadwal"></div></div>
+        <div class="kmo-panel" id="panel-riwayat"><div class="kupon-grid" id="gridRiwayat"></div></div>
+
+    </div>
+</div>
+
+<!-- MODAL KUPON -->
+<div class="modal-kupon-overlay" id="modalKupon" onclick="if(event.target===this)tutupModalKupon()">
+    <div class="modal-kupon">
+        <h3 id="modalKuponTitle">➕ Buat Kupon</h3>
+        <input type="hidden" id="kuponId" value="">
+
+        <div class="form-field">
+            <label for="kuponKode">Kode Kupon</label>
+            <input type="text" id="kuponKode" placeholder="HOKI50" style="text-transform:uppercase;">
+        </div>
+        <div class="form-field">
+            <label for="kuponNama">Nama Kupon</label>
+            <input type="text" id="kuponNama" placeholder="Diskon spesial akhir pekan">
+        </div>
+
+        <div class="form-row-2">
+            <div class="form-field">
+                <label for="kuponTipe">Tipe Diskon</label>
+                <select id="kuponTipe">
+                    <option value="nominal">Nominal (Rp)</option>
+                    <option value="persen">Persen (%)</option>
+                </select>
+            </div>
+            <div class="form-field">
+                <label for="kuponNilai">Nilai Diskon</label>
+                <input type="number" id="kuponNilai" min="1">
+            </div>
+        </div>
+
+        <div class="form-field">
+            <label for="kuponMinBelanja">Minimal Belanja (Rp, 0 = tanpa minimal)</label>
+            <input type="number" id="kuponMinBelanja" min="0" value="0">
+        </div>
+
+        <div class="form-field">
+            <label>Berlaku di Cabang (kosongkan = semua cabang)</label>
+            <div class="checklist-box" id="checklistCabang"></div>
+        </div>
+
+        <div class="form-field">
+            <label>Berlaku untuk Menu (kosongkan = semua menu)</label>
+            <div class="checklist-box" id="checklistProduk"></div>
+        </div>
+
+        <div class="form-row-2">
+            <div class="form-field">
+                <label for="kuponKuotaHarian">Kuota Harian (kosongkan = tanpa batas)</label>
+                <input type="number" id="kuponKuotaHarian" min="1">
+            </div>
+            <div class="form-field">
+                <label for="kuponKuotaTotal">Kuota Total (kosongkan = tanpa batas)</label>
+                <input type="number" id="kuponKuotaTotal" min="1">
+            </div>
+        </div>
+
+        <div class="form-check">
+            <input type="checkbox" id="kuponSemuaJam" checked onchange="toggleJamFields()">
+            <label for="kuponSemuaJam">Berlaku selama jam buka (tanpa batas jam tertentu)</label>
+        </div>
+        <div class="form-row-2" id="jamFields" style="display:none;">
+            <div class="form-field">
+                <label for="kuponJamMulai">Jam Mulai</label>
+                <input type="time" id="kuponJamMulai">
+            </div>
+            <div class="form-field">
+                <label for="kuponJamSelesai">Jam Selesai</label>
+                <input type="time" id="kuponJamSelesai">
+            </div>
+        </div>
+
+        <div class="form-row-2">
+            <div class="form-field">
+                <label for="kuponTglMulai">Tanggal Mulai (opsional)</label>
+                <input type="date" id="kuponTglMulai">
+            </div>
+            <div class="form-field">
+                <label for="kuponTglSelesai">Tanggal Selesai (opsional)</label>
+                <input type="date" id="kuponTglSelesai">
+            </div>
+        </div>
+
+        <div class="form-check">
+            <input type="checkbox" id="kuponAktif" checked>
+            <label for="kuponAktif">Kupon aktif</label>
+        </div>
+
+        <div class="modal-kupon-btns">
+            <button class="btn-cancel" onclick="tutupModalKupon()">Batal</button>
+            <button class="btn-save" onclick="simpanKupon()">Simpan</button>
+        </div>
+    </div>
+</div>
+
+<!-- BOTTOM NAV -->
+<nav class="bottom-nav">
+    <button class="bn-item" onclick="location.href='dashboard.html'"><span class="bn-icon">🛒</span><span class="bn-label">Kasir</span></button>
+    <button class="bn-item" onclick="location.href='kelola-order.html'"><span class="bn-icon">🔔</span><span class="bn-label">Order</span></button>
+    <button class="bn-item" onclick="location.href='rekap.html'"><span class="bn-icon">🗓️</span><span class="bn-label">Rekap</span></button>
+    <button class="bn-item active"><span class="bn-icon">🏷️</span><span class="bn-label">Promo</span></button>
+    <button class="bn-item" onclick="openSheet('moreSheet')"><span class="bn-icon">☰</span><span class="bn-label">Lainnya</span></button>
+</nav>
+
+<!-- MORE SHEET -->
+<div class="sheet-overlay" id="moreSheet" onclick="closeSheetOutside(event,'moreSheet')">
+    <div class="bottom-sheet" onclick="event.stopPropagation()">
+        <div class="sheet-handle"></div>
+        <p style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:14px;">Menu Lainnya</p>
+        <div class="more-grid" id="moreGrid"></div>
+    </div>
+</div>
+
+<script>
+const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+if (!currentUser) window.location.href = 'index.html';
+
+const ALLOWED_ROLES = ['Owner', 'VIP'];
+if (currentUser && !ALLOWED_ROLES.includes(currentUser.role)) {
+    alert('Akses ditolak');
+    window.location.href = 'dashboard.html';
+}
+
+const promoToken = localStorage.getItem('sessionToken') || (currentUser && currentUser.token) || '';
+
+let daftarKuponCache = [];
+let daftarCabangCache = [];
+let daftarProdukCache = [];
+
+function esc(s) {
+    return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function formatRupiah(n) { return 'Rp' + Math.round(Number(n) || 0).toLocaleString('id-ID'); }
+
+/* ── SIDEBAR ── */
+function toggleSidebar() {
+    const sb = document.getElementById('sidebar');
+    const mc = document.getElementById('mainContent');
+    sb.classList.toggle('collapsed');
+    mc.classList.toggle('expanded');
+    localStorage.setItem('sidebarState', sb.classList.contains('collapsed') ? 'small' : 'large');
+}
+
+function buildSidebar() {
+    if (localStorage.getItem('sidebarState') === 'small') {
+        document.getElementById('sidebar').classList.add('collapsed');
+        document.getElementById('mainContent').classList.add('expanded');
+    }
+    const role = currentUser.role;
+    const cur  = window.location.pathname.split('/').pop() || 'dashboard.html';
+    const navItem = (icon, label, link) => {
+        const active = cur === link ? 'active' : '';
+        return `<button class="nav-item ${active}" onclick="location.href='${link}'">
+            <span class="nav-icon">${icon}</span>
+            <span class="nav-label">${label}</span>
+        </button>`;
+    };
+    const navItemExternal = (icon, label, url) => {
+        return `<button class="nav-item" onclick="window.open('${url}', '_blank')">
+            <span class="nav-icon">${icon}</span>
+            <span class="nav-label">${label}</span>
+        </button>`;
+    };
+    const PAGES_FRONTLINE = ['kelola-order.html','dashboard.html','history.html','stok.html','restock.html','laporan_staff.html','edukasi.html'];
+    const PAGES_MGMT      = ['rekap.html','produk.html'];
+    const PAGES_EXEC      = ['laporan.html','statistik.html','promo.html','bahan_baku.html','hpp_produk.html','belanja.html','warehouse.html','salary_staff.html','customer_hoki.html'];
+    const PAGES_VIP       = ['user.html','login_history.html'];
+    const PAGES_INVESTOR  = ['investor_omset.html','investor_profit.html'];
+    const inGroup = pages => pages.includes(cur);
+    const getOpen = (id, pages) => {
+        const s = localStorage.getItem('navGroup_' + id);
+        return s !== null ? s === '1' : true;
+    };
+    const GROUP_ICONS = { frontline:'🛒', management:'📊', executive:'📋', vip:'👑', investor:'🤝' };
+    const navGroup = (id, label, items, pages) => {
+        const open      = getOpen(id, pages);
+        const hasActive = inGroup(pages);
+        const icon      = GROUP_ICONS[id] || '📁';
+        return `<div class="nav-group-wrap">
+            <button class="nav-group-label${hasActive ? ' has-active' : ''}" onclick="toggleNavGroup('${id}')">
+                <span class="nav-group-icon">${icon}</span>
+                <span class="nav-group-text">${label}</span>
+                <span class="nav-group-ti">${open ? '−' : '+'}</span>
+            </button>
+            <div class="nav-group-items" id="navg-${id}"${open ? '' : ' style="display:none"'}>
+                ${items}
+            </div>
+        </div>`;
+    };
+
+    let frontline = navItem('🔔','Order Online','kelola-order.html')
+        + navItem('🛒','Kasir','dashboard.html')
+        + navItem('📄','History Transaksi','history.html')
+        + navItem('📦','Stok Harian','stok.html')
+        + navItem('🚚','Restock Barang','restock.html')
+        + navItem('🚀','Laporan Penjualan','laporan_staff.html');
+    let edukasiItem = navItem('📚','Edukasi & SOP','edukasi.html');
+    frontline += edukasiItem;
+    let h = '';
+    if (role !== 'Investor') {
+        h += navGroup('frontline', 'Frontline', frontline, PAGES_FRONTLINE);
+    }
+
+    if (['Senior Staff','SPV','Owner','VIP'].includes(role)) {
+        let mgmt = navItem('🗓️','Rekapan Penjualan','rekap.html')
+            + navItem('🍱','Master Produk','produk.html');
+        h += navGroup('management', 'Management', mgmt, PAGES_MGMT);
+    }
+    if (['Owner','VIP'].includes(role)) {
+        let exec = navItem('📊','Keuangan Global','laporan.html')
+            + navItem('📈','Statistik','statistik.html')
+            + navItem('🏷️','Promo','promo.html')
+            + navItem('🧂','Bahan Baku','bahan_baku.html')
+            + navItem('🗃️','HPP Produk','hpp_produk.html')
+            + navItem('🏭','Warehouse','warehouse.html')
+            + navItem('📝','Belanja','belanja.html')
+            + navItem('💵','Salary Staff','salary_staff.html')
+            + navItem('👨‍👩‍👦','Customer Hoki','customer_hoki.html');
+        h += navGroup('executive', 'Executive', exec, PAGES_EXEC);
+    }
+    if (['Owner','VIP','Investor'].includes(role)) {
+        let inv = navItem('💹','Omset Cabang','investor_omset.html')
+            + navItem('💰','Profit Sharing','investor_profit.html');
+        h += navGroup('investor', 'Area Investor', inv, PAGES_INVESTOR);
+    }
+    if (role === 'VIP') {
+        let vip = navItem('⚙️','Manajemen User','user.html')
+            + navItem('🔑','History Login','login_history.html')
+            + navItemExternal('🍱','Menu Order','https://order.pos-hokidimsum.com/admin/dashboard.php');
+        h += navGroup('vip', 'VIP Access', vip, PAGES_VIP);
+    }
+    document.getElementById('sidebarNav').innerHTML = h;
+    const name = currentUser.user || '?';
+    document.getElementById('userAvatarInitial').innerText = name.charAt(0).toUpperCase();
+    document.getElementById('sidebarUserName').innerText   = name;
+    document.getElementById('sidebarUserRole').innerText   = role;
+}
+
+function toggleNavGroup(id) {
+    const items = document.getElementById('navg-' + id);
+    const btn   = items.previousElementSibling;
+    const ti    = btn.querySelector('.nav-group-ti');
+    const open  = items.style.display !== 'none';
+    items.style.display = open ? 'none' : '';
+    if (ti) ti.textContent = open ? '+' : '−';
+    localStorage.setItem('navGroup_' + id, open ? '0' : '1');
+}
+
+/* ── CLOCK ── */
+function updateClock() {
+    const now = new Date();
+    document.getElementById('realtimeClock').innerText = now.toLocaleTimeString('id-ID');
+    document.getElementById('realtimeDate').innerText  = now.toLocaleDateString('id-ID',{weekday:'short',year:'numeric',month:'short',day:'numeric'});
+}
+setInterval(updateClock, 1000);
+
+/* ── MORE MENU ── */
+function buildMoreMenu() {
+    const role = currentUser.role;
+    const items = [{icon:'🔔',label:'Order Online',link:'kelola-order.html'}];
+    items.push({icon:'🚚',label:'Restock',link:'restock.html'});
+    items.push({icon:'📚',label:'Edukasi & SOP',link:'edukasi.html'});
+    if (['Senior Staff','SPV','Owner','VIP'].includes(role)) {
+        items.push({icon:'🍱',label:'Produk',link:'produk.html'});
+        items.push({icon:'📈',label:'Rekapan',link:'rekap.html'});
+    }
+    if (['Owner','VIP'].includes(role)) {
+        items.push({icon:'🏷️',label:'Promo',link:'promo.html'});
+        items.push({icon:'🧂',label:'Bahan Baku',link:'bahan_baku.html'});
+        items.push({icon:'🗃️',label:'HPP Produk',link:'hpp_produk.html'});
+        items.push({icon:'🏭',label:'Warehouse',link:'warehouse.html'});
+        items.push({icon:'📝',label:'Belanja',link:'belanja.html'});
+        items.push({icon:'💵',label:'Salary Staff',link:'salary_staff.html'});
+        items.push({icon:'📊',label:'Keuangan',link:'laporan.html'});
+        items.push({icon:'📈',label:'Statistik',link:'statistik.html'});
+        items.push({icon:'👨‍👩‍👦',label:'Customer Hoki',link:'customer_hoki.html'});
+    }
+    if (['Owner','VIP','Investor'].includes(role)) {
+        items.push({icon:'💹',label:'Omset Cabang',link:'investor_omset.html'});
+        items.push({icon:'💰',label:'Profit Sharing',link:'investor_profit.html'});
+    }
+    if (role === 'VIP') {
+        items.push({icon:'⚙️',label:'Users',link:'user.html'});
+        items.push({icon:'🔑',label:'Login Log',link:'login_history.html'});
+        items.push({icon:'🍱',label:'Menu Order',link:'#',action:"window.open('https://order.pos-hokidimsum.com/admin/dashboard.php','_blank')"});
+    }
+    items.push({icon:'🚪',label:'Logout',link:'#',action:'logout()'});
+    document.getElementById('moreGrid').innerHTML = items.map(i =>
+        `<button class="more-btn" onclick="${i.action||`location.href='${i.link}'`}">
+            <span class="more-btn-icon">${i.icon}</span>
+            <span class="more-btn-label">${i.label}</span>
+        </button>`).join('');
+}
+
+function openSheet(id) { if(id==='moreSheet') buildMoreMenu(); document.getElementById(id).classList.add('open'); }
+function closeSheetOutside(e,id) { if(e.target===document.getElementById(id)) document.getElementById(id).classList.remove('open'); }
+
+async function logout() {
+    const ok = await showConfirm('Logout dari sistem?', 'Ya, Logout', 'Batal', '🚪');
+    if (ok) {
+        localStorage.removeItem('currentUser');
+        localStorage.removeItem('cabangHoki');
+        window.location.href = 'index.html';
+    }
+}
+
+/* ── TABS ── */
+function switchTab(tab) {
+    document.querySelectorAll('.kmo-tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+    document.querySelectorAll('.kmo-panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('panel-' + tab).classList.add('active');
+}
+
+/* ── KUPON ── */
+function statusKupon(k) {
+    const today = new Date().toISOString().slice(0,10);
+    if (!Number(k.is_active)) return 'nonaktif';
+    if (k.tanggal_mulai && k.tanggal_mulai > today) return 'terjadwal';
+    if (k.tanggal_selesai && k.tanggal_selesai < today) return 'nonaktif';
+    return 'aktif';
+}
+
+async function loadKupon() {
+    try {
+        const res  = await fetch(`api.php?action=get_kupon`);
+        const json = await res.json();
+        if (json.status !== 'success') { toast.error(json.message || 'Gagal memuat kupon'); return; }
+        daftarKuponCache = json.data || [];
+        renderKuponTabs();
+    } catch (e) {
+        console.error('loadKupon:', e);
+        toast.error('Gagal memuat kupon! Periksa koneksi internet.');
+    }
+}
+
+function kuponCard(k) {
+    const status = statusKupon(k);
+    const badgeLabel = status === 'aktif' ? 'Aktif' : status === 'terjadwal' ? 'Terjadwal' : 'Nonaktif';
+    const diskonLabel = k.diskon_tipe === 'persen' ? `${k.diskon_nilai}%` : formatRupiah(k.diskon_nilai);
+    const cabangTags = (k.cabang && k.cabang.length) ? k.cabang.map(c => `<span class="kupon-tag">${esc(c)}</span>`).join('') : '<span class="kupon-tag">Semua Cabang</span>';
+    const produkCount = (k.produk && k.produk.length) ? `${k.produk.length} menu` : 'Semua Menu';
+    const kuotaTotalLabel = k.kuota_total !== null ? `${k.terpakai_total}/${k.kuota_total}` : `${k.terpakai_total}/∞`;
+    const kuotaHarianLabel = k.kuota_harian !== null ? `${k.terpakai_hari_ini}/${k.kuota_harian}` : 'Tanpa batas';
+
+    return `<div class="kupon-card">
+        <div class="kupon-card-head">
+            <div>
+                <div class="kupon-kode">${esc(k.kode)}</div>
+                <div class="kupon-nama">${esc(k.nama)}</div>
+            </div>
+            <span class="kupon-badge ${status}">${badgeLabel}</span>
+        </div>
+        <div class="kupon-diskon">${diskonLabel} <span style="font-size:11px;font-weight:600;color:var(--text-muted);">off</span></div>
+        <div class="kupon-row"><span class="label">Min. Belanja</span><span>${formatRupiah(k.min_belanja)}</span></div>
+        <div class="kupon-row"><span class="label">Menu</span><span>${esc(produkCount)}</span></div>
+        <div class="kupon-row"><span class="label">Kuota Harian</span><span>${kuotaHarianLabel}</span></div>
+        <div class="kupon-row"><span class="label">Kuota Total</span><span>${kuotaTotalLabel}</span></div>
+        <div class="kupon-tags">${cabangTags}</div>
+        <div class="kupon-foot">
+            <button class="btn-kupon-mini" onclick="bukaModalKuponById(${k.id})">✏️ Edit</button>
+            <button class="btn-kupon-mini btn-danger" onclick="hapusKupon(${k.id})">🗑️ Hapus</button>
+        </div>
+    </div>`;
+}
+
+function renderKuponTabs() {
+    const aktif     = daftarKuponCache.filter(k => statusKupon(k) === 'aktif');
+    const terjadwal = daftarKuponCache.filter(k => statusKupon(k) === 'terjadwal');
+    const riwayat   = daftarKuponCache;
+
+    document.getElementById('gridAktif').innerHTML     = aktif.length ? aktif.map(kuponCard).join('') : '<div class="checklist-empty">Belum ada kupon aktif</div>';
+    document.getElementById('gridTerjadwal').innerHTML = terjadwal.length ? terjadwal.map(kuponCard).join('') : '<div class="checklist-empty">Belum ada kupon terjadwal</div>';
+    document.getElementById('gridRiwayat').innerHTML   = riwayat.length ? riwayat.map(kuponCard).join('') : '<div class="checklist-empty">Belum ada kupon dibuat</div>';
+}
+
+async function loadCabangUntukForm() {
+    try {
+        const res  = await fetch(`api.php?action=get_cabang`);
+        const json = await res.json();
+        daftarCabangCache = Array.isArray(json) ? json : (json.data || []);
+    } catch (e) { console.error('loadCabangUntukForm:', e); }
+}
+
+async function loadProdukUntukForm() {
+    try {
+        const res  = await fetch(`api.php?action=get_produk`);
+        const json = await res.json();
+        daftarProdukCache = Array.isArray(json) ? json : (json.data || []);
+    } catch (e) { console.error('loadProdukUntukForm:', e); }
+}
+
+function toggleJamFields() {
+    const semuaJam = document.getElementById('kuponSemuaJam').checked;
+    document.getElementById('jamFields').style.display = semuaJam ? 'none' : 'grid';
+    if (semuaJam) {
+        document.getElementById('kuponJamMulai').value = '';
+        document.getElementById('kuponJamSelesai').value = '';
+    }
+}
+
+function bukaModalKuponById(id) {
+    const k = daftarKuponCache.find(x => Number(x.id) === Number(id));
+    if (k) bukaModalKupon(k);
+}
+
+function bukaModalKupon(k) {
+    const cabangBox = document.getElementById('checklistCabang');
+    const cabangNames = daftarCabangCache.map(c => c.nama_cabang || c.nama || c);
+    cabangBox.innerHTML = cabangNames.length ? cabangNames.map(nama => {
+        const checked = k && k.cabang && k.cabang.includes(nama) ? 'checked' : '';
+        const cid = 'cab_' + nama.replace(/\W/g, '_');
+        return `<div class="checklist-item"><input type="checkbox" id="${cid}" value="${esc(nama)}" ${checked}><label for="${cid}">${esc(nama)}</label></div>`;
+    }).join('') : '<div class="checklist-empty">Belum ada data cabang</div>';
+
+    const produkBox = document.getElementById('checklistProduk');
+    produkBox.innerHTML = daftarProdukCache.length ? daftarProdukCache.map(p => {
+        const checked = k && k.produk && k.produk.includes(p.sku) ? 'checked' : '';
+        const pid = 'prod_' + String(p.sku).replace(/\W/g, '_');
+        return `<div class="checklist-item"><input type="checkbox" id="${pid}" value="${esc(p.sku)}" ${checked}><label for="${pid}">${esc(p.nama)}</label></div>`;
+    }).join('') : '<div class="checklist-empty">Belum ada data produk</div>';
+
+    document.getElementById('modalKuponTitle').innerText = k ? '✏️ Edit Kupon' : '➕ Buat Kupon';
+    document.getElementById('kuponId').value = k ? k.id : '';
+    document.getElementById('kuponKode').value = k ? k.kode : '';
+    document.getElementById('kuponNama').value = k ? k.nama : '';
+    document.getElementById('kuponTipe').value = k ? k.diskon_tipe : 'nominal';
+    document.getElementById('kuponNilai').value = k ? k.diskon_nilai : '';
+    document.getElementById('kuponMinBelanja').value = k ? k.min_belanja : 0;
+    document.getElementById('kuponKuotaHarian').value = k && k.kuota_harian !== null ? k.kuota_harian : '';
+    document.getElementById('kuponKuotaTotal').value = k && k.kuota_total !== null ? k.kuota_total : '';
+    document.getElementById('kuponTglMulai').value = k && k.tanggal_mulai ? k.tanggal_mulai : '';
+    document.getElementById('kuponTglSelesai').value = k && k.tanggal_selesai ? k.tanggal_selesai : '';
+    document.getElementById('kuponAktif').checked = k ? !!Number(k.is_active) : true;
+
+    const adaJam = k && k.jam_mulai && k.jam_selesai;
+    document.getElementById('kuponSemuaJam').checked = !adaJam;
+    document.getElementById('kuponJamMulai').value = adaJam ? k.jam_mulai.slice(0,5) : '';
+    document.getElementById('kuponJamSelesai').value = adaJam ? k.jam_selesai.slice(0,5) : '';
+    toggleJamFields();
+
+    document.getElementById('modalKupon').classList.add('open');
+}
+
+function tutupModalKupon() {
+    document.getElementById('modalKupon').classList.remove('open');
+}
+
+async function simpanKupon() {
+    const kode = document.getElementById('kuponKode').value.trim().toUpperCase();
+    const nama = document.getElementById('kuponNama').value.trim();
+    const nilai = Number(document.getElementById('kuponNilai').value);
+    if (!kode || !nama || !nilai || nilai <= 0) {
+        toast.error('Kode, nama, dan nilai diskon wajib diisi!');
+        return;
+    }
+
+    const cabang = Array.from(document.querySelectorAll('#checklistCabang input:checked')).map(el => el.value);
+    const produk = Array.from(document.querySelectorAll('#checklistProduk input:checked')).map(el => el.value);
+
+    const body = {
+        user: currentUser.user,
+        token: promoToken,
+        id: document.getElementById('kuponId').value || 0,
+        kode, nama,
+        diskon_tipe: document.getElementById('kuponTipe').value,
+        diskon_nilai: nilai,
+        min_belanja: Number(document.getElementById('kuponMinBelanja').value) || 0,
+        kuota_harian: document.getElementById('kuponKuotaHarian').value,
+        kuota_total: document.getElementById('kuponKuotaTotal').value,
+        jam_mulai: document.getElementById('kuponSemuaJam').checked ? '' : document.getElementById('kuponJamMulai').value,
+        jam_selesai: document.getElementById('kuponSemuaJam').checked ? '' : document.getElementById('kuponJamSelesai').value,
+        tanggal_mulai: document.getElementById('kuponTglMulai').value,
+        tanggal_selesai: document.getElementById('kuponTglSelesai').value,
+        is_active: document.getElementById('kuponAktif').checked,
+        cabang, produk
+    };
+
+    try {
+        const res  = await fetch('api.php?action=save_kupon', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        });
+        const json = await res.json();
+        if (json.status === 'success') {
+            toast.success('Kupon berhasil disimpan!');
+            tutupModalKupon();
+            loadKupon();
+        } else {
+            toast.error(json.message || 'Gagal menyimpan kupon!');
+        }
+    } catch (e) {
+        console.error('simpanKupon:', e);
+        toast.error('Gagal menyimpan kupon! Periksa koneksi internet.');
+    }
+}
+
+async function hapusKupon(id) {
+    const ok = await showConfirm('Hapus kupon ini secara permanen?', 'Ya, Hapus', 'Batal', '🗑️');
+    if (!ok) return;
+    try {
+        const res  = await fetch(`api.php?action=del_kupon&user=${encodeURIComponent(currentUser.user)}&token=${encodeURIComponent(promoToken)}&id=${id}`);
+        const json = await res.json();
+        if (json.status === 'success') {
+            toast.success('Kupon berhasil dihapus!');
+            loadKupon();
+        } else {
+            toast.error(json.message || 'Gagal menghapus kupon!');
+        }
+    } catch (e) {
+        console.error('hapusKupon:', e);
+        toast.error('Gagal menghapus kupon!');
+    }
+}
+
+window.onload = async function() {
+    if (!currentUser || !ALLOWED_ROLES.includes(currentUser.role)) return;
+
+    buildSidebar();
+    updateClock();
+    document.getElementById('infoPetugas').innerText = currentUser.fullName || currentUser.user || '—';
+    document.getElementById('infoRole').innerText     = currentUser.role || '—';
+
+    await loadCabangUntukForm();
+    await loadProdukUntukForm();
+    await loadKupon();
+};
+</script>
+
+<script src="session.js"></script>
+<script src="toast.js"></script>
+</body>
+</html>

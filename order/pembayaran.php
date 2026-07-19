@@ -3,7 +3,7 @@ require_once __DIR__ . '/includes/cart.php';
 $currentPage = 'pembayaran.php';
 
 $orderCode = $_GET['order'] ?? '';
-$stmt = db()->prepare("SELECT o.*, b.nama AS branch_nama, b.wa_number AS branch_wa FROM orders o JOIN branches b ON b.id = o.branch_id WHERE o.order_code = ?");
+$stmt = db()->prepare("SELECT o.*, b.nama AS branch_nama, b.wa_number AS branch_wa, b.qris_image AS branch_qris FROM orders o JOIN branches b ON b.id = o.branch_id WHERE o.order_code = ?");
 $stmt->execute([$orderCode]);
 $order = $stmt->fetch();
 
@@ -27,10 +27,7 @@ $pesan = "Halo, saya konfirmasi pembayaran.\n"
     . "Mohon dicek ya, terima kasih.";
 $waLink = wa_link($waTarget, $pesan);
 
-$qrisImage = get_setting('qris_image_path', '');
-$noRekening = get_setting('no_rekening', '');
-$namaBank = get_setting('nama_bank', '');
-$namaRekening = get_setting('nama_rekening', '');
+$qrisImage = $order['branch_qris'] ?? '';
 
 require __DIR__ . '/includes/header.php';
 ?>
@@ -45,7 +42,12 @@ require __DIR__ . '/includes/header.php';
     <div class="total-highlight">
       <div class="note">Total yang harus dibayar</div>
       <div class="amount"><?= rupiah($order['total_bayar']) ?></div>
-      <div class="note">Subtotal <?= rupiah($order['subtotal']) ?> + kode unik <?= (int)$order['kode_unik'] ?></div>
+      <div class="note">
+        Subtotal <?= rupiah($order['subtotal']) ?> + kode unik <?= (int)$order['kode_unik'] ?>
+        <?php if (!empty($order['diskon']) && $order['diskon'] > 0): ?>
+          − diskon kupon <?= e($order['kupon_kode']) ?> <?= rupiah($order['diskon']) ?>
+        <?php endif; ?>
+      </div>
     </div>
 
     <div class="unique-code-hint">
@@ -54,17 +56,11 @@ require __DIR__ . '/includes/header.php';
 
     <?php if ($qrisImage): ?>
     <div class="qris-box">
-      <img src="<?= UPLOAD_URL . '/' . e($qrisImage) ?>" alt="QRIS Hoki Dimsum">
+      <img src="<?= UPLOAD_URL . '/' . e($qrisImage) ?>" alt="QRIS <?= e($order['branch_nama']) ?>">
       <p class="form-hint mb-0">Scan QRIS di atas menggunakan aplikasi e-wallet atau m-banking favoritmu.</p>
     </div>
-    <?php endif; ?>
-
-    <?php if ($noRekening): ?>
-    <div class="bank-box">
-      <div class="bank-row"><span>Bank</span><strong><?= e($namaBank) ?></strong></div>
-      <div class="bank-row"><span>No. Rekening</span><strong><?= e($noRekening) ?></strong></div>
-      <div class="bank-row"><span>Atas Nama</span><strong><?= e($namaRekening) ?></strong></div>
-    </div>
+    <?php else: ?>
+    <div class="alert alert-error">QRIS untuk cabang <?= e($order['branch_nama']) ?> belum tersedia. Hubungi kami via WhatsApp di bawah untuk info pembayaran.</div>
     <?php endif; ?>
 
     <a href="<?= e($waLink) ?>" target="_blank" rel="noopener" class="btn btn-wa btn-block" style="margin-bottom:12px;">

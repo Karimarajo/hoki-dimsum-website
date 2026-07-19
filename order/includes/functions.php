@@ -73,8 +73,19 @@ function wa_link(string $number, string $message): string
 
 function upload_image(array $file, string $subdir): ?string
 {
-    if (!isset($file['tmp_name']) || $file['error'] !== UPLOAD_ERR_OK) {
+    if (!isset($file['error']) || $file['error'] === UPLOAD_ERR_NO_FILE) {
         return null;
+    }
+    if ($file['error'] !== UPLOAD_ERR_OK) {
+        $errorMessages = [
+            UPLOAD_ERR_INI_SIZE   => 'Ukuran file melebihi batas maksimal server (' . ini_get('upload_max_filesize') . '). Kompres dulu gambarnya lalu coba lagi.',
+            UPLOAD_ERR_FORM_SIZE  => 'Ukuran file melebihi batas maksimal form.',
+            UPLOAD_ERR_PARTIAL    => 'File hanya terupload sebagian. Coba upload ulang.',
+            UPLOAD_ERR_NO_TMP_DIR => 'Server tidak punya folder sementara untuk upload.',
+            UPLOAD_ERR_CANT_WRITE => 'Gagal menulis file ke disk server.',
+            UPLOAD_ERR_EXTENSION  => 'Upload dihentikan oleh ekstensi PHP di server.',
+        ];
+        throw new RuntimeException($errorMessages[$file['error']] ?? 'Upload file gagal (kode error ' . $file['error'] . ').');
     }
     if ($file['size'] > MAX_UPLOAD_SIZE) {
         throw new RuntimeException('Ukuran file maksimal 2MB.');

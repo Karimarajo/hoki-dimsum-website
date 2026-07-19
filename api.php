@@ -414,6 +414,51 @@ if ($checkCol2 && $checkCol2->num_rows === 0) {
 // ── Migrasi data lama dari 'Umum / Non Member' menjadi 'No Cust' ──
 $conn->query("UPDATE transaksi SET pelanggan_nama = 'No Cust' WHERE pelanggan_nama = 'Umum / Non Member'");
 
+// ── Tabel Kupon/Promo ──
+$conn->query("CREATE TABLE IF NOT EXISTS promo_kupon (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    kode VARCHAR(50) UNIQUE NOT NULL,
+    nama VARCHAR(150) NOT NULL,
+    diskon_tipe ENUM('persen','nominal') NOT NULL DEFAULT 'nominal',
+    diskon_nilai INT NOT NULL DEFAULT 0,
+    min_belanja INT DEFAULT 0,
+    kuota_harian INT NULL,
+    kuota_total INT NULL,
+    jam_mulai TIME NULL,
+    jam_selesai TIME NULL,
+    tanggal_mulai DATE NULL,
+    tanggal_selesai DATE NULL,
+    is_active TINYINT(1) DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+)");
+$conn->query("CREATE TABLE IF NOT EXISTS promo_kupon_cabang (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    kupon_id INT NOT NULL,
+    cabang_nama VARCHAR(100) NOT NULL
+)");
+$conn->query("CREATE TABLE IF NOT EXISTS promo_kupon_produk (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    kupon_id INT NOT NULL,
+    produk_sku VARCHAR(20) NOT NULL
+)");
+$conn->query("CREATE TABLE IF NOT EXISTS promo_kupon_usage (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    kupon_id INT NOT NULL,
+    sumber ENUM('kasir','order_online') NOT NULL,
+    cabang_nama VARCHAR(100) NOT NULL,
+    referensi VARCHAR(50) DEFAULT '',
+    waktu TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+)");
+
+$checkColDiskon = $conn->query("SHOW COLUMNS FROM transaksi LIKE 'diskon'");
+if ($checkColDiskon && $checkColDiskon->num_rows === 0) {
+    $conn->query("ALTER TABLE transaksi ADD COLUMN diskon BIGINT DEFAULT 0");
+}
+$checkColKupon = $conn->query("SHOW COLUMNS FROM transaksi LIKE 'kupon_kode'");
+if ($checkColKupon && $checkColKupon->num_rows === 0) {
+    $conn->query("ALTER TABLE transaksi ADD COLUMN kupon_kode VARCHAR(50) DEFAULT ''");
+}
+
 // ── Tabel Edukasi & SOP ──
 $conn->query("CREATE TABLE IF NOT EXISTS hoki_edukasi (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -443,6 +488,89 @@ try {
     $conn->query("ALTER TABLE hoki_history_rekap ADD COLUMN total_setoran INT AFTER total_pengeluaran");
 } catch (Exception $e) {
     // Abaikan jika kolom sudah ada
+}
+
+// ── Validasi kupon (dipakai oleh action cek_kupon & save_transaksi) ──
+// $items: array of ['sku'=>string, 'qty'=>int]
+function validasi_kupon_internal(mysqli $conn, string $kode, string $cabang, array $items, int $subtotal): array {
+    $kode = trim($kode);
+    if ($kode === '') {
+        return ['valid' => false, 'message' => 'Kode kupon kosong'];
+    }
+    $kodeEsc = $conn->real_escape_string($kode);
+    $res = $conn->query("SELECT * FROM promo_kupon WHERE UPPER(kode)=UPPER('$kodeEsc')");
+    $kupon = ($res && $res->num_rows > 0) ? $res->fetch_assoc() : null;
+    if (!$kupon) {
+        return ['valid' => false, 'message' => 'Kode kupon tidak ditemukan'];
+    }
+    if (!(int)$kupon['is_active']) {
+        return ['valid' => false, 'message' => 'Kupon ini sudah tidak aktif'];
+    }
+
+    $today = date('Y-m-d');
+    if (!empty($kupon['tanggal_mulai']) && $today < $kupon['tanggal_mulai']) {
+        return ['valid' => false, 'message' => 'Kupon belum berlaku (mulai ' . date('d/m/Y', strtotime($kupon['tanggal_mulai'])) . ')'];
+    }
+    if (!empty($kupon['tanggal_selesai']) && $today > $kupon['tanggal_selesai']) {
+        return ['valid' => false, 'message' => 'Kupon sudah kadaluarsa'];
+    }
+
+    if (!empty($kupon['jam_mulai']) && !empty($kupon['jam_selesai'])) {
+        $now = date('H:i:s');
+        if ($now < $kupon['jam_mulai'] || $now > $kupon['jam_selesai']) {
+            return ['valid' => false, 'message' => 'Kupon hanya berlaku jam ' . substr($kupon['jam_mulai'], 0, 5) . '-' . substr($kupon['jam_selesai'], 0, 5)];
+        }
+    }
+
+    $kuponId = (int)$kupon['id'];
+
+    $cabRes = $conn->query("SELECT cabang_nama FROM promo_kupon_cabang WHERE kupon_id=$kuponId");
+    $cabangList = $cabRes ? array_map(fn($r) => strtolower($r['cabang_nama']), $cabRes->fetch_all(MYSQLI_ASSOC)) : [];
+    if (!empty($cabangList) && !in_array(strtolower(trim($cabang)), $cabangList, true)) {
+        return ['valid' => false, 'message' => 'Kupon tidak berlaku untuk cabang ini'];
+    }
+
+    $prodRes = $conn->query("SELECT produk_sku FROM promo_kupon_produk WHERE kupon_id=$kuponId");
+    $skuList = $prodRes ? array_map(fn($r) => strtolower($r['produk_sku']), $prodRes->fetch_all(MYSQLI_ASSOC)) : [];
+    if (!empty($skuList)) {
+        $cartSkus = array_map(fn($it) => strtolower(trim($it['sku'] ?? '')), $items);
+        if (!array_intersect($skuList, $cartSkus)) {
+            return ['valid' => false, 'message' => 'Kupon tidak berlaku untuk menu di keranjangmu'];
+        }
+    }
+
+    $minBelanja = (int)$kupon['min_belanja'];
+    if ($subtotal < $minBelanja) {
+        return ['valid' => false, 'message' => 'Kupon berlaku minimal belanja Rp' . number_format($minBelanja, 0, ',', '.')];
+    }
+
+    if ($kupon['kuota_harian'] !== null) {
+        $r = $conn->query("SELECT COUNT(*) c FROM promo_kupon_usage WHERE kupon_id=$kuponId AND DATE(waktu)=CURDATE()");
+        $used = $r ? (int)$r->fetch_assoc()['c'] : 0;
+        if ($used >= (int)$kupon['kuota_harian']) {
+            return ['valid' => false, 'message' => 'Kuota kupon hari ini sudah habis'];
+        }
+    }
+    if ($kupon['kuota_total'] !== null) {
+        $r = $conn->query("SELECT COUNT(*) c FROM promo_kupon_usage WHERE kupon_id=$kuponId");
+        $used = $r ? (int)$r->fetch_assoc()['c'] : 0;
+        if ($used >= (int)$kupon['kuota_total']) {
+            return ['valid' => false, 'message' => 'Kuota kupon sudah habis'];
+        }
+    }
+
+    $diskon = $kupon['diskon_tipe'] === 'persen'
+        ? (int)round($subtotal * ((int)$kupon['diskon_nilai'] / 100))
+        : (int)$kupon['diskon_nilai'];
+    $diskon = min($diskon, $subtotal);
+
+    return [
+        'valid'    => true,
+        'message'  => 'Kupon valid',
+        'kupon_id' => $kuponId,
+        'kode'     => $kupon['kode'],
+        'diskon'   => $diskon,
+    ];
 }
 
 // ── Bersihkan buffer sebelum mengirim JSON ──
@@ -741,13 +869,163 @@ switch ($action) {
         $pt = $conn->real_escape_string($input['petugas'] ?? '');
         $tt = (int)($input['total'] ?? 0);
         $mt = $conn->real_escape_string($input['metode'] ?? '');
-        $it = $conn->real_escape_string(json_encode($input['items'] ?? []));
+        $itemsArr = $input['items'] ?? [];
+        $it = $conn->real_escape_string(json_encode($itemsArr));
         $pn = $conn->real_escape_string($input['pelanggan_nama'] ?? 'No Cust');
         $ph = $conn->real_escape_string($input['pelanggan_telepon'] ?? '');
-        $sql = "INSERT INTO transaksi (waktu, cabang, petugas, total, metode, items_json, pelanggan_nama, pelanggan_telepon) VALUES (NOW(),'$cb','$pt',$tt,'$mt','$it','$pn','$ph')";
-        echo $conn->query($sql)
-            ? json_encode(["status"=>"success","id"=>$conn->insert_id])
+
+        $diskon = 0;
+        $kuponKodeSaved = '';
+        $kuponIdUsed = null;
+        $kuponKodeInput = trim($input['kupon_kode'] ?? '');
+        if ($kuponKodeInput !== '') {
+            $subtotalForCoupon = $tt; // total dikirim dari client sebelum diskon
+            $cek = validasi_kupon_internal($conn, $kuponKodeInput, $cb, $itemsArr, $subtotalForCoupon);
+            if ($cek['valid']) {
+                $diskon = $cek['diskon'];
+                $kuponKodeSaved = $conn->real_escape_string($cek['kode']);
+                $kuponIdUsed = $cek['kupon_id'];
+                $tt = max(0, $tt - $diskon);
+            }
+            // Kalau kupon tidak valid lagi saat submit (mis. kuota keburu habis), diam-diam abaikan
+            // diskonnya (tetap simpan transaksi tanpa diskon) daripada gagal total di kasir.
+        }
+
+        $sql = "INSERT INTO transaksi (waktu, cabang, petugas, total, metode, items_json, pelanggan_nama, pelanggan_telepon, diskon, kupon_kode) VALUES (NOW(),'$cb','$pt',$tt,'$mt','$it','$pn','$ph',$diskon,'$kuponKodeSaved')";
+        $ok = $conn->query($sql);
+        if ($ok && $kuponIdUsed) {
+            $trxId = $conn->insert_id;
+            $conn->query("INSERT INTO promo_kupon_usage (kupon_id, sumber, cabang_nama, referensi) VALUES ($kuponIdUsed, 'kasir', '$cb', '$trxId')");
+        }
+        echo $ok
+            ? json_encode(["status"=>"success","id"=>$conn->insert_id,"diskon"=>$diskon,"total"=>$tt])
             : json_encode(["status"=>"error","message"=>$conn->error]);
+        break;
+
+    // ── KUPON/PROMO ─────────────────────────────────────
+    case 'cek_kupon':
+        $kode = $_GET['kode'] ?? '';
+        $cabangCek = $_GET['cabang'] ?? '';
+        $subtotalCek = (int)($_GET['subtotal'] ?? 0);
+        $itemsCek = json_decode($_GET['items'] ?? '[]', true);
+        if (!is_array($itemsCek)) $itemsCek = [];
+        $hasilCek = validasi_kupon_internal($conn, $kode, $cabangCek, $itemsCek, $subtotalCek);
+
+        // Dipanggil server-to-server dari order.pos-hokidimsum.com setelah order berhasil dibuat,
+        // supaya kuota kupon ikut tercatat untuk order online (bukan cuma kasir).
+        if ($hasilCek['valid'] && !empty($_GET['pakai'])) {
+            $sumberPakai = $conn->real_escape_string($_GET['sumber'] ?? 'order_online');
+            $refPakai = $conn->real_escape_string($_GET['referensi'] ?? '');
+            $cabangPakai = $conn->real_escape_string($cabangCek);
+            $conn->query("INSERT INTO promo_kupon_usage (kupon_id, sumber, cabang_nama, referensi) VALUES ({$hasilCek['kupon_id']}, '$sumberPakai', '$cabangPakai', '$refPakai')");
+        }
+
+        echo json_encode($hasilCek);
+        break;
+
+    case 'get_kupon':
+        $kupons = $conn->query("SELECT * FROM promo_kupon ORDER BY id DESC")->fetch_all(MYSQLI_ASSOC);
+        foreach ($kupons as &$k) {
+            $kid = (int)$k['id'];
+            $cabRes = $conn->query("SELECT cabang_nama FROM promo_kupon_cabang WHERE kupon_id=$kid");
+            $k['cabang'] = $cabRes ? array_column($cabRes->fetch_all(MYSQLI_ASSOC), 'cabang_nama') : [];
+            $prodRes = $conn->query("SELECT produk_sku FROM promo_kupon_produk WHERE kupon_id=$kid");
+            $k['produk'] = $prodRes ? array_column($prodRes->fetch_all(MYSQLI_ASSOC), 'produk_sku') : [];
+            $usedTotalRes = $conn->query("SELECT COUNT(*) c FROM promo_kupon_usage WHERE kupon_id=$kid");
+            $k['terpakai_total'] = $usedTotalRes ? (int)$usedTotalRes->fetch_assoc()['c'] : 0;
+            $usedTodayRes = $conn->query("SELECT COUNT(*) c FROM promo_kupon_usage WHERE kupon_id=$kid AND DATE(waktu)=CURDATE()");
+            $k['terpakai_hari_ini'] = $usedTodayRes ? (int)$usedTodayRes->fetch_assoc()['c'] : 0;
+        }
+        unset($k);
+        echo json_encode(["status"=>"success","data"=>$kupons]);
+        break;
+
+    case 'save_kupon':
+        $tknK = $conn->real_escape_string($input['token'] ?? '');
+        $unameK = $conn->real_escape_string($input['user'] ?? '');
+        $chkK = $conn->query("SELECT role FROM users WHERE LOWER(username)=LOWER('$unameK') AND session_token='$tknK'");
+        $actorK = ($chkK && $chkK->num_rows > 0) ? $chkK->fetch_assoc() : null;
+        if (!$actorK || !in_array($actorK['role'], ['Owner','VIP'], true)) {
+            http_response_code(403);
+            echo json_encode(["status"=>"error","message"=>"Akses ditolak"]);
+            break;
+        }
+
+        $kid = (int)($input['id'] ?? 0);
+        $kode = $conn->real_escape_string(trim($input['kode'] ?? ''));
+        $nama = $conn->real_escape_string(trim($input['nama'] ?? ''));
+        $tipe = ($input['diskon_tipe'] ?? 'nominal') === 'persen' ? 'persen' : 'nominal';
+        $nilai = (int)($input['diskon_nilai'] ?? 0);
+        $minBelanja = (int)($input['min_belanja'] ?? 0);
+        $kuotaHarian = $input['kuota_harian'] !== '' && $input['kuota_harian'] !== null ? (int)$input['kuota_harian'] : null;
+        $kuotaTotal = $input['kuota_total'] !== '' && $input['kuota_total'] !== null ? (int)$input['kuota_total'] : null;
+        $jamMulai = !empty($input['jam_mulai']) ? $conn->real_escape_string($input['jam_mulai']) : null;
+        $jamSelesai = !empty($input['jam_selesai']) ? $conn->real_escape_string($input['jam_selesai']) : null;
+        $tglMulai = !empty($input['tanggal_mulai']) ? $conn->real_escape_string($input['tanggal_mulai']) : null;
+        $tglSelesai = !empty($input['tanggal_selesai']) ? $conn->real_escape_string($input['tanggal_selesai']) : null;
+        $isActive = !empty($input['is_active']) ? 1 : 0;
+        $cabangArr = is_array($input['cabang'] ?? null) ? $input['cabang'] : [];
+        $produkArr = is_array($input['produk'] ?? null) ? $input['produk'] : [];
+
+        if ($kode === '' || $nama === '' || $nilai <= 0) {
+            echo json_encode(["status"=>"error","message"=>"Kode, nama, dan nilai diskon wajib diisi"]);
+            break;
+        }
+
+        $jamMulaiSql = $jamMulai ? "'$jamMulai'" : "NULL";
+        $jamSelesaiSql = $jamSelesai ? "'$jamSelesai'" : "NULL";
+        $tglMulaiSql = $tglMulai ? "'$tglMulai'" : "NULL";
+        $tglSelesaiSql = $tglSelesai ? "'$tglSelesai'" : "NULL";
+        $kuotaHarianSql = $kuotaHarian !== null ? $kuotaHarian : "NULL";
+        $kuotaTotalSql = $kuotaTotal !== null ? $kuotaTotal : "NULL";
+
+        // Cek duplikat kode (selain diri sendiri saat edit)
+        $dupCheck = $conn->query("SELECT id FROM promo_kupon WHERE UPPER(kode)=UPPER('$kode') AND id != $kid");
+        if ($dupCheck && $dupCheck->num_rows > 0) {
+            echo json_encode(["status"=>"error","message"=>"Kode kupon sudah dipakai kupon lain"]);
+            break;
+        }
+
+        if ($kid > 0) {
+            $conn->query("UPDATE promo_kupon SET kode='$kode', nama='$nama', diskon_tipe='$tipe', diskon_nilai=$nilai,
+                min_belanja=$minBelanja, kuota_harian=$kuotaHarianSql, kuota_total=$kuotaTotalSql,
+                jam_mulai=$jamMulaiSql, jam_selesai=$jamSelesaiSql, tanggal_mulai=$tglMulaiSql, tanggal_selesai=$tglSelesaiSql,
+                is_active=$isActive WHERE id=$kid");
+        } else {
+            $conn->query("INSERT INTO promo_kupon (kode, nama, diskon_tipe, diskon_nilai, min_belanja, kuota_harian, kuota_total, jam_mulai, jam_selesai, tanggal_mulai, tanggal_selesai, is_active)
+                VALUES ('$kode','$nama','$tipe',$nilai,$minBelanja,$kuotaHarianSql,$kuotaTotalSql,$jamMulaiSql,$jamSelesaiSql,$tglMulaiSql,$tglSelesaiSql,$isActive)");
+            $kid = $conn->insert_id;
+        }
+
+        $conn->query("DELETE FROM promo_kupon_cabang WHERE kupon_id=$kid");
+        foreach ($cabangArr as $cb) {
+            $cbEsc = $conn->real_escape_string(trim($cb));
+            if ($cbEsc !== '') $conn->query("INSERT INTO promo_kupon_cabang (kupon_id, cabang_nama) VALUES ($kid, '$cbEsc')");
+        }
+        $conn->query("DELETE FROM promo_kupon_produk WHERE kupon_id=$kid");
+        foreach ($produkArr as $sku) {
+            $skuEsc = $conn->real_escape_string(trim($sku));
+            if ($skuEsc !== '') $conn->query("INSERT INTO promo_kupon_produk (kupon_id, produk_sku) VALUES ($kid, '$skuEsc')");
+        }
+
+        echo json_encode(["status"=>"success","id"=>$kid]);
+        break;
+
+    case 'del_kupon':
+        $tknK = $conn->real_escape_string($_GET['token'] ?? '');
+        $unameK = $conn->real_escape_string($_GET['user'] ?? '');
+        $chkK = $conn->query("SELECT role FROM users WHERE LOWER(username)=LOWER('$unameK') AND session_token='$tknK'");
+        $actorK = ($chkK && $chkK->num_rows > 0) ? $chkK->fetch_assoc() : null;
+        if (!$actorK || !in_array($actorK['role'], ['Owner','VIP'], true)) {
+            http_response_code(403);
+            echo json_encode(["status"=>"error","message"=>"Akses ditolak"]);
+            break;
+        }
+        $kid = (int)($_GET['id'] ?? 0);
+        $conn->query("DELETE FROM promo_kupon WHERE id=$kid");
+        $conn->query("DELETE FROM promo_kupon_cabang WHERE kupon_id=$kid");
+        $conn->query("DELETE FROM promo_kupon_produk WHERE kupon_id=$kid");
+        echo json_encode(["status"=>"success"]);
         break;
 
     case 'get_history':
