@@ -8,7 +8,7 @@ $order = null;
 $notFound = false;
 
 if ($orderCode !== '') {
-    $stmt = db()->prepare("SELECT o.*, b.nama AS branch_nama FROM orders o JOIN branches b ON b.id = o.branch_id WHERE o.order_code = ?");
+    $stmt = db()->prepare("SELECT o.*, b.nama AS branch_nama, b.alamat AS branch_alamat FROM orders o JOIN branches b ON b.id = o.branch_id WHERE o.order_code = ?");
     $stmt->execute([$orderCode]);
     $order = $stmt->fetch();
     if (!$order) $notFound = true;
@@ -49,6 +49,7 @@ require __DIR__ . '/includes/header.php';
       <?php if ($notFound): ?>
         <div class="alert alert-error" style="margin-top:20px;">Order dengan kode tersebut tidak ditemukan.</div>
       <?php elseif ($order): ?>
+        <?php $pickupLabelStatus = $order['pickup_method'] === 'ojol' ? 'Dikirim Ojol (titik jemput driver)' : 'Ambil Sendiri'; ?>
         <div style="margin-top:24px;">
           <div class="summary-row"><span>Kode Order</span><strong><?= e($order['order_code']) ?></strong></div>
           <div class="summary-row"><span>Nama</span><strong><?= e($order['nama_customer']) ?></strong></div>
@@ -58,6 +59,16 @@ require __DIR__ . '/includes/header.php';
             <span>Status</span>
             <span class="status-pill status-<?= e($order['status']) ?>"><?= e($statusLabels[$order['status']] ?? $order['status']) ?></span>
           </div>
+
+          <?php if ($order['status'] !== 'cancelled'): ?>
+          <div class="panel-like" style="margin-top:14px;">
+            <div class="order-item-row" style="border-bottom:none;">
+              <span>📍 Titik Penjemputan</span><span><strong><?= e($order['branch_nama']) ?></strong></span>
+            </div>
+            <p class="form-hint mb-0" style="margin-top:4px;"><?= e($order['branch_alamat']) ?></p>
+            <p class="form-hint mb-0" style="margin-top:6px;">🛵 <?= e($pickupLabelStatus) ?></p>
+          </div>
+          <?php endif; ?>
 
           <?php if ($order['status'] !== 'cancelled'): ?>
           <div class="order-timeline">

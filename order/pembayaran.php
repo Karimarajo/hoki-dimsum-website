@@ -3,7 +3,7 @@ require_once __DIR__ . '/includes/cart.php';
 $currentPage = 'pembayaran.php';
 
 $orderCode = $_GET['order'] ?? '';
-$stmt = db()->prepare("SELECT o.*, b.nama AS branch_nama, b.wa_number AS branch_wa, b.qris_image AS branch_qris FROM orders o JOIN branches b ON b.id = o.branch_id WHERE o.order_code = ?");
+$stmt = db()->prepare("SELECT o.*, b.nama AS branch_nama, b.alamat AS branch_alamat, b.wa_number AS branch_wa, b.qris_image AS branch_qris FROM orders o JOIN branches b ON b.id = o.branch_id WHERE o.order_code = ?");
 $stmt->execute([$orderCode]);
 $order = $stmt->fetch();
 
@@ -28,6 +28,7 @@ $pesan = "Halo, saya konfirmasi pembayaran.\n"
 $waLink = wa_link($waTarget, $pesan);
 
 $qrisImage = $order['branch_qris'] ?? '';
+$pickupLabel = $order['pickup_method'] === 'ojol' ? 'Dikirim Ojol (titik jemput driver)' : 'Ambil Sendiri';
 
 require __DIR__ . '/includes/header.php';
 ?>
@@ -52,6 +53,14 @@ require __DIR__ . '/includes/header.php';
 
     <div class="unique-code-hint">
       ⚠️ Transfer <strong>PAS</strong> sesuai nominal di atas ya, termasuk 3 digit terakhir (kode unik). Ini membantu kami mengecek pembayaranmu lebih cepat!
+    </div>
+
+    <div class="panel-like" style="margin-bottom:20px;">
+      <div class="order-item-row" style="border-bottom:none;">
+        <span>📍 Titik Penjemputan</span><span><strong><?= e($order['branch_nama']) ?></strong></span>
+      </div>
+      <p class="form-hint mb-0" style="margin-top:4px;"><?= e($order['branch_alamat']) ?></p>
+      <p class="form-hint mb-0" style="margin-top:6px;">🛵 <?= e($pickupLabel) ?></p>
     </div>
 
     <?php if ($qrisImage): ?>
