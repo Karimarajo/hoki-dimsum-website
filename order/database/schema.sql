@@ -80,8 +80,19 @@ CREATE TABLE IF NOT EXISTS products (
     is_available TINYINT(1) DEFAULT 1,
     pos_sku VARCHAR(20) NULL,
     urutan INT DEFAULT 0,
+    nama_display VARCHAR(150) NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (category_id) REFERENCES product_categories(id) ON DELETE SET NULL
+) ENGINE=InnoDB;
+
+-- Menu yang nonaktif utk cabang tertentu (opt-out: tidak ada baris = aktif di cabang itu)
+CREATE TABLE IF NOT EXISTS product_branch_unavailable (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    product_id INT NOT NULL,
+    branch_id INT NOT NULL,
+    UNIQUE KEY uniq_product_branch (product_id, branch_id),
+    FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
+    FOREIGN KEY (branch_id) REFERENCES branches(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
 -- Order
@@ -101,6 +112,7 @@ CREATE TABLE IF NOT EXISTS orders (
     diskon DECIMAL(10,2) DEFAULT 0,
     total_bayar DECIMAL(10,2) NOT NULL,
     status ENUM('pending_payment','paid','preparing','ready','completed','cancelled') DEFAULT 'pending_payment',
+    synced_to_pos TINYINT(1) DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (branch_id) REFERENCES branches(id)

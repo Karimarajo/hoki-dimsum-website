@@ -38,6 +38,20 @@ function db(): PDO
             UNIQUE KEY uniq_branch_hari (branch_id, hari),
             FOREIGN KEY (branch_id) REFERENCES branches(id) ON DELETE CASCADE
         ) ENGINE=InnoDB");
+        if (!$pdo->query("SHOW COLUMNS FROM products LIKE 'nama_display'")->fetch()) {
+            $pdo->exec('ALTER TABLE products ADD COLUMN nama_display VARCHAR(150) NULL');
+        }
+        if (!$pdo->query("SHOW COLUMNS FROM orders LIKE 'synced_to_pos'")->fetch()) {
+            $pdo->exec('ALTER TABLE orders ADD COLUMN synced_to_pos TINYINT(1) DEFAULT 0');
+        }
+        $pdo->exec("CREATE TABLE IF NOT EXISTS product_branch_unavailable (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            product_id INT NOT NULL,
+            branch_id INT NOT NULL,
+            UNIQUE KEY uniq_product_branch (product_id, branch_id),
+            FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
+            FOREIGN KEY (branch_id) REFERENCES branches(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB");
     }
     return $pdo;
 }

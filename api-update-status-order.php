@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/includes/db_order.php';
+require_once __DIR__ . '/includes/order_transaksi_sync.php';
 
 header('Content-Type: application/json');
 
@@ -80,5 +81,10 @@ if (!$punyaAkses) {
 // ── Update status ──
 $stmtUpdate = $pdo->prepare('UPDATE orders SET status = ? WHERE id = ?');
 $stmtUpdate->execute([$statusBaru, $orderId]);
+
+// ── Sync ke histori transaksi POS begitu order dibayar (idempotent, aman dipanggil berkali-kali) ──
+if ($statusBaru === 'paid') {
+    sync_order_online_transaksi($conn, $pdo, $orderId);
+}
 
 echo json_encode(['status' => 'success']);

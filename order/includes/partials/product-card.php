@@ -14,7 +14,7 @@ $cartQty = cart_qty((int)$p['id']);
     <?php if (!$p['is_available']): ?><div class="badge-unavailable">Habis</div><?php endif; ?>
   </div>
   <div class="product-body">
-    <h3><?= e($p['nama']) ?></h3>
+    <h3><?= e($p['nama_display'] ?: $p['nama']) ?></h3>
     <p class="desc"><?= e($p['deskripsi']) ?></p>
     <div class="line-total" data-line-total<?= $cartQty > 0 ? '' : ' style="display:none;"' ?>>Subtotal: <?= rupiah($p['harga'] * $cartQty) ?></div>
     <div class="product-foot">

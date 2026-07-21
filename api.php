@@ -185,8 +185,11 @@ if (!$conn || $conn->connect_error) {
     die(json_encode(["status" => "error", "message" => "Koneksi database gagal: " . ($conn ? $conn->connect_error : "Server mati")]));
 }
 
-$conn->query("SET time_zone = '+07:00'"); 
+$conn->query("SET time_zone = '+07:00'");
 $conn->set_charset("utf8mb4");
+
+require_once __DIR__ . '/includes/db_order.php';
+require_once __DIR__ . '/includes/order_transaksi_sync.php';
 
 // ── AUTO-CREATE ESSENTIAL TABLES ──────────────────────
 $conn->query("CREATE TABLE IF NOT EXISTS users (
@@ -458,6 +461,29 @@ $checkColKupon = $conn->query("SHOW COLUMNS FROM transaksi LIKE 'kupon_kode'");
 if ($checkColKupon && $checkColKupon->num_rows === 0) {
     $conn->query("ALTER TABLE transaksi ADD COLUMN kupon_kode VARCHAR(50) DEFAULT ''");
 }
+
+// ── Kolom tambahan produk utk Order Online (nama tampilan, deskripsi, kategori) ──
+$checkColNamaDisplay = $conn->query("SHOW COLUMNS FROM produk LIKE 'nama_display'");
+if ($checkColNamaDisplay && $checkColNamaDisplay->num_rows === 0) {
+    $conn->query("ALTER TABLE produk ADD COLUMN nama_display VARCHAR(150) NULL");
+}
+$checkColDeskripsi = $conn->query("SHOW COLUMNS FROM produk LIKE 'deskripsi'");
+if ($checkColDeskripsi && $checkColDeskripsi->num_rows === 0) {
+    $conn->query("ALTER TABLE produk ADD COLUMN deskripsi TEXT NULL");
+}
+$checkColKategori = $conn->query("SHOW COLUMNS FROM produk LIKE 'kategori'");
+if ($checkColKategori && $checkColKategori->num_rows === 0) {
+    $conn->query("ALTER TABLE produk ADD COLUMN kategori VARCHAR(100) NULL DEFAULT 'Umum'");
+}
+
+// ── Ketersediaan menu per-cabang (opt-out: baris di sini = produk itu NONAKTIF di cabang itu) ──
+$conn->query("CREATE TABLE IF NOT EXISTS produk_cabang_nonaktif (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    produk_id INT NOT NULL,
+    cabang_nama VARCHAR(100) NOT NULL,
+    UNIQUE KEY uniq_produk_cabang (produk_id, cabang_nama),
+    FOREIGN KEY (produk_id) REFERENCES produk(id) ON DELETE CASCADE
+)");
 
 // ── Tabel Edukasi & SOP ──
 $conn->query("CREATE TABLE IF NOT EXISTS hoki_edukasi (
@@ -826,7 +852,20 @@ switch ($action) {
             }
         }
         unset($p);
-        
+
+        // Lampirkan daftar cabang yg menonaktifkan tiap produk (dipakai Order Online utk filter ketersediaan)
+        $nonaktifRes = $conn->query("SELECT produk_id, cabang_nama FROM produk_cabang_nonaktif");
+        $nonaktifMap = [];
+        if ($nonaktifRes) {
+            while ($row = $nonaktifRes->fetch_assoc()) {
+                $nonaktifMap[(int)$row['produk_id']][] = $row['cabang_nama'];
+            }
+        }
+        foreach ($produk_list as &$p) {
+            $p['nonaktif_cabang'] = $nonaktifMap[(int)$p['id']] ?? [];
+        }
+        unset($p);
+
         echo json_encode($produk_list);
         break;
 
@@ -838,12 +877,30 @@ switch ($action) {
         $hpp    = (int)($input['hpp']       ?? 0);
         $dimsum = (int)($input['dimsumPcs'] ?? 0);
         $alu    = (int)($input['aluTrayPcs'] ?? 0);
+        $namaDisplay = $conn->real_escape_string(trim($input['nama_display'] ?? ''));
+        $deskripsi   = $conn->real_escape_string(trim($input['deskripsi'] ?? ''));
+        $kategori    = $conn->real_escape_string(trim($input['kategori'] ?? '') ?: 'Umum');
         if ($id > 0) {
-            $sql = "UPDATE produk SET sku='$sku', nama='$nama', harga=$harga, hpp=$hpp, dimsumPcs=$dimsum, aluTrayPcs=$alu WHERE id=$id";
+            $sql = "UPDATE produk SET sku='$sku', nama='$nama', harga=$harga, hpp=$hpp, dimsumPcs=$dimsum, aluTrayPcs=$alu, nama_display='$namaDisplay', deskripsi='$deskripsi', kategori='$kategori' WHERE id=$id";
+            $conn->query($sql);
         } else {
-            $sql = "INSERT INTO produk (sku, nama, harga, hpp, dimsumPcs, aluTrayPcs) VALUES ('$sku','$nama',$harga,$hpp,$dimsum,$alu)";
+            $sql = "INSERT INTO produk (sku, nama, harga, hpp, dimsumPcs, aluTrayPcs, nama_display, deskripsi, kategori) VALUES ('$sku','$nama',$harga,$hpp,$dimsum,$alu,'$namaDisplay','$deskripsi','$kategori')";
+            $conn->query($sql);
+            $id = $conn->insert_id;
         }
-        $conn->query($sql);
+
+        // Simpan ulang daftar cabang yg menonaktifkan produk ini (delete-lalu-insert, sama pola dgn kupon)
+        $conn->query("DELETE FROM produk_cabang_nonaktif WHERE produk_id=$id");
+        $nonaktifCabang = $input['nonaktif_cabang'] ?? [];
+        if (is_array($nonaktifCabang)) {
+            foreach ($nonaktifCabang as $cabangNama) {
+                $cabangNamaEsc = $conn->real_escape_string($cabangNama);
+                if ($cabangNamaEsc !== '') {
+                    $conn->query("INSERT IGNORE INTO produk_cabang_nonaktif (produk_id, cabang_nama) VALUES ($id, '$cabangNamaEsc')");
+                }
+            }
+        }
+
         echo json_encode(["status"=>"success"]);
         break;
 
@@ -900,6 +957,18 @@ switch ($action) {
         echo $ok
             ? json_encode(["status"=>"success","id"=>$conn->insert_id,"diskon"=>$diskon,"total"=>$tt])
             : json_encode(["status"=>"error","message"=>$conn->error]);
+        break;
+
+    // Dipanggil server-to-server dari order.pos-hokidimsum.com (order/admin/pesanan.php) begitu
+    // sebuah order online ditandai 'paid', supaya masuk ke histori transaksi POS otomatis.
+    case 'sync_order_transaksi':
+        $orderIdSync = (int)($input['order_id'] ?? $_GET['order_id'] ?? 0);
+        if ($orderIdSync <= 0) {
+            echo json_encode(["status"=>"error","message"=>"order_id tidak valid"]);
+            break;
+        }
+        $hasilSync = sync_order_online_transaksi($conn, order_db(), $orderIdSync);
+        echo json_encode($hasilSync);
         break;
 
     // ── KUPON/PROMO ─────────────────────────────────────

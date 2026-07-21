@@ -761,7 +761,7 @@ async function fetchLaporanData() {
         const transactions = await resTrx.json();
 
         // 2. Inisialisasi Omset
-        omzetPerMetode = { CASH: 0, QRIS: 0, GF: 0, GB: 0, SF: 0, PG: 0, RM: 0 };
+        omzetPerMetode = { CASH: 0, QRIS: 0, QR_ONLINE: 0, GF: 0, GB: 0, SF: 0, PG: 0, RM: 0 };
         let totalOmzet = 0;
 
         // 3. Reset angka laku di semua item audit agar tidak double saat refresh
@@ -834,10 +834,11 @@ async function fetchLaporanData() {
 }
 
 // Fungsi pembantu untuk render tabel omset agar bersih
+const LABEL_METODE = { QR_ONLINE: 'QR Online' };
 function renderOmsetTable() {
     let htmlM = '';
     for (let m in omzetPerMetode) {
-        htmlM += `<tr><td><b>${m}</b></td><td>Rp ${omzetPerMetode[m].toLocaleString('id-ID')}</td></tr>`;
+        htmlM += `<tr><td><b>${LABEL_METODE[m] || m}</b></td><td>Rp ${omzetPerMetode[m].toLocaleString('id-ID')}</td></tr>`;
     }
     document.querySelector('#tableMetode tbody').innerHTML = htmlM;
 }

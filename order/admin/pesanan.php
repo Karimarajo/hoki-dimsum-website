@@ -17,6 +17,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_status'])) {
             $stmt = db()->prepare('UPDATE orders SET status = ? WHERE id = ?');
             $stmt->execute([$newStatus, $orderId]);
             flash('success', 'Status pesanan berhasil diperbarui.');
+
+            // Begitu order ditandai 'paid', catat otomatis ke histori transaksi POS (idempotent di sisi POS).
+            if ($newStatus === 'paid') {
+                $posApiBase = $isDev
+                    ? 'http://127.0.0.1:' . ($_SERVER['SERVER_PORT'] ?? 80) . '/api.php'
+                    : 'https://pos-hokidimsum.com/api.php';
+                $chSync = curl_init($posApiBase . '?action=sync_order_transaksi&order_id=' . $orderId);
+                curl_setopt_array($chSync, [CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 6]);
+                curl_exec($chSync);
+                curl_close($chSync);
+            }
         }
     }
     redirect(BASE_URL . '/admin/pesanan.php' . (isset($_POST['order_id']) ? '?view=' . (int)$_POST['order_id'] : ''));

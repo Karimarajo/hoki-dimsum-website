@@ -14,9 +14,24 @@ $pageDesc = $pageDesc ?? get_setting('meta_description', 'Order dimsum homemade 
 <meta name="description" content="<?= e($pageDesc) ?>">
 <meta name="theme-color" content="#c8372d">
 <link rel="icon" href="<?= BASE_URL ?>/assets/2.png">
+<link rel="manifest" href="<?= BASE_URL ?>/manifest.json">
+
+<!-- PWA: iOS Safari tidak mengikuti manifest.json, jadi butuh meta tag & link tersendiri -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="<?= e(APP_NAME) ?>">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="<?= BASE_URL ?>/assets/icons/apple-touch-icon.png">
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/style.css">
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('<?= BASE_URL ?>/sw.js').catch(() => {});
+  });
+}
+</script>
 </head>
 <body>
 

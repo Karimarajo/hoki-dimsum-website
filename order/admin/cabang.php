@@ -89,6 +89,25 @@ if (!empty($_GET['edit'])) {
 }
 $dayOrder = [1, 2, 3, 4, 5, 6, 0]; // Senin ... Minggu
 $dayNames = day_names();
+
+// Ambil daftar nama cabang di POS, utk peringatan kalau nama cabang di sini tidak match
+// (nama HARUS sama persis dgn hoki_cabang.nama_cabang supaya sync menu & ketersediaan per-cabang jalan benar).
+$posCabangNames = [];
+$posApiBaseCek = $isDev
+    ? 'http://127.0.0.1:' . ($_SERVER['SERVER_PORT'] ?? 80) . '/api.php'
+    : 'https://pos-hokidimsum.com/api.php';
+$chPos = curl_init($posApiBaseCek . '?action=get_cabang');
+curl_setopt_array($chPos, [CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 4]);
+$resPos = curl_exec($chPos);
+curl_close($chPos);
+$posCabangData = $resPos !== false ? json_decode($resPos, true) : null;
+if (is_array($posCabangData)) {
+    foreach ($posCabangData as $pc) {
+        if (!empty($pc['nama_cabang'])) {
+            $posCabangNames[] = mb_strtolower(trim($pc['nama_cabang']));
+        }
+    }
+}
 ?>
 
 <div class="panel">
@@ -181,9 +200,9 @@ $dayNames = day_names();
       <thead><tr><th>Nama</th><th>Alamat</th><th>QRIS</th><th>Status</th><th>Buka Sekarang?</th><th></th></tr></thead>
       <tbody>
         <?php if (!$branches): ?><tr><td colspan="6">Belum ada cabang.</td></tr><?php endif; ?>
-        <?php foreach ($branches as $b): $openNow = branch_is_open_now(get_branch_hours((int)$b['id'])); ?>
+        <?php foreach ($branches as $b): $openNow = branch_is_open_now(get_branch_hours((int)$b['id'])); $namaMatchPos = !$posCabangNames || in_array(mb_strtolower(trim($b['nama'])), $posCabangNames, true); ?>
         <tr>
-          <td><?= e($b['nama']) ?></td>
+          <td><?= e($b['nama']) ?><?php if (!$namaMatchPos): ?><br><span class="badge-nonaktif-cabang" style="display:inline-block; margin-top:3px; font-size:10.5px; font-weight:700; color:#8a6d1f; background:var(--gold-100,#fff7e6); padding:1px 7px; border-radius:99px;" title="Nama cabang ini tidak ketemu match di daftar cabang POS. Sync menu POS→Order & ketersediaan per-cabang utk cabang ini tidak akan jalan sampai namanya disamakan.">⚠️ Tidak match ke POS</span><?php endif; ?></td>
           <td><?= e($b['alamat']) ?></td>
           <td><span class="status-pill <?= !empty($b['qris_image']) ? 'status-ready' : 'status-pending_payment' ?>"><?= !empty($b['qris_image']) ? 'Ada' : 'Pakai Pusat' ?></span></td>
           <td><span class="status-pill <?= $b['is_active'] ? 'status-ready' : 'status-cancelled' ?>"><?= $b['is_active'] ? 'Aktif' : 'Nonaktif' ?></span></td>

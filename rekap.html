@@ -535,8 +535,12 @@ function renderTampilan(data) {
     const tbodyM = document.querySelector('#tableMetode tbody');
     tbodyM.innerHTML = Object.entries(data.metode).length
         ? Object.entries(data.metode).map(([m,val]) =>
-            `<tr><td><b>${m}</b></td><td style="font-family:'DM Mono',monospace;font-weight:700;color:var(--red);">Rp ${val.toLocaleString('id-ID')}</td></tr>`).join('')
+            `<tr><td><b>${m === 'QR_ONLINE' ? 'QR Online' : m}</b></td><td style="font-family:'DM Mono',monospace;font-weight:700;color:var(--red);">Rp ${val.toLocaleString('id-ID')}</td></tr>`).join('')
         : '<tr><td colspan="2" style="text-align:center;color:var(--text-muted);padding:20px;">Tidak ada data</td></tr>';
+    if ((data.metode.QRIS || 0) + (data.metode.QR_ONLINE || 0) > 0) {
+        const totalQr = (data.metode.QRIS || 0) + (data.metode.QR_ONLINE || 0);
+        tbodyM.innerHTML += `<tr style="border-top:2px solid var(--border);"><td><b>Total QR (QRIS + QR Online)</b></td><td style="font-family:'DM Mono',monospace;font-weight:700;color:var(--green);">Rp ${totalQr.toLocaleString('id-ID')}</td></tr>`;
+    }
 
     // Menu terjual
     const tbodyMenu = document.querySelector('#tableMenu tbody');

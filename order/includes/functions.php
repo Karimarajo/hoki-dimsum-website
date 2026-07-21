@@ -170,3 +170,15 @@ function branch_is_open_now(array $hoursByDay): bool
     $nowTime = $now->format('H:i:s');
     return $nowTime >= $today['buka'] && $nowTime <= $today['tutup'];
 }
+
+function products_unavailable_at_branch(array $productIds, int $branchId): array
+{
+    $productIds = array_values(array_unique(array_filter(array_map('intval', $productIds))));
+    if (!$productIds || $branchId <= 0) return [];
+    $placeholders = implode(',', array_fill(0, count($productIds), '?'));
+    $stmt = db()->prepare("SELECT p.nama FROM product_branch_unavailable u
+        JOIN products p ON p.id = u.product_id
+        WHERE u.branch_id = ? AND u.product_id IN ($placeholders)");
+    $stmt->execute([$branchId, ...$productIds]);
+    return array_column($stmt->fetchAll(), 'nama');
+}

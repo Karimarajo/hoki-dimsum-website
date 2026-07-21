@@ -45,6 +45,83 @@
         border-color: var(--red);
     }
 
+    .grid-input-detail {
+        display: grid;
+        grid-template-columns: 1fr 1fr 2fr;
+        gap: 10px;
+        margin-top: 10px;
+    }
+
+    .grid-input-detail input,
+    .grid-input-detail textarea {
+        margin: 0;
+        padding: 9px 10px;
+        border: 1px solid var(--border);
+        border-radius: var(--r-sm);
+        font-family: 'Nunito', sans-serif;
+        font-size: 13px;
+        color: var(--text);
+        background: var(--surface);
+        outline: none;
+        transition: border-color var(--ease);
+        width: 100%;
+        resize: vertical;
+    }
+
+    .grid-input-detail input:focus,
+    .grid-input-detail textarea:focus {
+        border-color: var(--red);
+    }
+
+    .cabang-nonaktif-box {
+        margin-top: 10px;
+        padding: 10px 12px;
+        border: 1px solid var(--border);
+        border-radius: var(--r-sm);
+        background: var(--surface-2);
+    }
+
+    .cabang-nonaktif-box .label {
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: var(--text-muted);
+        margin-bottom: 8px;
+        display: block;
+    }
+
+    .cabang-nonaktif-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+
+    .cabang-nonaktif-list label {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 13px;
+        color: var(--text);
+        cursor: pointer;
+    }
+
+    .badge-nonaktif-cabang {
+        display: inline-block;
+        margin-top: 3px;
+        font-size: 10.5px;
+        font-weight: 700;
+        color: var(--red);
+        background: var(--red-100, #fde8e8);
+        padding: 1px 7px;
+        border-radius: 99px;
+    }
+
+    @media (max-width: 844px) {
+        .grid-input-detail {
+            grid-template-columns: 1fr;
+        }
+    }
+
     /* ── TABLE ── */
     .table-wrap {
         overflow-x: auto;
@@ -214,6 +291,15 @@
                 <input type="number" id="pHarga" placeholder="Harga Jual">
                 <input type="number" id="pHPP"   placeholder="HPP (auto)" readonly style="background:var(--surface-2);color:var(--red);font-family:'DM Mono',monospace;font-weight:700;">
                 <button class="btn-simpan" onclick="tambahProduk()">+ Simpan</button>
+            </div>
+            <div class="grid-input-detail">
+                <input type="text" id="pNamaDisplay" placeholder="Nama Tampilan Order Online (opsional)">
+                <input type="text" id="pKategori" placeholder="Kategori (mis. Dimsum Kukus)">
+                <textarea id="pDeskripsi" placeholder="Deskripsi utk Order Online (opsional)" rows="1"></textarea>
+            </div>
+            <div class="cabang-nonaktif-box">
+                <span class="label">🚫 Nonaktifkan menu ini di cabang (order online tidak akan menampilkannya di cabang yg dicentang)</span>
+                <div class="cabang-nonaktif-list" id="cabangNonaktifList">Memuat cabang...</div>
             </div>
         </div>
 
@@ -458,7 +544,7 @@ async function muatProduk() {
         tr.innerHTML = `
             <td><span class="drag-handle">☰</span></td>
             <td><span class="sku-badge">${p.sku}</span></td>
-            <td>${p.nama}</td>
+            <td>${p.nama}${p.nama_display ? `<br><span style="font-size:11px;color:var(--text-muted);">Tampilan: ${p.nama_display}</span>` : ''}${(p.nonaktif_cabang && p.nonaktif_cabang.length) ? `<br><span class="badge-nonaktif-cabang">🚫 Nonaktif: ${p.nonaktif_cabang.join(', ')}</span>` : ''}</td>
             <td><span class="harga-text">Rp ${harga.toLocaleString('id-ID')}</span></td>
             <td style="font-family:'DM Mono',monospace;font-size:12px;color:var(--text-muted);">Rp ${hpp.toLocaleString('id-ID')}</td>
             <td><span style="font-weight:700;color:${mColor};">${margin}%</span></td>
@@ -474,13 +560,21 @@ async function muatProduk() {
     });
 }
 
+function cabangNonaktifTerpilih() {
+    return Array.from(document.querySelectorAll('#cabangNonaktifList input[type=checkbox]:checked')).map(c => c.value);
+}
+
 async function tambahProduk() {
     const data = {
-        id:    editModeId,
-        sku:   document.getElementById('pSKU').value.toUpperCase(),
-        nama:  document.getElementById('pNama').value,
-        harga: document.getElementById('pHarga').value,
-        hpp:   document.getElementById('pHPP').value || 0
+        id:              editModeId,
+        sku:             document.getElementById('pSKU').value.toUpperCase(),
+        nama:            document.getElementById('pNama').value,
+        harga:           document.getElementById('pHarga').value,
+        hpp:             document.getElementById('pHPP').value || 0,
+        nama_display:    document.getElementById('pNamaDisplay').value,
+        kategori:        document.getElementById('pKategori').value,
+        deskripsi:       document.getElementById('pDeskripsi').value,
+        nonaktif_cabang: cabangNonaktifTerpilih()
     };
 
     if (!data.sku || !data.nama || !data.harga) return toast.warning('Lengkapi SKU, Nama, dan Harga!');
@@ -496,11 +590,12 @@ async function tambahProduk() {
             toast.success(editModeId ? 'Menu berhasil diupdate!' : 'Menu baru berhasil ditambah!');
             editModeId = null;
             document.querySelector('.btn-simpan').innerText = '+ Simpan';
-            ['pHarga'].forEach(id => document.getElementById(id).value = '');
+            ['pHarga', 'pNamaDisplay', 'pKategori', 'pDeskripsi'].forEach(id => document.getElementById(id).value = '');
             document.getElementById('pSKU').value = '';
             document.getElementById('pNama').value = '';
             document.getElementById('pHPP').value = '';
             document.getElementById('labelSKU').innerText = 'Pilih SKU...';
+            document.querySelectorAll('#cabangNonaktifList input[type=checkbox]').forEach(c => c.checked = false);
             muatProduk();
         }
     } catch(e) {
@@ -516,8 +611,28 @@ function siapkanEdit(idx) {
     document.getElementById('pNama').value  = p.nama;
     document.getElementById('pHarga').value = p.harga;
     document.getElementById('pHPP').value   = p.hpp || 0;
+    document.getElementById('pNamaDisplay').value = p.nama_display || '';
+    document.getElementById('pKategori').value    = p.kategori || '';
+    document.getElementById('pDeskripsi').value   = p.deskripsi || '';
+    const nonaktifSet = new Set(p.nonaktif_cabang || []);
+    document.querySelectorAll('#cabangNonaktifList input[type=checkbox]').forEach(c => {
+        c.checked = nonaktifSet.has(c.value);
+    });
     document.querySelector('.btn-simpan').innerText = '💾 UPDATE MENU';
     window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+async function muatCabangNonaktifCheckbox() {
+    try {
+        const res    = await fetch(`${API_BASE}?action=get_cabang`);
+        const cabang = await res.json();
+        const box = document.getElementById('cabangNonaktifList');
+        box.innerHTML = cabang.length
+            ? cabang.map(c => `<label><input type="checkbox" value="${c.nama_cabang}"> ${c.nama_cabang}</label>`).join('')
+            : 'Belum ada data cabang.';
+    } catch(e) {
+        document.getElementById('cabangNonaktifList').innerText = 'Gagal memuat daftar cabang.';
+    }
 }
 
 async function hapusProduk(id) {
@@ -613,7 +728,7 @@ window.onload = () => {
     buildSidebar();
     updateClock();
     muatDropdownSKU();
-    muatProduk();
+    muatCabangNonaktifCheckbox().then(muatProduk);
 };
 </script>
 

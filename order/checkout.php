@@ -81,6 +81,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['place_order'])) {
             $errors[] = 'Pilih cabang yang valid.';
         } elseif (!branch_is_open_now(get_branch_hours($branchId))) {
             $errors[] = 'Cabang ini sedang tutup saat ini. Silakan pilih cabang lain atau coba lagi pada jam operasionalnya.';
+        } elseif ($items) {
+            $nonaktifNama = products_unavailable_at_branch(array_map(fn($it) => $it['product']['id'], $items), $branchId);
+            if ($nonaktifNama) {
+                $errors[] = 'Menu berikut sedang tidak tersedia di cabang ini: ' . implode(', ', $nonaktifNama) . '. Silakan hapus dari keranjang atau pilih cabang lain.';
+            }
         }
         if (!$items) $errors[] = 'Keranjang kosong.';
 

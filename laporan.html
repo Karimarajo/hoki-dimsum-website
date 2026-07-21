@@ -661,6 +661,10 @@
                 <h3>Profit by HPP</h3>
                 <p id="sumProfitHPP" style="color:#1565c0;">Rp 0</p>
             </div>
+            <div class="stat-card" style="background:#e8f4fd; border-color:#c0d6f0;">
+                <h3>Total QR (QRIS + QR Online)</h3>
+                <p id="sumQrGabungan" style="color:#1565c0;">Rp 0</p>
+            </div>
         </div>
 
         <!-- TABLE PEMASUKAN -->
@@ -672,12 +676,13 @@
                         <tr>
                             <th rowspan="2" style="text-align:left;">Nama Cabang</th>
                             <th colspan="2" style="background:#2e7d32;">Offline</th>
-                            <th colspan="5" style="background:#1565c0;">Aplikasi / Digital</th>
+                            <th colspan="6" style="background:#1565c0;">Aplikasi / Digital</th>
                             <th rowspan="2" style="background:#333;">Total</th>
                         </tr>
                         <tr>
                             <th style="background:#43a047;">Cash</th>
                             <th style="background:#43a047;">QR</th>
+                            <th style="background:#1e88e5;">QR Online</th>
                             <th style="background:#1e88e5;">GB</th>
                             <th style="background:#1e88e5;">GF</th>
                             <th style="background:#1e88e5;">SF</th>
@@ -686,7 +691,7 @@
                         </tr>
                     </thead>
                     <tbody id="tBodyPemasukan">
-                        <tr><td colspan="9" style="text-align:center;color:var(--text-muted);padding:24px;">Tidak ada data</td></tr>
+                        <tr><td colspan="10" style="text-align:center;color:var(--text-muted);padding:24px;">Tidak ada data</td></tr>
                     </tbody>
                     <tfoot id="tFootPemasukan"></tfoot>
                 </table>
@@ -1099,7 +1104,7 @@ async function hitungLaporan() {
         const allTransactions = await resTrx.json();
         const allProducts     = await resPrd.json();
 
-        let totals = { omset:0, belanja:0, cash:0, qr:0, gb:0, gf:0, sf:0, pg:0, rm:0 };
+        let totals = { omset:0, belanja:0, cash:0, qr:0, qrOnline:0, gb:0, gf:0, sf:0, pg:0, rm:0 };
         let profitHPP = 0;
         let rekapCabang = {};
         let rowsBelanja = [];
@@ -1117,24 +1122,26 @@ async function hitungLaporan() {
             if (mCab && mDate) {
                 const cb = r.cabang;
                 const m  = JSON.parse(r.metode_json || '{}');
-                if (!rekapCabang[cb]) rekapCabang[cb] = { cash:0, qr:0, gb:0, gf:0, sf:0, pg:0, rm:0, total:0 };
-                
-                totals.cash += (parseInt(m.CASH) || 0);
-                totals.qr   += (parseInt(m.QRIS) || 0);
-                totals.gb   += (parseInt(m.GB)   || 0);
-                totals.gf   += (parseInt(m.GF)   || 0);
-                totals.sf   += (parseInt(m.SF)   || 0);
-                totals.pg   += (parseInt(m.PG)   || 0);
-                totals.rm   += (parseInt(m.RM)   || 0);
+                if (!rekapCabang[cb]) rekapCabang[cb] = { cash:0, qr:0, qrOnline:0, gb:0, gf:0, sf:0, pg:0, rm:0, total:0 };
 
-                rekapCabang[cb].cash  += (parseInt(m.CASH) || 0);
-                rekapCabang[cb].qr    += (parseInt(m.QRIS) || 0);
-                rekapCabang[cb].gb    += (parseInt(m.GB)   || 0);
-                rekapCabang[cb].gf    += (parseInt(m.GF)   || 0);
-                rekapCabang[cb].sf    += (parseInt(m.SF)   || 0);
-                rekapCabang[cb].pg    += (parseInt(m.PG)   || 0);
-                rekapCabang[cb].rm    += (parseInt(m.RM)   || 0);
-                rekapCabang[cb].total += parseInt(r.grand_total || 0);
+                totals.cash     += (parseInt(m.CASH) || 0);
+                totals.qr       += (parseInt(m.QRIS) || 0);
+                totals.qrOnline += (parseInt(m.QR_ONLINE) || 0);
+                totals.gb       += (parseInt(m.GB)   || 0);
+                totals.gf       += (parseInt(m.GF)   || 0);
+                totals.sf       += (parseInt(m.SF)   || 0);
+                totals.pg       += (parseInt(m.PG)   || 0);
+                totals.rm       += (parseInt(m.RM)   || 0);
+
+                rekapCabang[cb].cash     += (parseInt(m.CASH) || 0);
+                rekapCabang[cb].qr       += (parseInt(m.QRIS) || 0);
+                rekapCabang[cb].qrOnline += (parseInt(m.QR_ONLINE) || 0);
+                rekapCabang[cb].gb       += (parseInt(m.GB)   || 0);
+                rekapCabang[cb].gf       += (parseInt(m.GF)   || 0);
+                rekapCabang[cb].sf       += (parseInt(m.SF)   || 0);
+                rekapCabang[cb].pg       += (parseInt(m.PG)   || 0);
+                rekapCabang[cb].rm       += (parseInt(m.RM)   || 0);
+                rekapCabang[cb].total    += parseInt(r.grand_total || 0);
                 totals.omset          += parseInt(r.grand_total || 0);
             }
         });
@@ -1241,6 +1248,7 @@ function renderUI(totals, rekapCabang, rowsBelanja, profitHPP) {
     document.getElementById('sumBelanja').innerText   = `Rp ${totals.belanja.toLocaleString('id-ID')}`;
     document.getElementById('sumLaba').innerText      = `Rp ${(totals.omset - totals.belanja).toLocaleString('id-ID')}`;
     document.getElementById('sumProfitHPP').innerText = `Rp ${profitHPP.toLocaleString('id-ID')}`;
+    document.getElementById('sumQrGabungan').innerText = `Rp ${(totals.qr + totals.qrOnline).toLocaleString('id-ID')}`;
 
     // Render Tabel Pemasukan
     let htmlP = "";
@@ -1250,6 +1258,7 @@ function renderUI(totals, rekapCabang, rowsBelanja, profitHPP) {
             <td class="text-left"><b>${cab}</b></td>
             <td>${r.cash.toLocaleString()}</td>
             <td>${r.qr.toLocaleString()}</td>
+            <td>${r.qrOnline.toLocaleString()}</td>
             <td>${r.gb.toLocaleString()}</td>
             <td>${r.gf.toLocaleString()}</td>
             <td>${r.sf.toLocaleString()}</td>
@@ -1258,13 +1267,14 @@ function renderUI(totals, rekapCabang, rowsBelanja, profitHPP) {
             <td style="font-weight:700;">Rp ${r.total.toLocaleString()}</td>
         </tr>`;
     }
-    document.getElementById('tBodyPemasukan').innerHTML = htmlP || '<tr><td colspan="9">Tidak ada data</td></tr>';
+    document.getElementById('tBodyPemasukan').innerHTML = htmlP || '<tr><td colspan="10">Tidak ada data</td></tr>';
 
     // Render Footer Pemasukan (Fix: Nilai total per metode tidak lagi 0)
     document.getElementById('tFootPemasukan').innerHTML = `<tr class="row-total">
         <td class="text-left">TOTAL</td>
         <td>${totals.cash.toLocaleString()}</td>
         <td>${totals.qr.toLocaleString()}</td>
+        <td>${totals.qrOnline.toLocaleString()}</td>
         <td>${totals.gb.toLocaleString()}</td>
         <td>${totals.gf.toLocaleString()}</td>
         <td>${totals.sf.toLocaleString()}</td>
