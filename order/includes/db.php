@@ -52,6 +52,10 @@ function db(): PDO
             FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
             FOREIGN KEY (branch_id) REFERENCES branches(id) ON DELETE CASCADE
         ) ENGINE=InnoDB");
+        if (!$pdo->query("SHOW COLUMNS FROM product_categories LIKE 'urutan'")->fetch()) {
+            $pdo->exec('ALTER TABLE product_categories ADD COLUMN urutan INT DEFAULT 0');
+            $pdo->exec('UPDATE product_categories SET urutan = id');
+        }
     }
     return $pdo;
 }

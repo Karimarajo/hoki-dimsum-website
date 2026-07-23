@@ -102,7 +102,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['sync_produk']) && csr
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_category']) && csrf_check()) {
     $nama = trim($_POST['category_nama'] ?? '');
     if ($nama !== '') {
-        db()->prepare('INSERT INTO product_categories (nama) VALUES (?)')->execute([$nama]);
+        $nextUrutanCat = (int)db()->query('SELECT COALESCE(MAX(urutan), 0) FROM product_categories')->fetchColumn() + 1;
+        db()->prepare('INSERT INTO product_categories (nama, urutan) VALUES (?, ?)')->execute([$nama, $nextUrutanCat]);
         flash('success', 'Kategori berhasil ditambahkan.');
     }
     redirect(BASE_URL . '/admin/produk.php');

@@ -66,7 +66,8 @@ CREATE TABLE IF NOT EXISTS branch_hours (
 -- Kategori produk
 CREATE TABLE IF NOT EXISTS product_categories (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    nama VARCHAR(50) NOT NULL
+    nama VARCHAR(50) NOT NULL,
+    urutan INT DEFAULT 0
 ) ENGINE=InnoDB;
 
 -- Produk
@@ -179,8 +180,8 @@ INSERT INTO site_settings (setting_key, setting_value) VALUES
 ('meta_description', 'Order dimsum homemade Hoki Dimsum secara online. Fresh, halal, dan hoki di setiap gigitan.');
 
 -- Kategori
-INSERT INTO product_categories (nama) VALUES
-('Dimsum Kukus'), ('Dimsum Goreng'), ('Paket Hemat'), ('Minuman');
+INSERT INTO product_categories (nama, urutan) VALUES
+('Dimsum Kukus', 1), ('Dimsum Goreng', 2), ('Paket Hemat', 3), ('Minuman', 4);
 
 -- Produk contoh
 INSERT INTO products (category_id, nama, deskripsi, harga, foto, is_available, urutan) VALUES

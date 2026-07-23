@@ -26,6 +26,7 @@ $activeMenu = $activeMenu ?? '';
       <a href="<?= BASE_URL ?>/admin/dashboard.php" class="<?= $activeMenu === 'dashboard' ? 'active' : '' ?>"><span class="ic">📊</span> Dashboard</a>
       <a href="<?= BASE_URL ?>/admin/pesanan.php" class="<?= $activeMenu === 'pesanan' ? 'active' : '' ?>"><span class="ic">🧾</span> Pesanan</a>
       <a href="<?= BASE_URL ?>/admin/produk.php" class="<?= $activeMenu === 'produk' ? 'active' : '' ?>"><span class="ic">🥟</span> Produk</a>
+      <a href="<?= BASE_URL ?>/admin/kategori.php" class="<?= $activeMenu === 'kategori' ? 'active' : '' ?>"><span class="ic">🗂️</span> Kategori</a>
       <a href="<?= BASE_URL ?>/admin/cabang.php" class="<?= $activeMenu === 'cabang' ? 'active' : '' ?>"><span class="ic">📍</span> Cabang</a>
       <a href="<?= BASE_URL ?>/admin/promo.php" class="<?= $activeMenu === 'promo' ? 'active' : '' ?>"><span class="ic">🏷️</span> Promo</a>
       <a href="<?= BASE_URL ?>/admin/artikel.php" class="<?= $activeMenu === 'artikel' ? 'active' : '' ?>"><span class="ic">📰</span> Artikel</a>

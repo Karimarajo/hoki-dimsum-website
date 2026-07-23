@@ -3,7 +3,7 @@ require_once __DIR__ . '/includes/cart.php';
 $currentPage = 'menu.php';
 $pageTitle = 'Menu — ' . APP_NAME;
 
-$categories = db()->query("SELECT * FROM product_categories ORDER BY id")->fetchAll();
+$categories = db()->query("SELECT * FROM product_categories ORDER BY urutan ASC, id ASC")->fetchAll();
 $products = db()->query("
     SELECT p.*, c.nama AS category_nama
     FROM products p
