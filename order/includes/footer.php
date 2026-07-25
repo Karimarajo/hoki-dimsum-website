@@ -52,5 +52,16 @@ $waPusat = get_setting('wa_pusat', '');
 
 <script>window.APP_BASE_URL = <?= json_encode(BASE_URL) ?>;</script>
 <script src="<?= BASE_URL ?>/assets/js/main.js"></script>
+<script>
+// Analytics kunjungan - fire-and-forget, tidak menghalangi render halaman (dikirim setelah halaman selesai dimuat).
+(function () {
+    var payload = JSON.stringify({ path: location.pathname });
+    if (navigator.sendBeacon) {
+        navigator.sendBeacon(window.APP_BASE_URL + '/track.php', new Blob([payload], { type: 'application/json' }));
+    } else {
+        fetch(window.APP_BASE_URL + '/track.php', { method: 'POST', body: payload, keepalive: true }).catch(function () {});
+    }
+})();
+</script>
 </body>
 </html>

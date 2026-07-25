@@ -56,6 +56,16 @@ function db(): PDO
             $pdo->exec('ALTER TABLE product_categories ADD COLUMN urutan INT DEFAULT 0');
             $pdo->exec('UPDATE product_categories SET urutan = id');
         }
+        $pdo->exec("CREATE TABLE IF NOT EXISTS page_visits (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            visitor_id VARCHAR(64) NOT NULL,
+            path VARCHAR(255) NOT NULL,
+            device_type VARCHAR(20) DEFAULT 'Desktop',
+            browser VARCHAR(50) DEFAULT 'Lainnya',
+            visited_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_visited_at (visited_at),
+            INDEX idx_visitor (visitor_id)
+        ) ENGINE=InnoDB");
     }
     return $pdo;
 }

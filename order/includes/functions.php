@@ -171,6 +171,19 @@ function branch_is_open_now(array $hoursByDay): bool
     return $nowTime >= $today['buka'] && $nowTime <= $today['tutup'];
 }
 
+/** Cek apakah jam pengambilan/penjemputan (utk tanggal tertentu) ada dalam jam operasional cabang.
+ *  Dipakai terpisah dari branch_is_open_now() - branch_is_open_now() itu utk cek "buka sekarang juga"
+ *  (dulu dipakai gating pemilihan cabang), fungsi ini khusus cek jam TERJADWAL di tanggal manapun. */
+function pickup_time_within_hours(array $hoursByDay, string $date, string $time): bool
+{
+    $dow = (int)(new DateTime($date))->format('w');
+    $day = $hoursByDay[$dow] ?? null;
+    if (!$day) return true; // belum diatur -> tidak dibatasi
+    if ((int)$day['is_closed'] === 1) return false;
+    if (empty($day['buka']) || empty($day['tutup'])) return true; // jam kosong -> tidak dibatasi
+    return $time >= substr($day['buka'], 0, 5) && $time <= substr($day['tutup'], 0, 5);
+}
+
 function products_unavailable_at_branch(array $productIds, int $branchId): array
 {
     $productIds = array_values(array_unique(array_filter(array_map('intval', $productIds))));
@@ -181,4 +194,20 @@ function products_unavailable_at_branch(array $productIds, int $branchId): array
         WHERE u.branch_id = ? AND u.product_id IN ($placeholders)");
     $stmt->execute([$branchId, ...$productIds]);
     return array_column($stmt->fetchAll(), 'nama');
+}
+
+/** Parse User-Agent jadi kategori device/browser agregat (bukan fingerprinting individu). */
+function parse_device_type(string $userAgent): string
+{
+    return preg_match('/Mobi|Android|iPhone|iPad/i', $userAgent) ? 'Mobile' : 'Desktop';
+}
+
+function parse_browser_name(string $userAgent): string
+{
+    if (stripos($userAgent, 'Edg/') !== false) return 'Edge';
+    if (stripos($userAgent, 'OPR/') !== false || stripos($userAgent, 'Opera') !== false) return 'Opera';
+    if (stripos($userAgent, 'Firefox/') !== false) return 'Firefox';
+    if (stripos($userAgent, 'Chrome/') !== false && stripos($userAgent, 'Chromium') === false) return 'Chrome';
+    if (stripos($userAgent, 'Safari/') !== false && stripos($userAgent, 'Chrome') === false) return 'Safari';
+    return 'Lainnya';
 }

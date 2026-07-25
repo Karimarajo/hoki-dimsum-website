@@ -30,6 +30,7 @@ $activeMenu = $activeMenu ?? '';
       <a href="<?= BASE_URL ?>/admin/cabang.php" class="<?= $activeMenu === 'cabang' ? 'active' : '' ?>"><span class="ic">📍</span> Cabang</a>
       <a href="<?= BASE_URL ?>/admin/promo.php" class="<?= $activeMenu === 'promo' ? 'active' : '' ?>"><span class="ic">🏷️</span> Promo</a>
       <a href="<?= BASE_URL ?>/admin/artikel.php" class="<?= $activeMenu === 'artikel' ? 'active' : '' ?>"><span class="ic">📰</span> Artikel</a>
+      <a href="<?= BASE_URL ?>/admin/analytics.php" class="<?= $activeMenu === 'analytics' ? 'active' : '' ?>"><span class="ic">📈</span> Analytics</a>
       <div class="admin-nav-group">
         <div class="admin-nav-label">Pengaturan</div>
         <a href="<?= BASE_URL ?>/admin/setting.php" class="<?= $activeMenu === 'setting' ? 'active' : '' ?>"><span class="ic">⚙️</span> Setting</a>

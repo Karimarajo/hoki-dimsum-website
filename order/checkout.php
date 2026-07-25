@@ -79,12 +79,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['place_order'])) {
         foreach ($branches as $b) { if ($b['id'] == $branchId) { $branchValid = true; $branchNama = $b['nama']; } }
         if (!$branchValid) {
             $errors[] = 'Pilih cabang yang valid.';
-        } elseif (!branch_is_open_now(get_branch_hours($branchId))) {
-            $errors[] = 'Cabang ini sedang tutup saat ini. Silakan pilih cabang lain atau coba lagi pada jam operasionalnya.';
-        } elseif ($items) {
-            $nonaktifNama = products_unavailable_at_branch(array_map(fn($it) => $it['product']['id'], $items), $branchId);
-            if ($nonaktifNama) {
-                $errors[] = 'Menu berikut sedang tidak tersedia di cabang ini: ' . implode(', ', $nonaktifNama) . '. Silakan hapus dari keranjang atau pilih cabang lain.';
+        } else {
+            // Cabang aktif/tutup penuh sudah difilter di query $branches (is_active=1) - jam operasional
+            // TIDAK menggating pemilihan cabang, cuma menggating jam pengambilan/penjemputan di bawah ini.
+            if ($pickupDate && $pickupTime && !pickup_time_within_hours(get_branch_hours($branchId), $pickupDate, $pickupTime)) {
+                $errors[] = 'Jam yang dipilih di luar jam operasional cabang ini pada tanggal tersebut. Silakan pilih jam lain sesuai jam operasional cabang.';
+            }
+            if ($items) {
+                $nonaktifNama = products_unavailable_at_branch(array_map(fn($it) => $it['product']['id'], $items), $branchId);
+                if ($nonaktifNama) {
+                    $errors[] = 'Menu berikut sedang tidak tersedia di cabang ini: ' . implode(', ', $nonaktifNama) . '. Silakan hapus dari keranjang atau pilih cabang lain.';
+                }
             }
         }
         if (!$items) $errors[] = 'Keranjang kosong.';
@@ -140,6 +145,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['place_order'])) {
 $items = cart_items();
 $total = 0;
 foreach ($items as $it) $total += $it['subtotal'];
+
+// Jam operasional per cabang (dipakai JS utk constrain & kasih hint jam ambil sesuai cabang+tanggal terpilih)
+$branchHoursData = [];
+foreach ($branches as $b) {
+    $branchHoursData[(int)$b['id']] = get_branch_hours((int)$b['id']);
+}
 
 require __DIR__ . '/includes/header.php';
 ?>
@@ -202,13 +213,13 @@ require __DIR__ . '/includes/header.php';
 
       <div class="form-group">
         <label>Pilih Cabang</label>
-        <select name="branch_id" class="form-control" required>
+        <select name="branch_id" id="branchSelect" class="form-control" required>
           <option value="">— Pilih cabang —</option>
-          <?php foreach ($branches as $b): $openNow = branch_is_open_now(get_branch_hours((int)$b['id'])); ?>
-          <option value="<?= $b['id'] ?>" <?= !$openNow ? 'disabled' : '' ?> <?= (isset($_POST['branch_id']) && $_POST['branch_id'] == $b['id']) ? 'selected' : '' ?>><?= e($b['nama']) ?><?= !$openNow ? ' (Tutup)' : '' ?></option>
+          <?php foreach ($branches as $b): ?>
+          <option value="<?= $b['id'] ?>" <?= (isset($_POST['branch_id']) && $_POST['branch_id'] == $b['id']) ? 'selected' : '' ?>><?= e($b['nama']) ?></option>
           <?php endforeach; ?>
         </select>
-        <div class="form-hint">Cabang yang sedang tutup di luar jam operasional tidak bisa dipilih.</div>
+        <div class="form-hint">Cabang bisa dipilih kapan saja - jam operasional berlaku di jadwal ambil/antar di bawah.</div>
       </div>
 
       <div class="form-group">
@@ -226,11 +237,12 @@ require __DIR__ . '/includes/header.php';
       <div class="form-row cols-2">
         <div class="form-group">
           <label>Tanggal Ambil</label>
-          <input type="date" name="pickup_date" class="form-control" min="<?= date('Y-m-d') ?>" required value="<?= e($_POST['pickup_date'] ?? date('Y-m-d')) ?>">
+          <input type="date" name="pickup_date" id="pickupDate" class="form-control" min="<?= date('Y-m-d') ?>" required value="<?= e($_POST['pickup_date'] ?? date('Y-m-d')) ?>">
         </div>
         <div class="form-group">
           <label>Jam Ambil</label>
-          <input type="time" name="pickup_time" class="form-control" required value="<?= e($_POST['pickup_time'] ?? '') ?>">
+          <input type="time" name="pickup_time" id="pickupTime" class="form-control" required value="<?= e($_POST['pickup_time'] ?? '') ?>">
+          <div class="form-hint" id="jamOperasionalHint"></div>
         </div>
       </div>
 
@@ -294,6 +306,47 @@ require __DIR__ . '/includes/header.php';
             msgEl.style.color = '#c8372d';
         }
     }
+
+    // ── Constrain jam ambil/antar sesuai jam operasional cabang + tanggal terpilih ──
+    // (Cabang sendiri sudah tidak digating jam operasional - cuma jam ambil/antar yang digating di sini)
+    const branchHoursData = <?= json_encode($branchHoursData) ?>;
+
+    function updateJamOperasionalConstraint() {
+        const branchSelect = document.getElementById('branchSelect');
+        const dateInput    = document.getElementById('pickupDate');
+        const timeInput    = document.getElementById('pickupTime');
+        const hintEl       = document.getElementById('jamOperasionalHint');
+
+        timeInput.removeAttribute('min');
+        timeInput.removeAttribute('max');
+        hintEl.textContent = '';
+        hintEl.style.color = '';
+
+        if (!branchSelect.value || !dateInput.value) return;
+
+        const dow  = new Date(dateInput.value + 'T00:00:00').getDay();
+        const jam  = (branchHoursData[branchSelect.value] || {})[dow];
+
+        if (jam && jam.is_closed == 1) {
+            hintEl.textContent = 'Cabang tutup pada hari itu - pilih tanggal lain.';
+            hintEl.style.color = '#c8372d';
+            return;
+        }
+        if (jam && jam.buka && jam.tutup) {
+            const buka  = jam.buka.slice(0, 5);
+            const tutup = jam.tutup.slice(0, 5);
+            timeInput.min = buka;
+            timeInput.max = tutup;
+            hintEl.textContent = `Jam operasional cabang ini: ${buka} - ${tutup}`;
+            // Auto-sesuaikan ke jam terdekat kalau jam yang sudah dipilih ternyata di luar rentang
+            if (timeInput.value && timeInput.value < buka) timeInput.value = buka;
+            else if (timeInput.value && timeInput.value > tutup) timeInput.value = tutup;
+        }
+    }
+
+    document.getElementById('branchSelect').addEventListener('change', updateJamOperasionalConstraint);
+    document.getElementById('pickupDate').addEventListener('change', updateJamOperasionalConstraint);
+    updateJamOperasionalConstraint();
     </script>
 
     <?php endif; ?>

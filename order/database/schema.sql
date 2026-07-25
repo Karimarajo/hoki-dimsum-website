@@ -159,6 +159,18 @@ CREATE INDEX idx_orders_status ON orders(status);
 CREATE INDEX idx_orders_created ON orders(created_at);
 CREATE INDEX idx_articles_published ON articles(is_published, published_at);
 
+-- Analytics kunjungan website (anonim, tanpa data personal - cuma path halaman + device/browser agregat)
+CREATE TABLE IF NOT EXISTS page_visits (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    visitor_id VARCHAR(64) NOT NULL,
+    path VARCHAR(255) NOT NULL,
+    device_type VARCHAR(20) DEFAULT 'Desktop',
+    browser VARCHAR(50) DEFAULT 'Lainnya',
+    visited_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_visited_at (visited_at),
+    INDEX idx_visitor (visitor_id)
+) ENGINE=InnoDB;
+
 -- =========================================================
 -- Seed data awal
 -- =========================================================
