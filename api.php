@@ -449,6 +449,10 @@ $conn->query("CREATE TABLE IF NOT EXISTS promo_kupon (
     is_active TINYINT(1) DEFAULT 1,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 )");
+$checkColDiskonMaks = $conn->query("SHOW COLUMNS FROM promo_kupon LIKE 'diskon_maks'");
+if ($checkColDiskonMaks && $checkColDiskonMaks->num_rows === 0) {
+    $conn->query("ALTER TABLE promo_kupon ADD COLUMN diskon_maks INT NULL");
+}
 $conn->query("CREATE TABLE IF NOT EXISTS promo_kupon_cabang (
     id INT AUTO_INCREMENT PRIMARY KEY,
     kupon_id INT NOT NULL,
@@ -610,9 +614,14 @@ function validasi_kupon_internal(mysqli $conn, string $kode, string $cabang, arr
         }
     }
 
+    // Diskon dihitung dari total belanja keseluruhan ($subtotal), bukan cuma subtotal produk trigger-nya.
     $diskon = $kupon['diskon_tipe'] === 'persen'
         ? (int)round($subtotal * ((int)$kupon['diskon_nilai'] / 100))
         : (int)$kupon['diskon_nilai'];
+    // Cap ke nominal maksimum kalau diset (generik per kupon, bukan hardcode) - berlaku utk tipe persen maupun nominal.
+    if (!empty($kupon['diskon_maks']) && (int)$kupon['diskon_maks'] > 0) {
+        $diskon = min($diskon, (int)$kupon['diskon_maks']);
+    }
     $diskon = min($diskon, $subtotal);
 
     return [
@@ -1050,6 +1059,8 @@ switch ($action) {
         $nama = $conn->real_escape_string(trim($input['nama'] ?? ''));
         $tipe = ($input['diskon_tipe'] ?? 'nominal') === 'persen' ? 'persen' : 'nominal';
         $nilai = (int)($input['diskon_nilai'] ?? 0);
+        $diskonMaksRaw = $input['diskon_maks'] ?? '';
+        $diskonMaks = $diskonMaksRaw !== '' && $diskonMaksRaw !== null ? (int)$diskonMaksRaw : null;
         $minBelanja = (int)($input['min_belanja'] ?? 0);
         $kuotaHarian = $input['kuota_harian'] !== '' && $input['kuota_harian'] !== null ? (int)$input['kuota_harian'] : null;
         $kuotaTotal = $input['kuota_total'] !== '' && $input['kuota_total'] !== null ? (int)$input['kuota_total'] : null;
@@ -1072,6 +1083,7 @@ switch ($action) {
         $tglSelesaiSql = $tglSelesai ? "'$tglSelesai'" : "NULL";
         $kuotaHarianSql = $kuotaHarian !== null ? $kuotaHarian : "NULL";
         $kuotaTotalSql = $kuotaTotal !== null ? $kuotaTotal : "NULL";
+        $diskonMaksSql = $diskonMaks !== null ? $diskonMaks : "NULL";
 
         // Cek duplikat kode (selain diri sendiri saat edit)
         $dupCheck = $conn->query("SELECT id FROM promo_kupon WHERE UPPER(kode)=UPPER('$kode') AND id != $kid");
@@ -1081,13 +1093,13 @@ switch ($action) {
         }
 
         if ($kid > 0) {
-            $conn->query("UPDATE promo_kupon SET kode='$kode', nama='$nama', diskon_tipe='$tipe', diskon_nilai=$nilai,
+            $conn->query("UPDATE promo_kupon SET kode='$kode', nama='$nama', diskon_tipe='$tipe', diskon_nilai=$nilai, diskon_maks=$diskonMaksSql,
                 min_belanja=$minBelanja, kuota_harian=$kuotaHarianSql, kuota_total=$kuotaTotalSql,
                 jam_mulai=$jamMulaiSql, jam_selesai=$jamSelesaiSql, tanggal_mulai=$tglMulaiSql, tanggal_selesai=$tglSelesaiSql,
                 is_active=$isActive WHERE id=$kid");
         } else {
-            $conn->query("INSERT INTO promo_kupon (kode, nama, diskon_tipe, diskon_nilai, min_belanja, kuota_harian, kuota_total, jam_mulai, jam_selesai, tanggal_mulai, tanggal_selesai, is_active)
-                VALUES ('$kode','$nama','$tipe',$nilai,$minBelanja,$kuotaHarianSql,$kuotaTotalSql,$jamMulaiSql,$jamSelesaiSql,$tglMulaiSql,$tglSelesaiSql,$isActive)");
+            $conn->query("INSERT INTO promo_kupon (kode, nama, diskon_tipe, diskon_nilai, diskon_maks, min_belanja, kuota_harian, kuota_total, jam_mulai, jam_selesai, tanggal_mulai, tanggal_selesai, is_active)
+                VALUES ('$kode','$nama','$tipe',$nilai,$diskonMaksSql,$minBelanja,$kuotaHarianSql,$kuotaTotalSql,$jamMulaiSql,$jamSelesaiSql,$tglMulaiSql,$tglSelesaiSql,$isActive)");
             $kid = $conn->insert_id;
         }
 

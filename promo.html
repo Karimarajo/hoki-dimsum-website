@@ -288,7 +288,7 @@
         <div class="form-row-2">
             <div class="form-field">
                 <label for="kuponTipe">Tipe Diskon</label>
-                <select id="kuponTipe">
+                <select id="kuponTipe" onchange="toggleDiskonMaksField(true)">
                     <option value="nominal">Nominal (Rp)</option>
                     <option value="persen">Persen (%)</option>
                 </select>
@@ -297,6 +297,11 @@
                 <label for="kuponNilai">Nilai Diskon</label>
                 <input type="number" id="kuponNilai" min="1">
             </div>
+        </div>
+
+        <div class="form-field" id="fieldDiskonMaks" style="display:none;">
+            <label for="kuponDiskonMaks">Diskon Maks (Rp, kosongkan = tanpa cap)</label>
+            <input type="number" id="kuponDiskonMaks" min="0" placeholder="Cth: 10000">
         </div>
 
         <div class="form-field">
@@ -606,7 +611,9 @@ async function loadKupon() {
 function kuponCard(k) {
     const status = statusKupon(k);
     const badgeLabel = status === 'aktif' ? 'Aktif' : status === 'terjadwal' ? 'Terjadwal' : 'Nonaktif';
-    const diskonLabel = k.diskon_tipe === 'persen' ? `${k.diskon_nilai}%` : formatRupiah(k.diskon_nilai);
+    const diskonMaksLabel = (k.diskon_tipe === 'persen' && k.diskon_maks !== null && k.diskon_maks !== undefined && k.diskon_maks !== '')
+        ? ` (maks ${formatRupiah(k.diskon_maks)})` : '';
+    const diskonLabel = (k.diskon_tipe === 'persen' ? `${k.diskon_nilai}%` : formatRupiah(k.diskon_nilai)) + diskonMaksLabel;
     const cabangTags = (k.cabang && k.cabang.length) ? k.cabang.map(c => `<span class="kupon-tag">${esc(c)}</span>`).join('') : '<span class="kupon-tag">Semua Cabang</span>';
     const produkCount = (k.produk && k.produk.length) ? `${k.produk.length} menu` : 'Semua Menu';
     const kuotaTotalLabel = k.kuota_total !== null ? `${k.terpakai_total}/${k.kuota_total}` : `${k.terpakai_total}/∞`;
@@ -659,6 +666,12 @@ async function loadProdukUntukForm() {
     } catch (e) { console.error('loadProdukUntukForm:', e); }
 }
 
+function toggleDiskonMaksField(clearIfHidden) {
+    const isPersen = document.getElementById('kuponTipe').value === 'persen';
+    document.getElementById('fieldDiskonMaks').style.display = isPersen ? '' : 'none';
+    if (!isPersen && clearIfHidden) document.getElementById('kuponDiskonMaks').value = '';
+}
+
 function toggleJamFields() {
     const semuaJam = document.getElementById('kuponSemuaJam').checked;
     document.getElementById('jamFields').style.display = semuaJam ? 'none' : 'grid';
@@ -695,6 +708,8 @@ function bukaModalKupon(k) {
     document.getElementById('kuponNama').value = k ? k.nama : '';
     document.getElementById('kuponTipe').value = k ? k.diskon_tipe : 'nominal';
     document.getElementById('kuponNilai').value = k ? k.diskon_nilai : '';
+    document.getElementById('kuponDiskonMaks').value = k && k.diskon_maks !== null ? k.diskon_maks : '';
+    toggleDiskonMaksField();
     document.getElementById('kuponMinBelanja').value = k ? k.min_belanja : 0;
     document.getElementById('kuponKuotaHarian').value = k && k.kuota_harian !== null ? k.kuota_harian : '';
     document.getElementById('kuponKuotaTotal').value = k && k.kuota_total !== null ? k.kuota_total : '';
@@ -734,6 +749,7 @@ async function simpanKupon() {
         kode, nama,
         diskon_tipe: document.getElementById('kuponTipe').value,
         diskon_nilai: nilai,
+        diskon_maks: document.getElementById('kuponDiskonMaks').value,
         min_belanja: Number(document.getElementById('kuponMinBelanja').value) || 0,
         kuota_harian: document.getElementById('kuponKuotaHarian').value,
         kuota_total: document.getElementById('kuponKuotaTotal').value,

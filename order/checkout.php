@@ -261,25 +261,49 @@ require __DIR__ . '/includes/header.php';
       </div>
 
       <div class="summary-box" style="margin-bottom:20px;">
-        <div class="summary-row"><span>Subtotal</span><span><?= rupiah($total) ?></span></div>
-        <div class="summary-row total"><span>Total</span><span><?= rupiah($total) ?></span></div>
-        <div class="form-hint">*Kode unik 3 digit &amp; diskon kupon (bila ada) akan ditambahkan/dihitung otomatis di halaman pembayaran.</div>
+        <div class="summary-row"><span>Subtotal</span><span id="summarySubtotal"><?= rupiah($total) ?></span></div>
+        <div class="summary-row" id="summaryDiskonRow" style="display:none;">
+          <span id="summaryDiskonLabel">Diskon</span>
+          <span class="highlight" id="summaryDiskonValue"></span>
+        </div>
+        <div class="summary-row total"><span>Total</span><span id="summaryTotal"><?= rupiah($total) ?></span></div>
+        <div class="form-hint">*Kode unik 3 digit akan ditambahkan otomatis di halaman pembayaran.</div>
       </div>
 
       <button type="submit" name="place_order" value="1" class="btn btn-primary btn-block">Buat Pesanan →</button>
     </form>
 
     <script>
+    function formatRupiahCheckout(n) {
+        return 'Rp' + Math.round(n).toLocaleString('id-ID');
+    }
+
+    function resetSummaryDiskon(subtotal) {
+        document.getElementById('summaryDiskonRow').style.display = 'none';
+        document.getElementById('summaryTotal').textContent = formatRupiahCheckout(subtotal);
+    }
+
+    function terapkanSummaryDiskon(subtotal, diskon, kode) {
+        // diskon dipakai apa adanya dari respons backend (sudah termasuk logika persen/cap/scope produk) -
+        // TIDAK dihitung ulang di sini, cuma dikurangkan dari subtotal utk ditampilkan.
+        document.getElementById('summaryDiskonLabel').textContent = `Diskon (${kode})`;
+        document.getElementById('summaryDiskonValue').textContent = `-${formatRupiahCheckout(diskon)}`;
+        document.getElementById('summaryDiskonRow').style.display = '';
+        document.getElementById('summaryTotal').textContent = formatRupiahCheckout(Math.max(0, subtotal - diskon));
+    }
+
     async function cekKuponPreview() {
         const kode = document.getElementById('kuponKodeInput').value.trim().toUpperCase();
         const msgEl = document.getElementById('kuponPreviewMsg');
         const branchSelect = document.querySelector('select[name=branch_id]');
         const cabangNama = branchSelect.options[branchSelect.selectedIndex] ? branchSelect.options[branchSelect.selectedIndex].text : '';
+        const subtotal = <?= (int)$total ?>;
 
-        if (!kode) { msgEl.textContent = ''; return; }
+        if (!kode) { msgEl.textContent = ''; resetSummaryDiskon(subtotal); return; }
         if (!branchSelect.value) {
             msgEl.textContent = 'Pilih cabang dulu sebelum cek kupon.';
             msgEl.style.color = '#c8372d';
+            resetSummaryDiskon(subtotal);
             return;
         }
 
@@ -287,7 +311,6 @@ require __DIR__ . '/includes/header.php';
         msgEl.style.color = '#888';
 
         const items = <?= json_encode(array_map(fn($it) => ['sku' => $it['product']['pos_sku'] ?? ''], $items)) ?>;
-        const subtotal = <?= (int)$total ?>;
         const posApiBase = <?= json_encode($posApiBaseClient) ?>;
 
         try {
@@ -295,15 +318,18 @@ require __DIR__ . '/includes/header.php';
             const res  = await fetch(`${posApiBase}?${params.toString()}`);
             const json = await res.json();
             if (json.valid) {
-                msgEl.textContent = `✅ Kupon valid! Diskon Rp${Number(json.diskon).toLocaleString('id-ID')}`;
+                msgEl.textContent = `✅ Kupon "${json.kode}" berhasil diterapkan!`;
                 msgEl.style.color = '#2e7d32';
+                terapkanSummaryDiskon(subtotal, Number(json.diskon) || 0, json.kode);
             } else {
                 msgEl.textContent = `❌ ${json.message}`;
                 msgEl.style.color = '#c8372d';
+                resetSummaryDiskon(subtotal);
             }
         } catch (e) {
             msgEl.textContent = 'Gagal menghubungi server untuk cek kupon.';
             msgEl.style.color = '#c8372d';
+            resetSummaryDiskon(subtotal);
         }
     }
 
@@ -347,6 +373,15 @@ require __DIR__ . '/includes/header.php';
     document.getElementById('branchSelect').addEventListener('change', updateJamOperasionalConstraint);
     document.getElementById('pickupDate').addEventListener('change', updateJamOperasionalConstraint);
     updateJamOperasionalConstraint();
+
+    // Kalau kolom kupon dikosongkan manual (tanpa klik "Cek" lagi), reset breakdown diskon
+    // supaya tidak ada pesan/nominal basi yang bikin bingung.
+    document.getElementById('kuponKodeInput').addEventListener('input', function () {
+        if (this.value.trim() === '') {
+            document.getElementById('kuponPreviewMsg').textContent = '';
+            resetSummaryDiskon(<?= (int)$total ?>);
+        }
+    });
     </script>
 
     <?php endif; ?>
