@@ -7,11 +7,18 @@ $orderCode = trim($_GET['order'] ?? $_POST['order_code'] ?? '');
 $order = null;
 $notFound = false;
 
+$orderItems = [];
 if ($orderCode !== '') {
-    $stmt = db()->prepare("SELECT o.*, b.nama AS branch_nama, b.alamat AS branch_alamat FROM orders o JOIN branches b ON b.id = o.branch_id WHERE o.order_code = ?");
+    $stmt = db()->prepare("SELECT o.*, b.nama AS branch_nama, b.alamat AS branch_alamat, b.wa_number AS branch_wa FROM orders o JOIN branches b ON b.id = o.branch_id WHERE o.order_code = ?");
     $stmt->execute([$orderCode]);
     $order = $stmt->fetch();
-    if (!$order) $notFound = true;
+    if (!$order) {
+        $notFound = true;
+    } else {
+        $itemStmt = db()->prepare("SELECT * FROM order_items WHERE order_id = ?");
+        $itemStmt->execute([$order['id']]);
+        $orderItems = $itemStmt->fetchAll();
+    }
 }
 
 $statusLabels = [
@@ -54,7 +61,16 @@ require __DIR__ . '/includes/header.php';
           <div class="summary-row"><span>Kode Order</span><strong><?= e($order['order_code']) ?></strong></div>
           <div class="summary-row"><span>Nama</span><strong><?= e($order['nama_customer']) ?></strong></div>
           <div class="summary-row"><span>Cabang</span><strong><?= e($order['branch_nama']) ?></strong></div>
-          <div class="summary-row"><span>Total</span><strong><?= rupiah($order['total_bayar']) ?></strong></div>
+
+          <?php if ($orderItems): ?>
+          <div class="panel-like" style="margin-top:10px;">
+            <?php foreach ($orderItems as $it): ?>
+            <div class="order-item-row"><span><?= e($it['nama_produk_snapshot']) ?> x<?= (int)$it['qty'] ?></span><span><?= rupiah($it['harga_snapshot'] * $it['qty']) ?></span></div>
+            <?php endforeach; ?>
+          </div>
+          <?php endif; ?>
+
+          <div class="summary-row" style="margin-top:10px;"><span>Total</span><strong><?= rupiah($order['total_bayar']) ?></strong></div>
           <div class="summary-row">
             <span>Status</span>
             <span class="status-pill status-<?= e($order['status']) ?>"><?= e($statusLabels[$order['status']] ?? $order['status']) ?></span>
@@ -68,6 +84,13 @@ require __DIR__ . '/includes/header.php';
             <p class="form-hint mb-0" style="margin-top:4px;"><?= e($order['branch_alamat']) ?></p>
             <p class="form-hint mb-0" style="margin-top:6px;">🛵 <?= e($pickupLabelStatus) ?></p>
           </div>
+          <?php
+          $branchWaTarget = $order['branch_wa'] ?: get_setting('wa_pusat', '');
+          if ($branchWaTarget):
+              $branchWaLink = wa_link($branchWaTarget, "Halo, saya mau tanya soal order {$order['order_code']} di {$order['branch_nama']}.");
+          ?>
+          <a href="<?= e($branchWaLink) ?>" target="_blank" rel="noopener" class="btn btn-wa btn-block" style="margin-top:12px;">💬 Chat Cabang via WhatsApp</a>
+          <?php endif; ?>
           <?php endif; ?>
 
           <?php if ($order['status'] !== 'cancelled'): ?>

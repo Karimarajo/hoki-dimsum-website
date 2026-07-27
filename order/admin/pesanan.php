@@ -2,6 +2,7 @@
 $pageTitle = 'Pesanan';
 $activeMenu = 'pesanan';
 require __DIR__ . '/includes/admin-header.php';
+require_once __DIR__ . '/../../includes/order_wa_notify.php';
 
 $statusLabels = [
     'pending_payment' => 'Menunggu Bayar', 'paid' => 'Dibayar', 'preparing' => 'Disiapkan',
@@ -27,6 +28,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_status'])) {
                 curl_setopt_array($chSync, [CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 6]);
                 curl_exec($chSync);
                 curl_close($chSync);
+            }
+
+            // Begitu order ditandai 'completed', siapkan notifikasi WA ke customer (fungsi terpusat,
+            // dipakai bareng dgn api-update-status-order.php - lihat includes/order_wa_notify.php).
+            if ($newStatus === 'completed') {
+                $waNotif = build_order_completed_wa_notif(db(), $orderId);
+                if ($waNotif) {
+                    flash('wa_notify_link', $waNotif['wa_link']);
+                    flash('wa_notify_code', $waNotif['order_code']);
+                }
             }
         }
     }
@@ -58,6 +69,18 @@ $stmt = db()->prepare("SELECT o.*, b.nama AS branch_nama FROM orders o JOIN bran
 $stmt->execute($params);
 $orders = $stmt->fetchAll();
 
+// Item pesanan tiap order (satu query bulk) supaya tampil di daftar tanpa perlu buka detail terpisah.
+$itemsByOrder = [];
+if ($orders) {
+    $orderIds = array_column($orders, 'id');
+    $placeholders = implode(',', array_fill(0, count($orderIds), '?'));
+    $itemListStmt = db()->prepare("SELECT * FROM order_items WHERE order_id IN ($placeholders)");
+    $itemListStmt->execute($orderIds);
+    foreach ($itemListStmt->fetchAll() as $item) {
+        $itemsByOrder[(int)$item['order_id']][] = $item;
+    }
+}
+
 $viewOrder = null;
 $viewItems = [];
 if (!empty($_GET['view'])) {
@@ -70,7 +93,16 @@ if (!empty($_GET['view'])) {
         $viewItems = $itemStmt->fetchAll();
     }
 }
+$waNotifLink = flash('wa_notify_link');
+$waNotifCode = flash('wa_notify_code');
 ?>
+
+<?php if ($waNotifLink): ?>
+<div class="alert alert-success" style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;">
+  <span>Pesanan <strong><?= e($waNotifCode) ?></strong> ditandai selesai. Kirim notifikasi ke customer?</span>
+  <a href="<?= e($waNotifLink) ?>" target="_blank" class="btn btn-wa btn-sm">📲 Kirim Notifikasi WA</a>
+</div>
+<?php endif; ?>
 
 <?php if ($viewOrder): ?>
 <div class="panel">
@@ -145,13 +177,19 @@ if (!empty($_GET['view'])) {
 
     <div class="table-wrap">
       <table class="data-table">
-        <thead><tr><th>Kode</th><th>Customer</th><th>Cabang</th><th>Total</th><th>Status</th><th>Waktu</th><th></th></tr></thead>
+        <thead><tr><th>Kode</th><th>Customer</th><th>Item</th><th>Cabang</th><th>Total</th><th>Status</th><th>Waktu</th><th></th></tr></thead>
         <tbody>
-          <?php if (!$orders): ?><tr><td colspan="7">Tidak ada pesanan sesuai filter.</td></tr><?php endif; ?>
+          <?php if (!$orders): ?><tr><td colspan="8">Tidak ada pesanan sesuai filter.</td></tr><?php endif; ?>
           <?php foreach ($orders as $o): ?>
           <tr>
             <td><?= e($o['order_code']) ?></td>
             <td><?= e($o['nama_customer']) ?></td>
+            <td style="font-size:12.5px; color:var(--ink-500);">
+              <?php foreach ($itemsByOrder[$o['id']] ?? [] as $it): ?>
+                <div><?= e($it['nama_produk_snapshot']) ?> <b>x<?= (int)$it['qty'] ?></b></div>
+              <?php endforeach; ?>
+              <?php if ($o['catatan']): ?><div style="font-style:italic;">📝 <?= e($o['catatan']) ?></div><?php endif; ?>
+            </td>
             <td><?= e($o['branch_nama']) ?></td>
             <td><?= rupiah($o['total_bayar']) ?></td>
             <td><span class="status-pill status-<?= e($o['status']) ?>"><?= e($statusLabels[$o['status']] ?? $o['status']) ?></span></td>

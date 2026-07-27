@@ -85,4 +85,21 @@ $orderStmt = $pdo->prepare($sql);
 $orderStmt->execute($branchIds);
 $orders = $orderStmt->fetchAll();
 
+// ── Sertakan item pesanan (satu query bulk, bukan N+1) supaya staff bisa lihat rincian
+// tanpa buka detail terpisah ──
+if ($orders) {
+    $orderIds = array_column($orders, 'id');
+    $itemPlaceholders = implode(',', array_fill(0, count($orderIds), '?'));
+    $itemStmt = $pdo->prepare("SELECT * FROM order_items WHERE order_id IN ($itemPlaceholders)");
+    $itemStmt->execute($orderIds);
+    $itemsByOrder = [];
+    foreach ($itemStmt->fetchAll() as $item) {
+        $itemsByOrder[(int)$item['order_id']][] = $item;
+    }
+    foreach ($orders as &$o) {
+        $o['items'] = $itemsByOrder[(int)$o['id']] ?? [];
+    }
+    unset($o);
+}
+
 echo json_encode(['status' => 'success', 'orders' => $orders]);

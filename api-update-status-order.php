@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/includes/db_order.php';
 require_once __DIR__ . '/includes/order_transaksi_sync.php';
+require_once __DIR__ . '/includes/order_wa_notify.php';
 
 header('Content-Type: application/json');
 
@@ -87,4 +88,11 @@ if ($statusBaru === 'paid') {
     sync_order_online_transaksi($conn, $pdo, $orderId);
 }
 
-echo json_encode(['status' => 'success']);
+// ── Siapkan notifikasi WA "selesai" ke customer begitu status jadi completed (fungsi terpusat,
+// dipakai bareng dgn order/admin/pesanan.php - lihat includes/order_wa_notify.php) ──
+$waNotif = null;
+if ($statusBaru === 'completed') {
+    $waNotif = build_order_completed_wa_notif($pdo, $orderId);
+}
+
+echo json_encode(['status' => 'success', 'wa_notify' => $waNotif]);

@@ -138,6 +138,36 @@
         color: var(--red);
     }
 
+    .order-card-items {
+        border-top: 1px dashed var(--border);
+        border-bottom: 1px dashed var(--border);
+        padding: 8px 0;
+        margin: 2px 0;
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+    }
+
+    .order-card-item-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        font-size: 12.5px;
+        color: var(--text);
+    }
+
+    .order-card-item-row .item-qty {
+        color: var(--red);
+        font-weight: 700;
+        flex-shrink: 0;
+    }
+
+    .order-card-item-note {
+        font-size: 12px;
+        color: var(--text-muted);
+        font-style: italic;
+    }
+
     .order-card-footer {
         margin-top: 4px;
         display: flex;
@@ -698,6 +728,12 @@ function renderOrders(orders) {
             ? `<div class="order-card-row"><span class="label">Kode Unik</span><span class="val">+${esc(o.kode_unik)} (cocokkan ke mutasi transfer)</span></div>`
             : '';
 
+        const items = o.items || [];
+        const itemsHtml = items.length
+            ? items.map(it => `<div class="order-card-item-row"><span>${esc(it.nama_produk_snapshot)}</span><span class="item-qty">x${esc(it.qty)}</span></div>`).join('')
+            : `<div class="order-card-item-row"><span>Tidak ada item</span></div>`;
+        const catatanHtml = o.catatan ? `<div class="order-card-item-note">📝 ${esc(o.catatan)}</div>` : '';
+
         return `<div class="order-card ${isNew ? 'is-new' : ''}" data-order-id="${o.id}">
             <div class="order-card-head">
                 <span class="order-code">${esc(o.order_code)}</span>
@@ -709,6 +745,7 @@ function renderOrders(orders) {
             <div class="order-card-row"><span class="label">Pickup</span><span class="val">${esc(pickup)} · ${esc(o.pickup_date || '')} ${o.pickup_time ? esc(o.pickup_time.slice(0,5)) : ''}</span></div>
             <div class="order-card-row"><span class="label">Masuk</span><span class="val">${formatWaktu(o.created_at)}</span></div>
             ${kodeUnikRow}
+            <div class="order-card-items">${itemsHtml}${catatanHtml}</div>
             <div class="order-card-row"><span class="label">Total Bayar</span><span class="val order-total">${formatRupiah(o.total_bayar)}</span></div>
             <div class="order-card-footer">${actionBtn}</div>
         </div>`;
@@ -772,6 +809,9 @@ async function ubahStatus(orderId, statusBaru, btnEl) {
 
         if (json.status === 'success') {
             toast.success('Status order berhasil diubah!');
+            if (json.wa_notify && json.wa_notify.wa_link) {
+                window.open(json.wa_notify.wa_link, '_blank');
+            }
             fetchOrders();
         } else {
             toast.error(json.message || 'Gagal mengubah status order!');
