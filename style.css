@@ -120,13 +120,15 @@
    .sidebar-brand {
        display: flex;
        align-items: center;
-       gap: 10px;
        padding: 18px 16px 14px;
        cursor: pointer;
        border-bottom: 1px solid var(--border);
        flex-shrink: 0;
        transition: background var(--ease);
    }
+
+   /* Fallback jarak antar-anak flex (gap tidak didukung Chrome flex < 84) */
+   .sidebar-brand > * + * { margin-left: 10px; }
    
    .sidebar-brand:hover {
        background: var(--bg);
@@ -222,7 +224,6 @@
    .nav-group-label {
        display: flex;
        align-items: center;
-       gap: 10px;
        padding: 9px 10px;
        border-radius: var(--r-md);
        cursor: pointer;
@@ -239,6 +240,8 @@
        text-transform: none;
        letter-spacing: 0;
    }
+
+   .nav-group-label > * + * { margin-left: 10px; }
 
    .nav-group-label:hover {
        background: var(--bg);
@@ -314,7 +317,6 @@
    .nav-item {
        display: flex;
        align-items: center;
-       gap: 10px;
        padding: 9px 10px;
        border-radius: var(--r-md);
        cursor: pointer;
@@ -330,7 +332,9 @@
        text-align: left;
        font-family: 'Nunito', sans-serif;
    }
-   
+
+   .nav-item > * + * { margin-left: 10px; }
+
    .nav-item:hover {
        background: var(--bg);
        color: var(--text);
@@ -393,12 +397,13 @@
    .user-card {
        display: flex;
        align-items: center;
-       gap: 10px;
        background: var(--bg);
        border-radius: var(--r-md);
        padding: 10px 12px;
        border: 1px solid var(--border);
    }
+
+   .user-card > * + * { margin-left: 10px; }
    
    .user-avatar {
        width: 32px;
@@ -457,9 +462,10 @@
    
    .sidebar.collapsed .user-card {
        flex-direction: column;
-       gap: 4px;
        padding: 8px 4px;
    }
+
+   .sidebar.collapsed .user-card > * + * { margin-left: 0; margin-top: 4px; }
    
    .sidebar.collapsed .user-info {
        display: none;
@@ -494,33 +500,35 @@
        display: flex;
        align-items: center;
        justify-content: space-between;
-       gap: 16px;
        flex-shrink: 0;
        position: sticky;
        top: 0;
        z-index: 100;
        box-shadow: 0 1px 8px rgba(0,0,0,0.04);
    }
-   
+
    .header-left {
        display: flex;
        align-items: center;
-       gap: 12px;
    }
-   
+
+   .header-left > * + * { margin-left: 12px; }
+
    .header-page-title {
        font-size: 16px;
        font-weight: 700;
        color: var(--text);
        display: flex;
        align-items: center;
-       gap: 8px;
    }
-   
+
+   /* .header-page-title bisa berisi teks lepas + badge — margin langsung di badge,
+      bukan pakai selector sibling (gap tidak didukung Chrome flex < 84) */
+   .header-cabang-badge { margin-left: 8px; }
+
    .header-right {
        display: flex;
        align-items: center;
-       gap: 14px;
    }
    
    .clock-pill {
@@ -584,7 +592,6 @@
        display: flex;
        flex-direction: column;
        align-items: center;
-       gap: 3px;
        padding: 5px 10px;
        border-radius: var(--r-md);
        border: none;
@@ -595,6 +602,8 @@
        transition: background 0.15s;
        font-family: 'Nunito', sans-serif;
    }
+
+   .bn-item > * + * { margin-top: 3px; }
    
    .bn-item.active {
        background: var(--red-soft);
@@ -664,7 +673,6 @@
        display: flex;
        flex-direction: column;
        align-items: center;
-       gap: 6px;
        background: var(--surface-2);
        border: 1px solid var(--border);
        border-radius: var(--r-lg);
@@ -674,6 +682,8 @@
        transition: background 0.1s;
        -webkit-tap-highlight-color: transparent;
    }
+
+   .more-btn > * + * { margin-top: 6px; }
    
    .more-btn:active {
        background: var(--red-soft);
@@ -804,9 +814,18 @@
        margin-bottom: 12px;
        display: flex;
        flex-wrap: wrap;
-       gap: 14px;
        align-items: flex-end;
        box-shadow: var(--sh-sm);
+   }
+
+   /* Fallback jarak antar-item saat wrap (gap tidak didukung Chrome flex < 84).
+      Catatan: item pertama tiap baris wrap ikut kena margin-left — sedikit tidak presisi
+      dibanding gap asli, tapi tidak ada elemen yang saling menempel. */
+   .filter-bar > * + *,
+   .filter-section > * + *,
+   .filter-container > * + * {
+       margin-left: 14px;
+       margin-top: 14px;
    }
    
    .filter-group,
@@ -1271,8 +1290,14 @@
        .filter-container {
            flex-direction: column;
            align-items: stretch;
-           gap: 10px;
            padding: 14px;
+       }
+
+       .filter-bar > * + *,
+       .filter-section > * + *,
+       .filter-container > * + * {
+           margin-left: 0;
+           margin-top: 10px;
        }
    
        .filter-group input,
@@ -1565,11 +1590,12 @@
        cursor: pointer;
        display: flex;
        align-items: center;
-       gap: 10px;
        text-align: left;
        transition: border-color 0.2s, background 0.2s;
    }
-   
+
+   .custom-select-btn > * + * { margin-left: 10px; }
+
    .custom-select-btn:hover {
        border-color: var(--red);
        background: var(--surface);
@@ -1619,7 +1645,6 @@
    .dropdown-item {
        display: flex;
        align-items: center;
-       gap: 12px;
        padding: 11px 16px;
        font-size: 13px;
        font-weight: 600;
@@ -1628,6 +1653,8 @@
        transition: background 0.12s;
        font-family: 'Nunito', sans-serif;
    }
+
+   .dropdown-item > * + * { margin-left: 12px; }
    
    .dropdown-item:hover {
        background: var(--bg);
@@ -2057,11 +2084,13 @@
            height: auto !important;
            min-height: 52px;
            padding: 8px 14px !important;
-           gap: 8px;
        }
-   
+
+       /* Fallback jarak saat header-left/header-right wrap ke baris baru
+          (gap tidak didukung Chrome flex < 84) */
+       .top-header > * + * { margin-top: 8px; }
+
        .header-right {
-           gap: 8px;
            flex-wrap: wrap;
        }
    
@@ -2079,7 +2108,11 @@
        .filter-bar {
            flex-direction: column !important;
            align-items: stretch !important;
-           gap: 10px !important;
+       }
+
+       .filter-bar > * + * {
+           margin-left: 0 !important;
+           margin-top: 10px !important;
        }
    
        .filter-bar .filter-group {

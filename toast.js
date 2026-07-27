@@ -28,10 +28,12 @@ _toastCSS.textContent = `
     z-index: 99999;
     display: flex;
     flex-direction: column;
-    gap: 10px;
     pointer-events: none;
     max-width: 360px;
 }
+
+/* Fallback jarak antar-toast (gap tidak didukung Chrome flex < 84) */
+#hoki-toast-container > * + * { margin-top: 10px; }
 
 /* Mobile: muncul di atas cart-bar + bottom-nav */
 @media (max-width: 844px) {
@@ -47,7 +49,6 @@ _toastCSS.textContent = `
 .hoki-toast {
     display: flex;
     align-items: center;
-    gap: 12px;
     background: #ffffff;
     border: 1px solid #e6e6e0;
     border-radius: 14px;
@@ -59,6 +60,7 @@ _toastCSS.textContent = `
     position: relative;
     overflow: hidden;
 }
+.hoki-toast > * + * { margin-left: 12px; }
 .hoki-toast.hide {
     animation: toastOut 0.25s ease forwards;
 }
@@ -185,7 +187,8 @@ _toastCSS.textContent = `
     font-family: 'DM Sans', 'Plus Jakarta Sans', sans-serif;
     margin-bottom: 22px; line-height: 1.5;
 }
-.hoki-confirm-actions { display: flex; gap: 10px; }
+.hoki-confirm-actions { display: flex; }
+.hoki-confirm-actions > * + * { margin-left: 10px; }
 .hoki-confirm-cancel {
     flex: 1; padding: 12px;
     background: #f4f4ef; color: #1c1c1a;

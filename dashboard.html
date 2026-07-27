@@ -24,10 +24,12 @@
     .info-bar-item {
         display: flex;
         align-items: center;
-        gap: 8px;
         padding: 0 20px;
         height: 100%;
     }
+
+    /* Fallback jarak antar-anak flex (gap tidak didukung Chrome flex < 84) */
+    .info-bar-item > * + * { margin-left: 8px; }
 
     .info-bar-item:first-child {
         padding-left: 0;
@@ -81,9 +83,10 @@
     /* ── POS LAYOUT ── */
     .pos-container {
         display: flex;
-        gap: 16px;
         align-items: flex-start;
     }
+
+    .pos-container > * + * { margin-left: 16px; }
 
     .menu-section {
         flex: 1;
@@ -130,11 +133,12 @@
         align-items: center;
         justify-content: center;
         text-align: center;
-        gap: 3px;
         cursor: pointer;
         transition: border-color 0.15s, transform 0.1s, box-shadow 0.15s, background 0.15s;
         box-shadow: var(--sh-sm);
     }
+
+    .menu-item > * + * { margin-top: 3px; }
 
     .menu-item:hover {
         border-color: var(--red-border);
@@ -188,11 +192,12 @@
     .cart-header {
         display: flex;
         align-items: center;
-        gap: 8px;
         margin-bottom: 12px;
         padding-bottom: 12px;
         border-bottom: 1px solid var(--border);
     }
+
+    .cart-header > * + * { margin-left: 8px; }
 
     .cart-header-title {
         font-size: 13px;
@@ -224,7 +229,6 @@
     .cart-row {
         display: flex;
         align-items: center;
-        gap: 8px;
         padding: 7px 10px;
         border-radius: var(--r-sm);
         background: var(--surface-2);
@@ -232,6 +236,8 @@
         margin-bottom: 5px;
         font-size: 12px;
     }
+
+    .cart-row > * + * { margin-left: 8px; }
 
     .cart-row-name {
         flex: 1;
@@ -299,7 +305,8 @@
 
     /* ── KUPON ── */
     .kupon-wrap { margin-bottom: 4px; }
-    .kupon-input-row { display: flex; gap: 6px; }
+    .kupon-input-row { display: flex; }
+    .kupon-input-row > * + * { margin-left: 6px; }
     .kupon-input-row input {
         flex: 1;
         padding: 9px 11px;
@@ -353,7 +360,6 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 6px;
         font-family: 'Nunito', sans-serif;
         font-weight: 700;
         border-radius: 16px;
@@ -363,6 +369,8 @@
         color: white;
         transition: filter 0.15s, transform 0.15s;
     }
+
+    .btn-bayar > * + * { margin-left: 6px; }
 
     .btn-bayar.red {
         background: #2563EB;
@@ -396,9 +404,10 @@
     .pelanggan-wrap {
         display: flex;
         align-items: center;
-        gap: 6px;
         margin-bottom: 10px;
     }
+
+    .pelanggan-wrap > * + * { margin-left: 6px; }
 
     .pelanggan-dropdown-wrap {
         position: relative;
@@ -595,9 +604,10 @@
 
     .modal-pelanggan-btns {
         display: flex;
-        gap: 8px;
         margin-top: 8px;
     }
+
+    .modal-pelanggan-btns > * + * { margin-left: 8px; }
 
     .modal-pelanggan-btns button {
         flex: 1;
@@ -667,8 +677,9 @@
     .cart-bar-left {
         display: flex;
         align-items: center;
-        gap: 10px;
     }
+
+    .cart-bar-left > * + * { margin-left: 10px; }
 
     .cart-bar-count {
         background: rgba(255,255,255,0.22);
@@ -760,11 +771,12 @@
 
         .pos-container {
             flex-direction: column;
-            gap: 0;
             padding: 0;
             margin: 0;
             width: 100%;
         }
+
+        .pos-container > * + * { margin-left: 0; margin-top: 0; }
 
         .menu-section {
             padding: 0;
@@ -788,9 +800,10 @@
             border-bottom: 1px solid var(--border);
             border-right: 1px solid var(--border);
             box-shadow: none;
-            gap: 5px;
             width: 100%;
         }
+
+        .menu-item > * + * { margin-top: 5px; }
 
         .menu-item:nth-child(2n) {
             border-right: none;
@@ -836,6 +849,7 @@
 
     </style>
   <script src="config.js"></script>
+  <script src="error-log.js"></script>
 </head>
 <body>
 
@@ -851,7 +865,19 @@
         </div>
     </div>
     <button class="sidebar-toggle" onclick="toggleSidebar()">‹</button>
-    <nav class="sidebar-nav" id="sidebarNav"></nav>
+    <!-- Fallback statis: link ini ke-replace oleh JS (lihat buildSidebar()) kalau script utama
+         berhasil jalan. Kalau JS gagal total (mis. syntax error dari browser lama), link ini
+         tetap tampil apa adanya supaya staff tidak terjebak di halaman blank tanpa navigasi. -->
+    <nav class="sidebar-nav" id="sidebarNav">
+        <a class="nav-item" href="kelola-order.html"><span class="nav-icon">🔔</span><span class="nav-label">Order Online</span></a>
+        <a class="nav-item active" href="dashboard.html"><span class="nav-icon">🛒</span><span class="nav-label">Kasir</span></a>
+        <a class="nav-item" href="history.html"><span class="nav-icon">📄</span><span class="nav-label">History Transaksi</span></a>
+        <a class="nav-item" href="stok.html"><span class="nav-icon">📦</span><span class="nav-label">Stok Harian</span></a>
+        <a class="nav-item" href="restock.html"><span class="nav-icon">🚚</span><span class="nav-label">Restock Barang</span></a>
+        <a class="nav-item" href="laporan_staff.html"><span class="nav-icon">🚀</span><span class="nav-label">Laporan Penjualan</span></a>
+        <a class="nav-item" href="edukasi.html"><span class="nav-icon">📚</span><span class="nav-label">Edukasi & SOP</span></a>
+        <a class="nav-item" href="index.html"><span class="nav-icon">🚪</span><span class="nav-label">Logout / Login Ulang</span></a>
+    </nav>
     <div class="sidebar-user">
         <div class="user-card">
             <div class="user-avatar" id="userAvatarInitial">?</div>
@@ -1158,8 +1184,13 @@ function toggleDropdownPelanggan(source) {
     const wrap = document.getElementById(wrapId);
     
     // Close other dropdowns
-    if (source === 'desktop') document.getElementById('pelangganWrapSheet')?.classList.remove('open');
-    else document.getElementById('pelangganWrap')?.classList.remove('open');
+    if (source === 'desktop') {
+        const elSheet = document.getElementById('pelangganWrapSheet');
+        if (elSheet) elSheet.classList.remove('open');
+    } else {
+        const elDesktop = document.getElementById('pelangganWrap');
+        if (elDesktop) elDesktop.classList.remove('open');
+    }
     
     wrap.classList.toggle('open');
     
@@ -1588,7 +1619,7 @@ async function prosesTransaksi(denganCetak, metodeOverride) {
         const hasil = await res.json();
         if (hasil.status === 'success') {
             loadOmsetHarian();
-            const totalFinal = hasil.total ?? total;
+            const totalFinal = (hasil.total !== undefined && hasil.total !== null) ? hasil.total : total;
             if (hasil.diskon > 0) {
                 toast.info(`Diskon kupon Rp${hasil.diskon.toLocaleString('id-ID')} diterapkan`);
             } else if (kuponAktif) {
