@@ -24,10 +24,10 @@
     .ib-item {
         display: flex;
         align-items: center;
-        gap: 8px;
         padding: 0 16px;
         height: 100%;
     }
+    .ib-item > * + * { margin-left: 8px; } /* fallback utk flex gap (Chrome lama) */
 
     .ib-item:first-child { padding-left: 0; }
 
@@ -53,7 +53,8 @@
     }
 
     @media (max-width: 844px) {
-        .info-bar-simple { padding: 6px 14px; height: auto; gap: 16px; }
+        .info-bar-simple { padding: 6px 14px; height: auto; }
+        .info-bar-simple > * + * { margin-left: 16px; } /* fallback utk flex gap (Chrome lama) */
         .ib-item { padding: 0; }
     }
 
@@ -72,9 +73,9 @@
         padding: 16px;
         display: flex;
         flex-direction: column;
-        gap: 10px;
         transition: box-shadow var(--ease), border-color var(--ease);
     }
+    .order-card > * + * { margin-top: 10px; } /* fallback utk flex gap (Chrome lama) */
 
     .order-card.is-new {
         border-color: var(--red);
@@ -90,8 +91,8 @@
         display: flex;
         justify-content: space-between;
         align-items: flex-start;
-        gap: 8px;
     }
+    .order-card-head > * + * { margin-left: 8px; } /* fallback utk flex gap (Chrome lama) */
 
     .order-code {
         font-family: 'DM Mono', monospace;
@@ -117,10 +118,10 @@
     .order-card-row {
         display: flex;
         justify-content: space-between;
-        gap: 10px;
         font-size: 13px;
         color: var(--text);
     }
+    .order-card-row > * + * { margin-left: 10px; } /* fallback utk flex gap (Chrome lama) */
 
     .order-card-row .label {
         color: var(--text-muted);
@@ -145,16 +146,16 @@
         margin: 2px 0;
         display: flex;
         flex-direction: column;
-        gap: 3px;
     }
+    .order-card-items > * + * { margin-top: 3px; } /* fallback utk flex gap (Chrome lama) */
 
     .order-card-item-row {
         display: flex;
         justify-content: space-between;
-        gap: 10px;
         font-size: 12.5px;
         color: var(--text);
     }
+    .order-card-item-row > * + * { margin-left: 10px; } /* fallback utk flex gap (Chrome lama) */
 
     .order-card-item-row .item-qty {
         color: var(--red);
@@ -171,7 +172,7 @@
     .order-card-footer {
         margin-top: 4px;
         display: flex;
-        gap: 8px;
+        /* gap dihapus: renderOrders() cuma pernah taruh 1 tombol (actionBtn) di sini, jadi gap tidak pernah kepakai */
     }
 
     .btn-order-action {
@@ -201,10 +202,10 @@
     /* ── TABS ── */
     .kmo-tabs {
         display: flex;
-        gap: 8px;
         margin-bottom: 20px;
         border-bottom: 1.5px solid var(--border);
     }
+    .kmo-tabs > * + * { margin-left: 8px; } /* fallback utk flex gap (Chrome lama) */
 
     .kmo-tab-btn {
         padding: 10px 18px;
@@ -295,7 +296,8 @@
     }
     .detail-item-row:last-child { border-bottom: none; }
 
-    .modal-detail-btns { display: flex; gap: 8px; margin-top: 16px; }
+    .modal-detail-btns { display: flex; margin-top: 16px; }
+    .modal-detail-btns > * + * { margin-left: 8px; } /* fallback utk flex gap (Chrome lama) */
     .modal-detail-btns .btn-close-detail {
         flex: 1;
         padding: 12px;
@@ -685,7 +687,7 @@ const STATUS_LABEL = {
 };
 
 function esc(s) {
-    return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    return String(s === null || s === undefined ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
 /* ── TABS ── */

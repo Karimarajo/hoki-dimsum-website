@@ -20,9 +20,11 @@
         display: flex;
         flex-wrap: nowrap;
         align-items: flex-end;
-        gap: 12px;
         box-shadow: var(--sh-sm);
     }
+
+    /* Fallback jarak antar-anak flex (gap tidak didukung Chrome flex < 84) */
+    .filter-container > * + * { margin-left: 12px; }
 
     .filter-container .custom-select-btn,
     .filter-container input[type="date"] {
@@ -36,9 +38,10 @@
     .filter-group {
         display: flex;
         flex-direction: column;
-        gap: 4px;
         flex: 1;
     }
+
+    .filter-group > * + * { margin-top: 4px; }
 
     .filter-group label {
         font-size: 10px;
@@ -84,8 +87,9 @@
     .kas-item {
         display: flex;
         flex-direction: column;
-        gap: 2px;
     }
+
+    .kas-item > * + * { margin-top: 2px; }
 
     .label-small {
         font-size: 11px;
@@ -137,9 +141,10 @@
         display: flex;
         align-items: flex-end;
         height: 80px;
-        gap: 3px;
         margin-top: 8px;
     }
+
+    .jam-chart > * + * { margin-left: 3px; }
 
     .jam-bar-wrap {
         flex: 1;
@@ -243,9 +248,10 @@
             overflow-x: auto !important;
             -webkit-overflow-scrolling: touch !important;
             scroll-snap-type: x mandatory;
-            gap: 16px;
             padding-bottom: 16px; /* give space for scrollbar */
         }
+
+        .grid-dashboard > * + * { margin-left: 16px; }
 
         .grid-dashboard .card-insight {
             min-width: 85vw;
@@ -257,6 +263,8 @@
             flex-direction: column;
             align-items: stretch;
         }
+
+        .filter-container > * + * { margin-left: 0; margin-top: 12px; }
 
         .table-wrap {
             overflow-x: auto !important;

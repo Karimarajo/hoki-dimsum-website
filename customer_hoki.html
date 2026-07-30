@@ -83,11 +83,13 @@
     .aksi-group, td:last-child {
         display: flex !important;
         flex-direction: row !important;
-        gap: 6px !important;
         align-items: center !important;
         justify-content: center !important;
         white-space: nowrap !important;
     }
+
+    /* Fallback jarak antar-anak flex (gap tidak didukung Chrome flex < 84) */
+    .aksi-group > * + *, td:last-child > * + * { margin-left: 6px !important; }
 
     .btn-action, .btn-edit-icon, .btn-hapus-icon {
         width: 28px !important;
@@ -169,9 +171,11 @@
 
     .modal-pelanggan-btns {
         display: flex;
-        gap: 8px;
         margin-top: 8px;
     }
+
+    /* Fallback jarak antar-anak flex (gap tidak didukung Chrome flex < 84) */
+    .modal-pelanggan-btns > * + * { margin-left: 8px; }
 
     .modal-pelanggan-btns button {
         flex: 1;

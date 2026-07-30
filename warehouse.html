@@ -61,9 +61,11 @@
         cursor: pointer;
         display: flex;
         flex-direction: column;
-        gap: 8px;
         transition: all 0.2s ease;
     }
+
+    /* Fallback jarak antar-anak flex (gap tidak didukung Chrome flex < 84) */
+    .wh-item-card > * + * { margin-top: 8px; }
 
     .wh-item-card:hover {
         border-color: var(--red);
@@ -113,16 +115,22 @@
     /* Form input masuk */
     .wh-form-row {
         display: flex;
-        gap: 10px;
         flex-wrap: wrap;
         align-items: flex-end;
     }
 
+    /* Fallback wrap: flex-wrap:wrap dengan >2 anak, jadi margin-left dan
+       margin-top sekaligus dipasang. Trade-off: anak pertama di baris hasil
+       wrap kedua dst akan dapat margin-left kecil yang tidak perlu — ini
+       lebih baik daripada elemen numpuk/bertabrakan. */
+    .wh-form-row > * + * { margin-left: 10px; margin-top: 10px; }
+
     .wh-form-group {
         display: flex;
         flex-direction: column;
-        gap: 5px;
     }
+
+    .wh-form-group > * + * { margin-top: 5px; }
 
     .wh-form-group label {
         font-size: 10px;
@@ -208,9 +216,14 @@
 
     @media (max-width: 640px) {
         .wh-form-row { flex-direction: column; }
+        .wh-form-row > * + * { margin-left: 0; }
         .wh-form-group { width: 100%; }
         .wh-grid { grid-template-columns: 1fr; }
     }
+
+    /* Fallback jarak flex utk kartu modal daftar barang (gap tidak didukung Chrome flex < 84).
+       Discoping ke #daftarBarangModal supaya tidak mempengaruhi .wh-card lain yang bukan flex. */
+    #daftarBarangModal .wh-card > * + * { margin-top: 16px; }
 
     </style>
   <script src="config.js"></script>
@@ -279,7 +292,7 @@
 
         <!-- MODAL PENDAFTARAN BARANG GUDANG -->
         <div id="daftarBarangModal" class="sheet-overlay" style="display:none; justify-content:center; align-items:center; z-index:1000;" onclick="closeDaftarBarangModalOutside(event)">
-            <div class="wh-card" style="width:90%; max-width:400px; margin:0; padding:24px; position:relative; display:flex; flex-direction:column; gap:16px; box-shadow: var(--sh-lg);" onclick="event.stopPropagation()">
+            <div class="wh-card" style="width:90%; max-width:400px; margin:0; padding:24px; position:relative; display:flex; flex-direction:column; box-shadow: var(--sh-lg);" onclick="event.stopPropagation()">
                 <div style="display:flex; justify-content:space-between; align-items:center;">
                     <h3 style="margin:0; font-size:15px; font-weight:700; color:var(--red);">📦 Daftarkan Barang Gudang</h3>
                     <span onclick="tutupDaftarBarangModal()" style="font-size:24px; font-weight:bold; color:var(--text-light); cursor:pointer; line-height:1;">&times;</span>

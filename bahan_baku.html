@@ -35,8 +35,10 @@
     .input-group {
         display: flex;
         flex-direction: column;
-        gap: 4px;
     }
+
+    /* Fallback jarak antar-anak flex (gap tidak didukung Chrome flex < 84) */
+    .input-group > * + * { margin-top: 4px; }
 
     .input-group label {
         font-size: 10px;

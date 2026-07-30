@@ -53,8 +53,10 @@
     .salary-form-control {
         display: flex;
         flex-direction: column;
-        gap: 4px;
     }
+
+    /* Fallback jarak antar-anak flex (gap tidak didukung Chrome flex < 84) */
+    .salary-form-control > * + * { margin-top: 4px; }
 
     .salary-form-control label {
         font-size: 10px;
@@ -200,7 +202,6 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 8px;
         color: white;
         border: none;
         height: 40px;
@@ -210,6 +211,11 @@
         width: 100%;
         margin-top: 12px;
     }
+
+    /* Fallback jarak icon-teks (gap tidak didukung Chrome flex < 84).
+       Konten tombol berupa <span>ikon</span> diikuti teks biasa, jadi
+       "> * + *" tidak match (teks bukan elemen) -> margin ditaruh di span. */
+    .btn-wa-slip span, .btn-pdf-slip span { margin-right: 8px; }
 
     .wh-card {
         background: #ffffff !important;
@@ -261,6 +267,10 @@
 
     .btn-wa-slip { background: #25d366; }
     .btn-pdf-slip { background: #0284c7; }
+
+    /* Fallback jarak flex utk .wh-form-row (gap tidak didukung Chrome flex < 84).
+       Wrap-fallback: margin-left & margin-top sekaligus krn flex-wrap aktif. */
+    .wh-form-row > * + * { margin-left: 16px; margin-top: 16px; }
     </style>
 </head>
 <body>
@@ -307,7 +317,7 @@
 
         <div class="payroll-filter-card">
             <div class="wh-card-title">📅 Filter & Hitung Gaji Karyawan</div>
-            <div class="wh-form-row" style="display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap;">
+            <div class="wh-form-row" style="display: flex; align-items: flex-end; flex-wrap: wrap;">
                 <div class="salary-form-control">
                     <label for="filterStartDate">Mulai Tanggal</label>
                     <input type="date" id="filterStartDate" style="width: 160px;">

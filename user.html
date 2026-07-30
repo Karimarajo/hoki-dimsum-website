@@ -65,8 +65,10 @@
 
     .two-col {
         display: flex;
-        gap: 10px;
     }
+
+    /* Fallback jarak antar-anak flex (gap tidak didukung Chrome flex < 84) */
+    .two-col > * + * { margin-left: 10px; }
 
     .two-col .form-group {
         flex: 1;
@@ -220,7 +222,14 @@
             flex-direction: column;
         }
 
+        .two-col > * + * { margin-left: 0; margin-top: 10px; }
+
     }
+
+    /* Fallback jarak flex utk beberapa kontainer inline (gap tidak didukung Chrome flex < 84). */
+    .modal-btn-row > * + * { margin-left: 8px; }
+    .td-action-row > * + * { margin-left: 4px; }
+    .check-percent-row > * + * { margin-left: 8px; }
 
     </style>
   <script src="config.js"></script>
@@ -371,7 +380,7 @@
         <h3 style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:4px;">✏️ Edit Akses Cabang</h3>
         <p id="editCabangNama" style="font-size:12px;color:var(--text-muted);margin-bottom:16px;"></p>
         <div class="checklist-container" id="editCabangList" style="max-height:140px;margin-bottom:16px;"></div>
-        <div style="display:flex;gap:8px;">
+        <div class="modal-btn-row" style="display:flex;">
             <button class="btn-simpan" style="flex:1;" onclick="simpanEditCabang()">💾 Simpan</button>
             <button class="btn-reset" onclick="tutupModalCabang()">Batal</button>
         </div>
@@ -707,7 +716,7 @@ async function renderUser() {
                 <td>${u.role}</td>
                 <td style="font-size:11px;color:var(--text-muted);">${cabangList}</td>
                 <td><button class="btn-detail-icon" onclick="lihatDokumen(${i})" title="Detail Data">👁️</button></td>
-                <td style="display:flex;gap:4px;">
+                <td class="td-action-row" style="display:flex;">
                     <button class="btn-edit-icon" onclick="bukaCabangModal(${i})" title="Edit Data">✏️</button>
                     <button class="btn-hapus-icon" onclick="hapusUser(${u.id})" title="Hapus Data">🗑️</button>
                 </td>
@@ -749,7 +758,7 @@ async function bukaCabangModal(idx) {
         allCabang.forEach(nama => {
             const isChecked = currentCabang.includes(nama);
             const persenVal = mapping[nama] !== undefined ? mapping[nama] : 0;
-            list.innerHTML += `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;gap:8px;">
+            list.innerHTML += `<div class="check-percent-row" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
                 <label class="check-item" style="margin-bottom:0;flex:1;">
                     <input type="checkbox" name="editCabangAkses" value="${nama}" ${isChecked ? 'checked' : ''} onchange="this.parentElement.nextElementSibling.style.display = this.checked ? 'block' : 'none'">
                     <span>${nama}</span>

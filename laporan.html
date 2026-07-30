@@ -14,8 +14,8 @@
     .input-group {
         display: flex;
         flex-direction: column;
-        gap: 4px;
     }
+    .input-group > * + * { margin-top: 4px; } /* fallback utk flex gap (Chrome lama) */
 
     .input-group label {
         font-size: 10px;
@@ -254,8 +254,12 @@
     
     .modal-rekap-actions {
         display: flex;
-        gap: 8px;
     }
+    .modal-rekap-actions > * + * { margin-left: 8px; } /* fallback utk flex gap (Chrome lama) */
+
+    /* fallback utk flex gap (Chrome lama) - dulunya gap dipasang inline */
+    .print-header-brand > * + * { margin-left: 15px; }
+    .print-summary-row > * + * { margin-left: 12px; }
     .modal-rekap-actions button {
         padding: 8px 14px;
         border-radius: 6px;
@@ -571,7 +575,7 @@
         <!-- PRINT HEADER -->
         <div class="print-header">
             <div style="display:flex; justify-content:space-between; align-items:flex-end; border-bottom:3px solid #d32f2f; padding-bottom:12px; margin-bottom:24px;">
-                <div style="text-align:left; display:flex; align-items:center; gap:15px;">
+                <div class="print-header-brand" style="text-align:left; display:flex; align-items:center;">
                     <img src="Assets/3.png" alt="Logo Hoki Dimsum V4.1" style="height:50px; width:auto; object-fit:contain;">
                     <div>
                         <h1 style="margin:0;font-size:26px;color:#d32f2f;font-weight:800;letter-spacing:1px;font-family:'Poppins',sans-serif;">HOKI DIMSUM</h1>
@@ -777,7 +781,7 @@
                 </div>
 
                 <!-- SUMMARY CARD -->
-                <div style="display:flex; gap:12px; margin-bottom:24px; text-align:center;">
+                <div class="print-summary-row" style="display:flex; margin-bottom:24px; text-align:center;">
                     <div style="flex:1; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:16px;">
                         <p style="margin:0; font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Total Omset</p>
                         <h3 id="printSummaryOmset" style="margin:8px 0 0; font-size:16px; color:#1b5e20;">Rp 0</h3>

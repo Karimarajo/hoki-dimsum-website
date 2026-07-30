@@ -12,8 +12,10 @@
     .grid-hpp {
         display: flex;
         flex-direction: column;
-        gap: 16px;
     }
+
+    /* Fallback jarak antar-anak flex (gap tidak didukung Chrome flex < 84) */
+    .grid-hpp > * + * { margin-top: 16px; }
 
     .grid-hpp > div { min-width: 0; }
 
@@ -37,9 +39,11 @@
     .input-group {
         display: flex;
         flex-direction: column;
-        gap: 4px;
         margin-bottom: 12px;
     }
+
+    /* Fallback jarak antar-anak flex (gap tidak didukung Chrome flex < 84) */
+    .input-group > * + * { margin-top: 4px; }
 
     .input-group label {
         font-size: 10px;
@@ -75,11 +79,13 @@
     /* Bahan picker */
     .bahan-row {
         display: flex;
-        gap: 8px;
         align-items: center;
         margin-bottom: 8px;
         width: 100%;
     }
+
+    /* Fallback jarak antar-anak flex (gap tidak didukung Chrome flex < 84) */
+    .bahan-row > * + * { margin-left: 8px; }
 
     /* Custom select inside bahan-row */
     .bahan-wrap {
@@ -159,7 +165,9 @@
     .table-wrap tbody td:nth-child(5) { text-align: center; }
 
     /* tombol aksi sejajar */
-    .aksi-group { display: flex; gap: 6px; align-items: center; justify-content: center; }
+    .aksi-group { display: flex; align-items: center; justify-content: center; }
+    /* Fallback jarak antar-anak flex (gap tidak didukung Chrome flex < 84) */
+    .aksi-group > * + * { margin-left: 6px; }
     .table-wrap tbody td {
         padding: 10px 14px;
         border-bottom: 1px solid var(--border);
@@ -198,7 +206,8 @@
     }
 
     @media (max-width: 844px) {
-        .grid-hpp { grid-template-columns: 1fr; gap: 12px; }
+        .grid-hpp { grid-template-columns: 1fr; }
+        .grid-hpp > * + * { margin-top: 12px; }
         .card-hpp { padding: 14px; }
         .btn-add-bahan, .btn-simpan-hpp { display: flex !important; width: 100%; justify-content: center; }
         .bahan-row .bahan-qty-input { width: 70px; }
@@ -557,7 +566,8 @@ function hitungTotal() {
     let total = 0;
     document.querySelectorAll('.bahan-row').forEach(row => {
         const active = row.querySelector('.custom-dropdown .dropdown-item.active');
-        const qty    = parseFloat(row.querySelector('.bahan-qty-input')?.value) || 0;
+        const qtyInput = row.querySelector('.bahan-qty-input');
+        const qty    = parseFloat(qtyInput ? qtyInput.value : '') || 0;
         if (active && active.dataset.id) {
             total += (parseFloat(active.dataset.hs) || 0) * qty;
         }
@@ -570,7 +580,8 @@ function getBahanList() {
     const list = [];
     document.querySelectorAll('.bahan-row').forEach(row => {
         const active = row.querySelector('.custom-dropdown .dropdown-item.active');
-        const qty    = parseFloat(row.querySelector('.bahan-qty-input')?.value) || 0;
+        const qtyInput = row.querySelector('.bahan-qty-input');
+        const qty    = parseFloat(qtyInput ? qtyInput.value : '') || 0;
         if (active && active.dataset.id && qty > 0) {
             const hs    = parseFloat(active.dataset.hs) || 0;
             const bahan = allBahan.find(b => b.id == active.dataset.id);

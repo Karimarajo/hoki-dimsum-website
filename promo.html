@@ -20,7 +20,8 @@
         height: 40px;
         flex-shrink: 0;
     }
-    .ib-item { display: flex; align-items: center; gap: 8px; padding: 0 16px; height: 100%; }
+    .ib-item { display: flex; align-items: center; padding: 0 16px; height: 100%; }
+    .ib-item > * + * { margin-left: 8px; }
     .ib-item:first-child { padding-left: 0; }
     .ib-divider { width: 1px; height: 20px; background: var(--border); flex-shrink: 0; }
     .ib-label { font-size: 11px; color: var(--text-light); font-weight: 500; white-space: nowrap; }
@@ -29,10 +30,10 @@
     /* ── TABS ── */
     .kmo-tabs {
         display: flex;
-        gap: 8px;
         margin-bottom: 20px;
         border-bottom: 1.5px solid var(--border);
     }
+    .kmo-tabs > * + * { margin-left: 8px; }
     .kmo-tab-btn {
         padding: 10px 18px;
         border: none;
@@ -66,10 +67,11 @@
         padding: 16px;
         display: flex;
         flex-direction: column;
-        gap: 8px;
     }
+    .kupon-card > * + * { margin-top: 8px; }
 
-    .kupon-card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+    .kupon-card-head { display: flex; justify-content: space-between; align-items: flex-start; }
+    .kupon-card-head > * + * { margin-left: 8px; }
     .kupon-kode { font-family: 'DM Mono', monospace; font-weight: 800; font-size: 16px; color: var(--red); }
     .kupon-nama { font-size: 12px; color: var(--text-muted); margin-top: -4px; }
 
@@ -90,7 +92,11 @@
     .kupon-row .label { color: var(--text-muted); }
     .kupon-diskon { font-size: 18px; font-weight: 800; color: var(--red); }
 
-    .kupon-tags { display: flex; flex-wrap: wrap; gap: 4px; }
+    .kupon-tags { display: flex; flex-wrap: wrap; }
+    /* Fallback gap (jumlah tag cabang bisa banyak & wrap): margin-left & margin-top
+       sekaligus di "> * + *". Trade-off kecil: tag pertama tiap baris wrap dapat
+       margin-left yang tidak perlu, tapi aman dari numpuk di Chrome lama. */
+    .kupon-tags > * + * { margin-left: 4px; margin-top: 4px; }
     .kupon-tag {
         font-size: 10.5px;
         background: var(--surface-2);
@@ -100,7 +106,8 @@
         color: var(--text-muted);
     }
 
-    .kupon-foot { display: flex; gap: 6px; margin-top: 6px; }
+    .kupon-foot { display: flex; margin-top: 6px; }
+    .kupon-foot > * + * { margin-left: 6px; }
     .btn-kupon-mini {
         flex: 1;
         padding: 8px 6px;
@@ -142,7 +149,8 @@
     }
     .form-field input:focus, .form-field select:focus { outline: none; border-color: var(--red); }
     .form-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    .form-check { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
+    .form-check { display: flex; align-items: center; margin-bottom: 14px; }
+    .form-check > * + * { margin-left: 8px; }
     .form-check label { font-size: 13px; font-weight: 600; color: var(--text); }
     .form-hint-sm { font-size: 11px; color: var(--text-muted); margin-top: -8px; margin-bottom: 14px; }
 
@@ -154,7 +162,8 @@
         padding: 10px 12px;
         background: var(--surface-2);
     }
-    .checklist-item { display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: 13px; }
+    .checklist-item { display: flex; align-items: center; padding: 4px 0; font-size: 13px; }
+    .checklist-item > * + * { margin-left: 8px; }
     .checklist-empty { font-size: 12px; color: var(--text-muted); }
 
     /* ── MODAL ── */
@@ -187,7 +196,8 @@
         to { opacity: 1; transform: translateY(0) scale(1); }
     }
     .modal-kupon h3 { margin: 0 0 18px; font-size: 16px; font-weight: 800; color: var(--text); text-align: center; }
-    .modal-kupon-btns { display: flex; gap: 8px; margin-top: 8px; }
+    .modal-kupon-btns { display: flex; margin-top: 8px; }
+    .modal-kupon-btns > * + * { margin-left: 8px; }
     .modal-kupon-btns button {
         flex: 1;
         padding: 12px;
@@ -403,7 +413,7 @@ let daftarCabangCache = [];
 let daftarProdukCache = [];
 
 function esc(s) {
-    return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    return String(s === null || s === undefined ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 function formatRupiah(n) { return 'Rp' + Math.round(Number(n) || 0).toLocaleString('id-ID'); }
 

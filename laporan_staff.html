@@ -37,10 +37,11 @@
         display: flex;
         align-items: flex-start;
         justify-content: space-between;
-        gap: 12px;
         margin-bottom: 4px;
         flex-wrap: wrap;
     }
+
+    .card-header > * + * { margin-left: 12px; }
 
     .card-header-left { flex: 1; }
 
@@ -48,10 +49,11 @@
         display: flex;
         flex-direction: column;
         align-items: flex-end;
-        gap: 4px;
         flex-shrink: 0;
         min-width: 140px;
     }
+
+    .card-header-right > * + * { margin-top: 4px; }
 
     .card-header-right label {
         font-size: 10px;
@@ -222,13 +224,14 @@
     /* Box Informasi (Sesuai Gambar Premium) */
     .detail-meta {
         display: flex;
-        gap: 16px;
         background: var(--bg);
         border-radius: var(--r-md);
         padding: 12px 16px;
         margin-bottom: 20px;
         border: 1px solid var(--border);
     }
+
+    .detail-meta > * + * { margin-left: 16px; }
     
     .detail-meta-item { flex: 1; }
     
@@ -282,8 +285,11 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 8px;
     }
+
+    /* Fallback gap: satu-satunya child element adalah <span> ikon, diikuti teks polos,
+       jadi selector "> * + *" tidak match — beri margin langsung di span ikon */
+    .btn-wa-detail span { margin-right: 8px; }
 
     .empty-row td {
         text-align: center;
@@ -304,6 +310,7 @@
         .detail-grid > div { overflow-x: auto; -webkit-overflow-scrolling: touch; }
         #detTabelExp   { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; width: 100%; }
         .card-header { flex-direction: column; }
+        .card-header > * + * { margin-left: 0; margin-top: 12px; }
         .card-header-right { align-items: flex-start; width: 100%; }
         .card-header-right input[type="date"] { width: 100%; }
         #historyTable  { min-width: 500px; }
@@ -324,10 +331,11 @@
     .ib-item {
         display: flex;
         align-items: center;
-        gap: 8px;
         padding: 0 16px;
         height: 100%;
     }
+
+    .ib-item > * + * { margin-left: 8px; }
 
     .ib-item:first-child { padding-left: 0; }
 
@@ -353,9 +361,17 @@
     }
 
     @media (max-width: 844px) {
-        .info-bar-simple { padding: 6px 14px; height: auto; gap: 16px; }
+        .info-bar-simple { padding: 6px 14px; height: auto; }
+        .info-bar-simple > * + * { margin-left: 16px; }
         .ib-item { padding: 0; }
     }
+
+    /* Fallback jarak flex utk beberapa kontainer inline di History Settlement
+       (gap tidak didukung Chrome flex < 84). Override lebih spesifik dari
+       fallback umum .filter-bar di style.css supaya jarak 8px tetap sesuai desain. */
+    .hs-head > * + * { margin-left: 10px; margin-top: 10px; }
+    .filter-bar > * + * { margin-left: 8px; margin-top: 8px; }
+    .hs-date-group > * + * { margin-top: 4px; }
     </style>
   <script src="config.js"></script>
 </head>
@@ -464,17 +480,17 @@
 
             <!-- KOLOM KANAN: History -->
             <div class="card-laporan">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:10px;">
+                <div class="hs-head" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap;">
                     <h3 style="margin:0;">📄 History Settlement</h3>
                 </div>
-                
+
                 <!-- Filter Tanggal untuk History Laporan -->
-                <div class="filter-bar" style="display:flex; gap:8px; margin-bottom:12px; padding: 10px; background:var(--surface-2); border-radius:var(--r-md); border: 1px solid var(--border); flex-wrap:wrap; align-items:flex-end;">
-                    <div style="display:flex; flex-direction:column; gap:4px; flex:1; min-width:110px;">
+                <div class="filter-bar" style="display:flex; margin-bottom:12px; padding: 10px; background:var(--surface-2); border-radius:var(--r-md); border: 1px solid var(--border); flex-wrap:wrap; align-items:flex-end;">
+                    <div class="hs-date-group" style="display:flex; flex-direction:column; flex:1; min-width:110px;">
                         <label style="font-size:9px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.8px;">Dari</label>
                         <input type="date" id="histMulai" style="height:32px; padding:0 8px; font-size:12px; border:1.5px solid var(--border); border-radius:var(--r-sm); background:var(--surface); outline:none; font-family:'Nunito';">
                     </div>
-                    <div style="display:flex; flex-direction:column; gap:4px; flex:1; min-width:110px;">
+                    <div class="hs-date-group" style="display:flex; flex-direction:column; flex:1; min-width:110px;">
                         <label style="font-size:9px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.8px;">Sampai</label>
                         <input type="date" id="histSelesai" style="height:32px; padding:0 8px; font-size:12px; border:1.5px solid var(--border); border-radius:var(--r-sm); background:var(--surface); outline:none; font-family:'Nunito';">
                     </div>

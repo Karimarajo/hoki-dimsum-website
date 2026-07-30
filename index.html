@@ -146,16 +146,17 @@
             font-weight: 500;
         }
 
-        .info-pills { display: flex; flex-direction: column; gap: 10px; width: 100%; }
+        .info-pills { display: flex; flex-direction: column; width: 100%; }
+        .info-pills > * + * { margin-top: 10px; } /* fallback utk flex gap (Chrome lama) */
         .info-pill {
             display: flex;
             align-items: center;
-            gap: 12px;
             background: rgba(255,255,255,0.05);
             border: 1px solid rgba(255,255,255,0.08);
             border-radius: 12px;
             padding: 12px 16px;
         }
+        .info-pill > * + * { margin-left: 12px; } /* fallback utk flex gap (Chrome lama) */
         .info-pill-icon {
             width: 34px; height: 34px;
             background: rgba(255,107,107,0.15);
@@ -305,8 +306,8 @@
             margin-bottom: 12px;
             display: none;
             align-items: center;
-            gap: 8px;
         }
+        .error-msg > * + * { margin-left: 8px; } /* fallback utk flex gap (Chrome lama) */
         .error-msg.show { display: flex; }
 
         .btn-login {
@@ -327,8 +328,8 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 8px;
         }
+        .btn-login > * + * { margin-left: 8px; } /* fallback utk flex gap (Chrome lama) */
         .btn-login:hover { background: var(--green-light); }
         .btn-login:active { transform: scale(0.98); }
         .btn-login:disabled { opacity: 0.7; cursor: not-allowed; }
@@ -336,12 +337,12 @@
         .divider {
             display: flex;
             align-items: center;
-            gap: 12px;
             margin: 16px 0;
             color: var(--text-muted);
             font-size: 11px;
             font-weight: 600;
         }
+        .divider > * + * { margin-left: 12px; } /* fallback utk flex gap (Chrome lama) */
         .divider::before, .divider::after {
             content: '';
             flex: 1;
@@ -349,7 +350,9 @@
             background: var(--border);
         }
 
-        .quick-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+        .quick-chips { display: flex; flex-wrap: wrap; }
+        /* fallback utk flex gap (Chrome lama); wrap fallback: margin-left ikut kena di item pertama tiap baris, trade-off kecil yg aman */
+        .quick-chips > * + * { margin-left: 8px; margin-top: 8px; }
         .chip {
             flex: 1;
             min-width: 70px;
@@ -370,7 +373,6 @@
         .user-badge {
             display: inline-flex;
             align-items: center;
-            gap: 6px;
             background: var(--green-soft);
             border: 1px solid #ffcccc;
             border-radius: 99px;
@@ -404,10 +406,10 @@
             cursor: pointer;
             display: flex;
             align-items: center;
-            gap: 8px;
             text-align: left;
             transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
         }
+        .cabang-select-btn > * + * { margin-left: 8px; } /* fallback utk flex gap (Chrome lama) */
 
         .cabang-select-btn svg { margin-left: auto; flex-shrink: 0; transition: transform 0.2s; }
 
@@ -462,7 +464,6 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 6px;
             margin-top: 14px;
             font-size: 11px;
             color: var(--text-muted);
@@ -472,6 +473,7 @@
             background: #ff6b6b;
             border-radius: 50%;
             display: inline-block;
+            margin-right: 6px; /* fallback utk flex gap (Chrome lama) - konten setelahnya teks polos, bukan elemen, jadi margin taruh di sini */
             animation: pulse 2s ease-in-out infinite;
         }
         @keyframes pulse {
@@ -498,7 +500,8 @@
             .login-heading h1 { font-size: 20px; }
             .card { padding: 18px; border-radius: 16px; }
             .form-group { margin-bottom: 10px; }
-            .quick-chips { flex-wrap: nowrap; gap: 6px; }
+            .quick-chips { flex-wrap: nowrap; }
+            .quick-chips > * + * { margin-left: 6px; margin-top: 0; } /* fallback utk flex gap (Chrome lama) */
             .chip { font-size: 10px; padding: 6px 8px; }
         }
     </style>

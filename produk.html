@@ -93,17 +93,24 @@
     .cabang-nonaktif-list {
         display: flex;
         flex-wrap: wrap;
-        gap: 12px;
     }
+
+    /* Fallback gap (flex-wrap + jumlah cabang bisa banyak): margin-left & margin-top
+       sekaligus di "> * + *". Trade-off kecil: item pertama tiap baris wrap dapat
+       margin-left yang tidak perlu, tapi aman dari numpuk/overlap di Chrome lama. */
+    .cabang-nonaktif-list > * + * { margin-left: 12px; margin-top: 12px; }
 
     .cabang-nonaktif-list label {
         display: flex;
         align-items: center;
-        gap: 5px;
         font-size: 13px;
         color: var(--text);
         cursor: pointer;
     }
+
+    /* Child label hanya 1 elemen (checkbox) diikuti teks nama cabang polos,
+       jadi selector "> * + *" tidak match — beri margin langsung di checkbox */
+    .cabang-nonaktif-list label input[type="checkbox"] { margin-right: 5px; }
 
     .badge-nonaktif-cabang {
         display: inline-block;
