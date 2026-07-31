@@ -112,6 +112,10 @@
         color: #16a34a;
     }
 
+    .wh-item-card-stock.yellow span {
+        color: #a16207;
+    }
+
     /* Form input masuk */
     .wh-form-row {
         display: flex;
@@ -225,6 +229,35 @@
        Discoping ke #daftarBarangModal supaya tidak mempengaruhi .wh-card lain yang bukan flex. */
     #daftarBarangModal .wh-card > * + * { margin-top: 16px; }
 
+    /* ── TABS (pola sama dengan .kmo-tabs di kelola-order.html) ── */
+    .wh-tabs {
+        display: flex;
+        margin-bottom: 20px;
+        border-bottom: 1.5px solid var(--border);
+    }
+    .wh-tabs > * + * { margin-left: 8px; } /* fallback utk flex gap (Chrome lama) */
+
+    .wh-tab-btn {
+        padding: 10px 18px;
+        border: none;
+        background: none;
+        font-family: 'Nunito', sans-serif;
+        font-weight: 700;
+        font-size: 13px;
+        color: var(--text-muted);
+        cursor: pointer;
+        border-bottom: 3px solid transparent;
+        transition: color var(--ease), border-color var(--ease);
+    }
+
+    .wh-tab-btn.active {
+        color: var(--red);
+        border-bottom-color: var(--red);
+    }
+
+    .wh-panel { display: none; }
+    .wh-panel.active { display: block; }
+
     </style>
   <script src="config.js"></script>
 </head>
@@ -272,21 +305,31 @@
 
     <div class="page-body">
 
-        <!-- KOTAK PILIH BAHAN BAKU (GRID) -->
-        <div class="wh-card">
-            <div class="wh-card-title">🧂 Bahan Baku (otomatis)</div>
-            <div class="wh-grid" id="whGridContainer">
-                <div style="grid-column: 1/-1; text-align: center; padding: 20px; color: var(--text-muted);">⏳ Memuat bahan baku...</div>
+        <div class="wh-tabs">
+            <button class="wh-tab-btn active" data-tab="logistik" onclick="switchTab('logistik')">📦 Stok Gudang</button>
+            <button class="wh-tab-btn" data-tab="bahan" onclick="switchTab('bahan')">🧂 Bahan Baku</button>
+        </div>
+
+        <!-- TAB: STOK GUDANG / LOGISTIK -->
+        <div class="wh-panel active" id="panel-logistik">
+            <div class="wh-card">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                    <div class="wh-card-title" style="margin-bottom:0;">📦 Stok Gudang / Logistik</div>
+                    <button class="btn-simpan" style="padding:6px 12px; font-size:11px; height:auto; margin:0;" onclick="bukaDaftarBarangModal()">📦 Daftarkan Barang Gudang</button>
+                </div>
+                <div class="wh-grid" id="whLogistikGridContainer">
+                    <div style="grid-column: 1/-1; text-align: center; padding: 20px; color: var(--text-muted);">⏳ Memuat barang logistik...</div>
+                </div>
             </div>
         </div>
-         <!-- STOK GUDANG / LOGISTIK (GRID BARU) -->
-        <div class="wh-card">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-                <div class="wh-card-title" style="margin-bottom:0;">📦 Stok Gudang / Logistik</div>
-                <button class="btn-simpan" style="padding:6px 12px; font-size:11px; height:auto; margin:0;" onclick="bukaDaftarBarangModal()">📦 Daftarkan Barang Gudang</button>
-            </div>
-            <div class="wh-grid" id="whLogistikGridContainer">
-                <div style="grid-column: 1/-1; text-align: center; padding: 20px; color: var(--text-muted);">⏳ Memuat barang logistik...</div>
+
+        <!-- TAB: BAHAN BAKU (GRID OTOMATIS) -->
+        <div class="wh-panel" id="panel-bahan">
+            <div class="wh-card">
+                <div class="wh-card-title">🧂 Bahan Baku (otomatis)</div>
+                <div class="wh-grid" id="whGridContainer">
+                    <div style="grid-column: 1/-1; text-align: center; padding: 20px; color: var(--text-muted);">⏳ Memuat bahan baku...</div>
+                </div>
             </div>
         </div>
 
@@ -551,12 +594,31 @@ function closeSheetOutside(e,id) { if(e.target===document.getElementById(id)) do
    WAREHOUSE LOGIC
 ───────────────────────────────────────────── */
 
+/* ── TABS ── */
+// Form transaksi (#formCard) & tabel riwayat (#tableCard) sengaja TIDAK direset saat
+// pindah tab: kalau user sedang lihat riwayat sebuah item lalu pindah tab buat sekadar
+// ngecek, item yang dipilih & riwayatnya tetap kelihatan begitu balik lagi — nggak perlu
+// pilih ulang. Kartu aktif di grid asal juga tetap ke-highlight krn DOM-nya tidak dibongkar,
+// cuma disembunyikan lewat CSS display:none pada panel.
+function switchTab(tab) {
+    document.querySelectorAll('.wh-tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+    document.querySelectorAll('.wh-panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('panel-' + tab).classList.add('active');
+}
+
 let selectedSKU = null;
 
 /* ── GRID CARD SELECTION ── */
 function sisaClass(sisa) {
     if (sisa < 0)  return 'danger';
     if (sisa < 10) return 'warn';
+    return 'ok';
+}
+
+// Khusus kartu Logistik: merah di 0 ke bawah, kuning gelap tepat di 1, hijau di atas 1
+function sisaClassLogistik(sisa) {
+    if (sisa <= 0) return 'danger';
+    if (sisa === 1) return 'yellow';
     return 'ok';
 }
 
@@ -792,7 +854,7 @@ async function loadLogistikList() {
                 console.error("Gagal load stok logistik untuk " + p.nama_barang, e);
             }
 
-            const cSisa = sisaClass(sisaStok);
+            const cSisa = sisaClassLogistik(sisaStok);
             const unit = ' ' + p.satuan;
 
             const card = document.createElement('div');
