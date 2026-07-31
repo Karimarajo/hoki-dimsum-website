@@ -1684,11 +1684,13 @@ switch ($action) {
         $namaItem = $conn->real_escape_string($_GET['sku'] ?? '');
         if (!$namaItem) { echo json_encode([]); break; }
 
-        // PERBAIKAN: Ambil dari kolom 'tgl' dan urutkan berdasarkan 'tgl'
-        $res = $conn->query("SELECT *, DATE_FORMAT(tgl, '%d/%m/%Y') as waktu_tampil 
-                             FROM warehouse_ledger 
-                             WHERE sku='$namaItem' 
-                             ORDER BY tgl ASC, created_at ASC");
+        // PERBAIKAN: Ambil dari kolom 'tgl' dan urutkan berdasarkan 'tgl'.
+        // Tie-breaker 'id' di posisi terakhir supaya urutan pemrosesan saldo kumulatif
+        // selalu deterministik walau ada baris dengan tgl/created_at yang sama persis.
+        $res = $conn->query("SELECT *, DATE_FORMAT(tgl, '%d/%m/%Y') as waktu_tampil
+                             FROM warehouse_ledger
+                             WHERE sku='$namaItem'
+                             ORDER BY tgl ASC, created_at ASC, id ASC");
         
         $history = [];
         $saldo = 0;
