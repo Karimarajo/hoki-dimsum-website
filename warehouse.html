@@ -628,14 +628,19 @@ let warehouseItems = [];
 async function loadProdukList() {
     const gridContainer = document.getElementById('whGridContainer');
     try {
-        // Tarik daftar item secara dinamis dari API get_audit_items_master dan filter jika ada di logistik
-        const [resMaster, resInv] = await Promise.all([
+        // Tarik daftar item + ringkasan sisa stok SEMUA sku dalam 1 query (get_warehouse_stok_semua),
+        // BUKAN fetch get_warehouse_ledger satu-satu per item - dulu bisa puluhan request paralel
+        // sekaligus dan gampang kehabisan slot koneksi MySQL di shared hosting.
+        const [resMaster, resInv, resStok] = await Promise.all([
             fetch(`${API_BASE}?action=get_audit_items_master`),
-            fetch(`${API_BASE}?action=get_inventory`)
+            fetch(`${API_BASE}?action=get_inventory`),
+            fetch(`${API_BASE}?action=get_warehouse_stok_semua`)
         ]);
         let list = await resMaster.json().catch(() => []);
         const invList = await resInv.json().catch(() => []);
-        
+        let stokMap = await resStok.json().catch(() => ({}));
+        if (!stokMap || typeof stokMap !== 'object' || Array.isArray(stokMap)) stokMap = {};
+
         // Saring daftar bahan baku agar tidak ganda dengan barang di stok gudang/logistik manual
         const invNames = invList.map(i => i.nama_barang.toLowerCase());
         list = list.filter(p => !invNames.includes(p.nama.toLowerCase()));
@@ -648,24 +653,13 @@ async function loadProdukList() {
         }
 
         gridContainer.innerHTML = '';
-        
-        // Load data stok akhir secara paralel, tapi render berurutan sesuai abjad
-        const cards = await Promise.all(list.map(async (p) => {
-            let sisaStok = 0;
-            try {
-                // ✔️ PERBAIKAN: Menggunakan p.nama, bukan namaItem agar tidak ReferenceError
-                const resLedger = await fetch(`${API_BASE}?action=get_warehouse_ledger&sku=${encodeURIComponent(p.nama)}`);
-                const ledgerList = await resLedger.json().catch(() => []);
-                if (ledgerList && ledgerList.length > 0) {
-                    sisaStok = parseFloat(ledgerList[0].sisa) || 0; // sisa terbaru ada di index 0 karena array reversed
-                }
-            } catch(e) {
-                console.error("Gagal load stok untuk " + p.nama, e);
-            }
+
+        const cards = list.map((p) => {
+            const sisaStok = parseFloat(stokMap[p.nama]) || 0;
 
             // Tentukan kelas warna sisa stok
             const cSisa = sisaClass(sisaStok);
-            
+
             // Format satuan (jika mengandung 'Pcs' pakai Pcs, jika tidak, tampilkan angka default atau 'satuan' jika relevan)
             const unit = p.nama.toLowerCase().includes('pcs') ? ' Pcs' : '';
 
@@ -679,7 +673,7 @@ async function loadProdukList() {
                 <p class="wh-item-card-stock ${cSisa}">Stok: <span>${sisaStok.toLocaleString('id-ID')}${unit}</span></p>
             `;
             return card;
-        }));
+        });
 
         cards.forEach(c => gridContainer.appendChild(c));
 
@@ -831,9 +825,16 @@ async function tambahMasuk() {
 async function loadLogistikList() {
     const gridContainer = document.getElementById('whLogistikGridContainer');
     try {
-        const res = await fetch(`${API_BASE}?action=get_inventory`);
+        // Ringkasan sisa stok SEMUA sku dalam 1 query (get_warehouse_stok_semua), bukan
+        // fetch get_warehouse_ledger satu-satu per item (lihat catatan di loadProdukList).
+        const [res, resStok] = await Promise.all([
+            fetch(`${API_BASE}?action=get_inventory`),
+            fetch(`${API_BASE}?action=get_warehouse_stok_semua`)
+        ]);
         const list = await res.json().catch(() => []);
-        
+        let stokMap = await resStok.json().catch(() => ({}));
+        if (!stokMap || typeof stokMap !== 'object' || Array.isArray(stokMap)) stokMap = {};
+
         if (list.length === 0) {
             gridContainer.innerHTML = `<div style="grid-column: 1/-1; text-align: center; padding: 20px; color: var(--text-muted);">Belum ada barang logistik terdaftar</div>`;
             return;
@@ -841,18 +842,9 @@ async function loadLogistikList() {
 
         gridContainer.innerHTML = '';
 
-        // Load data paralel tapi simpan urutan kartu sesuai daftar array (A-Z)
-        const cards = await Promise.all(list.map(async (p) => {
-            let sisaStok = 0;
-            try {
-                const resLedger = await fetch(`${API_BASE}?action=get_warehouse_ledger&sku=${encodeURIComponent(p.nama_barang)}`);
-                const ledgerList = await resLedger.json().catch(() => []);
-                if (ledgerList && ledgerList.length > 0) {
-                    sisaStok = parseFloat(ledgerList[0].sisa) || 0;
-                }
-            } catch(e) {
-                console.error("Gagal load stok logistik untuk " + p.nama_barang, e);
-            }
+        // Urutan kartu tetap sesuai daftar array (A-Z)
+        const cards = list.map((p) => {
+            const sisaStok = parseFloat(stokMap[p.nama_barang]) || 0;
 
             const cSisa = sisaClassLogistik(sisaStok);
             const unit = ' ' + p.satuan;
@@ -872,8 +864,8 @@ async function loadLogistikList() {
                 <p class="wh-item-card-stock ${cSisa}">Stok: <span>${sisaStok.toLocaleString('id-ID')}${unit}</span></p>
             `;
             return card;
-        }));
-        
+        });
+
         cards.forEach(c => gridContainer.appendChild(c));
 
     } catch(e) {

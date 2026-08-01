@@ -1710,9 +1710,30 @@ switch ($action) {
                 ];
             }
         }
-        echo json_encode(array_reverse($history)); 
+        echo json_encode(array_reverse($history));
         break;
-        
+
+    // Ringkasan sisa stok SEMUA sku sekaligus dalam 1 query - dipakai oleh grid
+    // Bahan Baku & Stok Gudang di warehouse.html, supaya render grid tidak perlu
+    // fetch get_warehouse_ledger satu-satu per item (dulu bisa 50 request paralel
+    // sekaligus, gampang kehabisan slot koneksi MySQL di shared hosting - lihat
+    // riwayat commit soal bug "kartu stok gudang tidak sesuai riwayat").
+    // Saldo akhir = SUM(masuk) - SUM(keluar) per sku: sah secara matematis sama
+    // dengan hasil loop kumulatif di atas krn penjumlahan bersifat asosiatif/
+    // komutatif - urutan baris tidak mempengaruhi TOTAL akhirnya.
+    case 'get_warehouse_stok_semua':
+        $res = $conn->query("SELECT sku, COALESCE(SUM(masuk),0) - COALESCE(SUM(keluar),0) AS sisa
+                             FROM warehouse_ledger
+                             GROUP BY sku");
+        $stokMap = [];
+        if ($res) {
+            while ($row = $res->fetch_assoc()) {
+                $stokMap[$row['sku']] = (float)$row['sisa'];
+            }
+        }
+        echo json_encode($stokMap);
+        break;
+
     case 'delete_warehouse_ledger':
         $data = json_decode(file_get_contents('php://input'), true);
         $id = $data['id'] ?? null;
