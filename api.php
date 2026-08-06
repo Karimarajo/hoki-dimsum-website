@@ -246,6 +246,19 @@ $conn->query("CREATE TABLE IF NOT EXISTS logs_login (
     role VARCHAR(50) NOT NULL DEFAULT '',
     cabang VARCHAR(100) NOT NULL DEFAULT ''
 )");
+// ── Info IP/perangkat/lokasi per login (log lama otomatis NULL -> tampil '-' di UI) ──
+$checkColLogIp = $conn->query("SHOW COLUMNS FROM logs_login LIKE 'ip'");
+if ($checkColLogIp && $checkColLogIp->num_rows === 0) {
+    $conn->query("ALTER TABLE logs_login ADD COLUMN ip VARCHAR(45) NULL");
+}
+$checkColLogDevice = $conn->query("SHOW COLUMNS FROM logs_login LIKE 'device'");
+if ($checkColLogDevice && $checkColLogDevice->num_rows === 0) {
+    $conn->query("ALTER TABLE logs_login ADD COLUMN device VARCHAR(150) NULL");
+}
+$checkColLogLocation = $conn->query("SHOW COLUMNS FROM logs_login LIKE 'location'");
+if ($checkColLogLocation && $checkColLogLocation->num_rows === 0) {
+    $conn->query("ALTER TABLE logs_login ADD COLUMN location VARCHAR(150) NULL");
+}
 $conn->query("CREATE TABLE IF NOT EXISTS hoki_cabang (
     id INT AUTO_INCREMENT PRIMARY KEY,
     nama_cabang VARCHAR(100) UNIQUE
@@ -494,6 +507,12 @@ $checkColKategori = $conn->query("SHOW COLUMNS FROM produk LIKE 'kategori'");
 if ($checkColKategori && $checkColKategori->num_rows === 0) {
     $conn->query("ALTER TABLE produk ADD COLUMN kategori VARCHAR(100) NULL DEFAULT 'Umum'");
 }
+// ── Status aktif/nonaktif menu khusus tampilan Kasir (dashboard.html) ──
+// DEFAULT 1 supaya produk lama otomatis tetap aktif, tidak mendadak hilang dari kasir.
+$checkColAktifKasir = $conn->query("SHOW COLUMNS FROM produk LIKE 'aktif_kasir'");
+if ($checkColAktifKasir && $checkColAktifKasir->num_rows === 0) {
+    $conn->query("ALTER TABLE produk ADD COLUMN aktif_kasir TINYINT(1) NOT NULL DEFAULT 1");
+}
 
 // ── Perbaikan data: dimsumPcs paket bundling HM1-HM4 masih 0, padahal isinya jelas dimsum
 // (nilai terverifikasi dari SUM qty hpp_produk_detail bahan_id=9/Dimsum Shaomai per resep).
@@ -631,6 +650,62 @@ function validasi_kupon_internal(mysqli $conn, string $kode, string $cabang, arr
         'kode'     => $kupon['kode'],
         'diskon'   => $diskon,
     ];
+}
+
+// ── Helper log login: IP, device, lokasi (dipakai action add_log) ──
+function get_client_ip(): string {
+    if (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+        $parts = explode(',', $_SERVER['HTTP_X_FORWARDED_FOR']);
+        return trim($parts[0]);
+    }
+    return $_SERVER['REMOTE_ADDR'] ?? '';
+}
+
+// Parsing string ringkas (bukan library UA-parser) - cukup buat kebutuhan history login.
+function detect_device(string $ua): string {
+    $os = 'Unknown OS';
+    if (stripos($ua, 'Android') !== false) $os = 'Android';
+    elseif (stripos($ua, 'iPhone') !== false || stripos($ua, 'iPad') !== false || stripos($ua, 'iOS') !== false) $os = 'iOS';
+    elseif (stripos($ua, 'Windows') !== false) $os = 'Windows';
+    elseif (stripos($ua, 'Mac OS') !== false || stripos($ua, 'Macintosh') !== false) $os = 'Mac';
+    elseif (stripos($ua, 'Linux') !== false) $os = 'Linux';
+
+    // Urutan cek penting: Edge & Chrome sama-sama mengandung substring "Safari" di UA-nya,
+    // dan Edge (Chromium) juga mengandung "Chrome" - jadi yang paling spesifik dicek duluan.
+    $browser = 'Browser';
+    if (stripos($ua, 'Edg/') !== false) $browser = 'Edge';
+    elseif (stripos($ua, 'Chrome') !== false) $browser = 'Chrome';
+    elseif (stripos($ua, 'Firefox') !== false) $browser = 'Firefox';
+    elseif (stripos($ua, 'Safari') !== false) $browser = 'Safari';
+
+    return trim($os . ' - ' . $browser);
+}
+
+// Lokasi dari IP publik lewat ip-api.com (free tier, tanpa API key). Timeout pendek & gagal-diam-diam
+// supaya proses login/add_log TIDAK PERNAH gagal gara-gara API eksternal ini lambat/down.
+function get_geo_location(string $ip): string {
+    if ($ip === '' || filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false) {
+        return ''; // IP kosong/localhost/private range - API publik tidak akan hasilkan apa-apa
+    }
+    try {
+        $ch = curl_init("http://ip-api.com/json/" . urlencode($ip) . "?fields=status,city,country");
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT        => 2,
+            CURLOPT_CONNECTTIMEOUT => 2,
+        ]);
+        $res = curl_exec($ch);
+        curl_close($ch);
+        if ($res === false) return '';
+        $data = json_decode($res, true);
+        if (!is_array($data) || ($data['status'] ?? '') !== 'success') return '';
+        $city    = trim($data['city']    ?? '');
+        $country = trim($data['country'] ?? '');
+        if ($city !== '' && $country !== '') return "$city, $country";
+        return $city !== '' ? $city : $country;
+    } catch (Exception $e) {
+        return '';
+    }
 }
 
 // ── Bersihkan buffer sebelum mengirim JSON ──
@@ -923,14 +998,19 @@ switch ($action) {
             $id = $conn->insert_id;
         }
 
-        // Simpan ulang daftar cabang yg menonaktifkan produk ini (delete-lalu-insert, sama pola dgn kupon)
-        $conn->query("DELETE FROM produk_cabang_nonaktif WHERE produk_id=$id");
-        $nonaktifCabang = $input['nonaktif_cabang'] ?? [];
-        if (is_array($nonaktifCabang)) {
-            foreach ($nonaktifCabang as $cabangNama) {
-                $cabangNamaEsc = $conn->real_escape_string($cabangNama);
-                if ($cabangNamaEsc !== '') {
-                    $conn->query("INSERT IGNORE INTO produk_cabang_nonaktif (produk_id, cabang_nama) VALUES ($id, '$cabangNamaEsc')");
+        // Simpan ulang daftar cabang yg menonaktifkan produk ini (delete-lalu-insert, sama pola dgn kupon).
+        // Cuma dijalankan kalau 'nonaktif_cabang' memang dikirim eksplisit - sejak toggle per-cabang
+        // dipindah ke tabel (lihat toggle_produk_cabang), form tambah/edit ini TIDAK lagi mengirim
+        // key ini, jadi data nonaktif-cabang yang sudah ada tidak boleh ikut kehapus tiap simpan biasa.
+        if (array_key_exists('nonaktif_cabang', $input)) {
+            $conn->query("DELETE FROM produk_cabang_nonaktif WHERE produk_id=$id");
+            $nonaktifCabang = $input['nonaktif_cabang'] ?? [];
+            if (is_array($nonaktifCabang)) {
+                foreach ($nonaktifCabang as $cabangNama) {
+                    $cabangNamaEsc = $conn->real_escape_string($cabangNama);
+                    if ($cabangNamaEsc !== '') {
+                        $conn->query("INSERT IGNORE INTO produk_cabang_nonaktif (produk_id, cabang_nama) VALUES ($id, '$cabangNamaEsc')");
+                    }
                 }
             }
         }
@@ -952,6 +1032,38 @@ switch ($action) {
             $conn->query("UPDATE produk SET urutan=$ur WHERE id=$id");
         }
         echo json_encode(["status"=>"success"]);
+        break;
+
+    // Toggle 1 baris aktif/nonaktif tampilan di Kasir - dipanggil langsung dari tabel produk.html,
+    // auto-save per klik tanpa perlu form Simpan terpisah.
+    case 'toggle_aktif_kasir':
+        $id     = (int)($input['id'] ?? 0);
+        $aktif  = !empty($input['aktif_kasir']) ? 1 : 0;
+        if ($id > 0) {
+            $conn->query("UPDATE produk SET aktif_kasir=$aktif WHERE id=$id");
+            echo json_encode(["status"=>"success"]);
+        } else {
+            echo json_encode(["status"=>"error","message"=>"ID produk tidak valid"]);
+        }
+        break;
+
+    // Toggle nonaktif produk ini di 1 cabang tertentu - dipanggil langsung dari chip per-cabang
+    // di tabel produk.html. Data ditulis ke produk_cabang_nonaktif yang sama dipakai Order Online,
+    // jadi behavior order online tidak berubah, cuma cara mengontrolnya yang pindah ke sini.
+    case 'toggle_produk_cabang':
+        $id         = (int)($input['id'] ?? 0);
+        $cabangNama = $conn->real_escape_string(trim($input['cabang_nama'] ?? ''));
+        $nonaktif   = !empty($input['nonaktif']);
+        if ($id > 0 && $cabangNama !== '') {
+            if ($nonaktif) {
+                $conn->query("INSERT IGNORE INTO produk_cabang_nonaktif (produk_id, cabang_nama) VALUES ($id, '$cabangNama')");
+            } else {
+                $conn->query("DELETE FROM produk_cabang_nonaktif WHERE produk_id=$id AND cabang_nama='$cabangNama'");
+            }
+            echo json_encode(["status"=>"success"]);
+        } else {
+            echo json_encode(["status"=>"error","message"=>"Data tidak lengkap"]);
+        }
         break;
 
     // ── TRANSAKSI ─────────────────────────────────────
@@ -1222,12 +1334,16 @@ switch ($action) {
         $u = $conn->real_escape_string($input['user'] ?? '');
         $r = $conn->real_escape_string($input['role'] ?? '');
         $c = $conn->real_escape_string($input['cabang'] ?? '');
-        $conn->query("INSERT INTO logs_login (waktu, username, role, cabang) VALUES (NOW(),'$u','$r','$c')");
+        $ipRaw    = get_client_ip();
+        $ip       = $conn->real_escape_string($ipRaw);
+        $device   = $conn->real_escape_string(detect_device($_SERVER['HTTP_USER_AGENT'] ?? ''));
+        $location = $conn->real_escape_string(get_geo_location($ipRaw));
+        $conn->query("INSERT INTO logs_login (waktu, username, role, cabang, ip, device, location) VALUES (NOW(),'$u','$r','$c','$ip','$device','$location')");
         echo json_encode(["status"=>"success"]);
         break;
 
     case 'get_logs':
-        $res = $conn->query("SELECT id, DATE_FORMAT(waktu,'%Y-%m-%d %H:%i:%s') as waktu, username, role, cabang FROM logs_login ORDER BY waktu DESC LIMIT 200");
+        $res = $conn->query("SELECT id, DATE_FORMAT(waktu,'%Y-%m-%d %H:%i:%s') as waktu, username, role, cabang, ip, device, location FROM logs_login ORDER BY waktu DESC LIMIT 200");
         echo json_encode($res ? $res->fetch_all(MYSQLI_ASSOC) : []);
         break;
 

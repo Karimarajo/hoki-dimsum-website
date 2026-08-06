@@ -101,7 +101,7 @@
     @media (max-width: 844px) {
         .header-page-title { font-size: 13px !important; }
         .card-history { padding: 12px; }
-        .log-table { min-width: 540px; }
+        .log-table { min-width: 860px; }
     }
 
     </style>
@@ -160,12 +160,15 @@
                         <th>Username</th>
                         <th>Role</th>
                         <th>Cabang</th>
+                        <th>IP</th>
+                        <th>Perangkat</th>
+                        <th>Lokasi</th>
                         <th>Status</th>
                     </tr>
                 </thead>
                 <tbody id="logTableBody">
                     <tr class="empty-row">
-                        <td colspan="6">Memuat data...</td>
+                        <td colspan="9">Memuat data...</td>
                     </tr>
                 </tbody>
             </table>
@@ -369,7 +372,7 @@ async function tampilkanLogs() {
         tbody.innerHTML = '';
 
         if (logs.length === 0) {
-            tbody.innerHTML = '<tr class="empty-row"><td colspan="6">Belum ada history login di server.</td></tr>';
+            tbody.innerHTML = '<tr class="empty-row"><td colspan="9">Belum ada history login di server.</td></tr>';
             return;
         }
 
@@ -378,6 +381,10 @@ async function tampilkanLogs() {
             const parts      = (log.waktu || '').split(' ');
             const tglStr     = parts[0] || '—';
             const jamStr     = parts[1] ? parts[1].substring(0,8) : '—';
+            // Log lama (sebelum fitur IP/device/lokasi ada) tidak punya nilai ini - tampilkan "-".
+            const ipStr       = log.ip       || '-';
+            const deviceStr   = log.device   || '-';
+            const locationStr = log.location || '-';
             tbody.innerHTML += `
                 <tr>
                     <td class="waktu-cell">${tglStr}</td>
@@ -385,11 +392,14 @@ async function tampilkanLogs() {
                     <td><b>${log.username}</b></td>
                     <td><span class="role-badge ${roleClass}">${log.role}</span></td>
                     <td>${log.cabang}</td>
+                    <td class="waktu-cell">${ipStr}</td>
+                    <td>${deviceStr}</td>
+                    <td>${locationStr}</td>
                     <td><span class="status-success">✓ Success</span></td>
                 </tr>`;
         });
     } catch (e) {
-        document.getElementById('logTableBody').innerHTML = '<tr class="empty-row"><td colspan="6">Gagal memuat data dari server.</td></tr>';
+        document.getElementById('logTableBody').innerHTML = '<tr class="empty-row"><td colspan="9">Gagal memuat data dari server.</td></tr>';
     }
 }
 

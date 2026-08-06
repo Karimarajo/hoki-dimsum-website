@@ -151,16 +151,32 @@
         border-color: var(--red);
     }
 
+    /* Produk aktif_kasir=0: tetap kelihatan di grid (biar gampang diaktifkan lagi lewat
+       produk.html), tapi pudar & tidak bisa diklik/ditambah ke keranjang. */
+    .menu-item.menu-item-disabled {
+        opacity: 0.45;
+        filter: grayscale(60%);
+        cursor: not-allowed;
+    }
+
+    .menu-item.menu-item-disabled:hover,
+    .menu-item.menu-item-disabled:active {
+        border-color: var(--border);
+        box-shadow: var(--sh-sm);
+        background: var(--surface);
+        transform: none;
+    }
+
     .sku-text {
         font-family: 'DM Mono', monospace;
-        font-size: 10px;
+        font-size: 12px;
         font-weight: 500;
         color: var(--red);
         letter-spacing: 0.5px;
     }
 
     .name-text {
-        font-size: 12px;
+        font-size: 10px;
         font-weight: 700;
         color: var(--text);
         text-transform: uppercase;
@@ -814,11 +830,11 @@
         }
 
         .sku-text {
-            font-size: 9px;
+            font-size: 12px;
         }
 
         .name-text {
-            font-size: 12px;
+            font-size: 9px;
         }
 
         .price-text {
@@ -1498,9 +1514,12 @@ function renderGrid(list) {
     }
     grid.innerHTML = '';
     list.forEach(p => {
+        // aktif_kasir DEFAULT 1 di DB - produk lama/tanpa field ini otomatis dianggap aktif.
+        const nonaktif = parseInt(p.aktif_kasir, 10) === 0;
         const el = document.createElement('div');
-        el.className = 'menu-item';
-        el.onclick = () => tambahItem(p);
+        el.className = `menu-item${nonaktif ? ' menu-item-disabled' : ''}`;
+        el.onclick = nonaktif ? null : () => tambahItem(p);
+        if (nonaktif) el.title = 'Menu ini sedang dinonaktifkan di Kasir';
         el.innerHTML = `<span class="sku-text">${p.sku}</span><span class="name-text">${p.nama}</span><span class="price-text">Rp ${parseInt(p.harga).toLocaleString('id-ID')}</span>`;
         grid.appendChild(el);
     });
