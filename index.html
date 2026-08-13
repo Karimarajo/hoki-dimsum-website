@@ -727,7 +727,11 @@
                 navigator.geolocation.getCurrentPosition(
                     (pos) => { clearTimeout(timer); finish({ lat: pos.coords.latitude, lng: pos.coords.longitude }); },
                     () => { clearTimeout(timer); finish(null); }, // ditolak / gagal
-                    { enableHighAccuracy: true, timeout: timeoutMs, maximumAge: 0 }
+                    // enableHighAccuracy:false - pakai estimasi wifi/cell tower (biasanya <1-2
+                    // detik di device dengan internet), bukan fix GPS chip presisi tinggi yang bisa
+                    // makan 10-20 detik di dalam ruangan. Radius akurasi lebih longgar (ratusan
+                    // meter, bukan meteran), trade-off yang diterima demi login tidak terhambat.
+                    { enableHighAccuracy: false, timeout: timeoutMs, maximumAge: 0 }
                 );
             } catch (e) { clearTimeout(timer); finish(null); }
         });
