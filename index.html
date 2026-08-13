@@ -560,6 +560,19 @@
                     <span id="errorText">Username atau Password salah!</span>
                 </div>
 
+                <!-- Izin lokasi GPS wajib sebelum login - beda dari errorMsg (auto-hide 4dtk):
+                     ini tetap tampil sampai user klik "Coba Lagi", karena login memang dibatalkan
+                     total (kredensial belum pernah dikirim ke server sama sekali). -->
+                <div class="error-msg" id="gpsErrorMsg" style="flex-direction:column;align-items:stretch;">
+                    <div style="display:flex;align-items:flex-start;">
+                        <span>📍</span>
+                        <span id="gpsErrorText">Login butuh akses lokasi.</span>
+                    </div>
+                    <button type="button" class="btn-login" id="btnRetryGps" style="margin-top:10px;" onclick="retryGpsCheck()">
+                        <span>🔄 Coba Lagi</span>
+                    </button>
+                </div>
+
                 <div class="form-group">
                     <label for="username">Username</label>
                     <div class="input-wrap">
@@ -647,6 +660,18 @@
         setTimeout(() => el.classList.remove('show'), 4000);
     }
 
+    // Beda dari showError(): TIDAK auto-hide, karena kalau ini tampil artinya login memang
+    // dibatalkan total - baru hilang begitu user klik "Coba Lagi" (percobaan baru) atau
+    // ganti halaman. innerHTML dipakai (bukan innerText) supaya bisa kasih instruksi manual
+    // yang butuh sedikit formatting (mis. penekanan nama menu di pengaturan browser).
+    function showGpsError(msgHtml) {
+        document.getElementById('gpsErrorText').innerHTML = msgHtml;
+        document.getElementById('gpsErrorMsg').classList.add('show');
+    }
+    function hideGpsError() {
+        document.getElementById('gpsErrorMsg').classList.remove('show');
+    }
+
     function togglePassword() {
         const input  = document.getElementById('password');
         const eyeOn  = document.getElementById('eyeIcon');
@@ -685,13 +710,60 @@
         setTimeout(() => showError(logoutMsg), 500);
     }
 
-    /* ── LOGIN ──
-       GPS bukan syarat login sama sekali - login jalan normal cuma dengan username/password.
-       Koordinat lokasi (kalau user izinkan) cuma dikirim best-effort ke history login lewat
-       catatLogLogin(), tidak pernah menghalangi/menunda proses login. */
+    /* ── LOKASI GPS (WAJIB SEBELUM LOGIN) ──
+       Akses lokasi WAJIB - kredensial TIDAK PERNAH dikirim ke action=login sebelum user
+       benar-benar menjawab prompt izin lokasi browser (Allow/Block). PositionOptions
+       sengaja TIDAK diisi "timeout" (default Infinity) supaya getCurrentPosition() menunggu
+       keputusan user yang sesungguhnya, bukan menyerah sendiri lewat setTimeout JS kita -
+       itu yang bikin versi sebelumnya salah (kode lanjut login duluan sebelum user sempat
+       klik apa-apa di popup-nya). HTTPS sudah aktif penuh di pos-hokidimsum.com, jadi
+       geolocation API dipastikan jalan di browser manapun termasuk Chrome/Android lama. */
     const BTN_LOGIN_DEFAULT_HTML = '<span>Masuk ke Sistem</span><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
+    // Sekali dapat GPS di cekAksesLogin(), dipakai ulang di finalMasuk() (Staff, setelah
+    // pilih cabang) lewat catatLogLogin() - supaya user cuma dimintai izin lokasi 1x per
+    // percobaan login, tidak diulang di tiap langkah.
+    let loginGpsCoords = null;
+
+    // Guard anti-invoke-ganda (klik tombol dobel, atau Enter 2x cepat di field password) -
+    // tanpa ini, dua request bisa jalan bersamaan (dua kali munculin prompt izin lokasi,
+    // dua kali fetch ke action=login) walau tombolnya sendiri sudah disabled, karena
+    // disabled cuma mencegah klik LANJUTAN di tombol itu, bukan invoke fungsi dari jalur lain
+    // (mis. keydown Enter di field password memanggil cekAksesLogin() terpisah dari klik tombol).
+    let loginInProgress = false;
+
+    // Resolve begitu user BENAR-BENAR menjawab prompt browser: { granted:true, coords } kalau
+    // Allow & posisi berhasil didapat, atau { granted:false, reason } kalau Block/gagal/browser
+    // tidak support. reason: 'unsupported' | 'denied' | 'unavailable'.
+    function requestGpsMandatory() {
+        return new Promise((resolve) => {
+            if (!('geolocation' in navigator)) {
+                resolve({ granted: false, reason: 'unsupported' });
+                return;
+            }
+            try {
+                navigator.geolocation.getCurrentPosition(
+                    (pos) => resolve({ granted: true, coords: { lat: pos.coords.latitude, lng: pos.coords.longitude } }),
+                    (err) => {
+                        const ditolak = err && err.code === err.PERMISSION_DENIED;
+                        resolve({ granted: false, reason: ditolak ? 'denied' : 'unavailable' });
+                    },
+                    { enableHighAccuracy: false, maximumAge: 0 } // sengaja tanpa "timeout" - lihat komentar di atas
+                );
+            } catch (e) {
+                resolve({ granted: false, reason: 'unsupported' });
+            }
+        });
+    }
+
+    const PESAN_GPS_DITOLAK = 'Login butuh akses lokasi.<br><br>Klik ikon 🔒 atau ⓘ di address bar browser (sebelah kiri alamat situs) → <b>Site settings</b> / <b>Izin situs</b> → <b>Location</b> / <b>Lokasi</b> → pilih <b>Allow</b> / <b>Izinkan</b>.<br><br>Setelah itu klik "Coba Lagi" di bawah (tidak perlu refresh manual).';
+    const PESAN_GPS_UNSUPPORTED = 'Browser ini tidak mendukung akses lokasi. Gunakan browser lain (versi terbaru, mis. Chrome/Firefox) untuk login.';
+    const PESAN_GPS_UNAVAILABLE = 'Gagal mendapatkan lokasi perangkat. Pastikan GPS/Lokasi di perangkat sudah aktif, lalu klik "Coba Lagi".';
+
     async function cekAksesLogin() {
+        if (loginInProgress) return; // cegah invoke ganda - lihat komentar di deklarasi flag-nya
+        hideGpsError();
+
         const userIn = document.getElementById('username').value.trim();
         const passIn = document.getElementById('password').value.trim();
 
@@ -700,8 +772,29 @@
             return;
         }
 
+        loginInProgress = true;
         const btn = document.getElementById('btnLogin');
         btn.disabled = true;
+        btn.innerHTML = '<span>Menunggu izin lokasi...</span>';
+
+        // ── Gerbang lokasi wajib - kredensial belum dikirim ke server sama sekali di titik ini,
+        //    dan baris di atas nge-block sampai user benar-benar klik Allow/Block. ──
+        const gps = await requestGpsMandatory();
+
+        if (!gps.granted) {
+            loginInProgress = false;
+            btn.disabled = false;
+            btn.innerHTML = BTN_LOGIN_DEFAULT_HTML;
+            document.getElementById('username').value = '';
+            document.getElementById('password').value = '';
+            const pesan = gps.reason === 'unsupported' ? PESAN_GPS_UNSUPPORTED
+                        : gps.reason === 'denied'      ? PESAN_GPS_DITOLAK
+                        : PESAN_GPS_UNAVAILABLE;
+            showGpsError(pesan);
+            return;
+        }
+        loginGpsCoords = gps.coords;
+
         btn.innerHTML = '<span>Memverifikasi...</span>';
 
         try {
@@ -722,7 +815,7 @@
                     localStorage.setItem('cabangHoki', 'Semua');
                     localStorage.setItem('sessionToken', hasil.token || '');
                     localStorage.setItem('lastActivity', Date.now().toString());
-                    await catatLogLogin(ketemu.user, ketemu.role, 'Semua');
+                    await catatLogLogin(ketemu.user, ketemu.role, 'Semua', loginGpsCoords);
                     window.location.href = 'dashboard.html';
 
                 } else if (ketemu.role === 'SPV' || ketemu.role === 'Investor') {
@@ -732,7 +825,7 @@
                     localStorage.setItem('cabangHoki', lokasi);
                     localStorage.setItem('sessionToken', hasil.token || '');
                     localStorage.setItem('lastActivity', Date.now().toString());
-                    await catatLogLogin(ketemu.user, ketemu.role, lokasi);
+                    await catatLogLogin(ketemu.user, ketemu.role, lokasi, loginGpsCoords);
 
                     if (ketemu.role === 'Investor') {
                         window.location.href = 'investor_omset.html';
@@ -771,9 +864,39 @@
         } catch (err) {
             showError('Terjadi kesalahan: ' + err.message);
         } finally {
+            loginInProgress = false;
             btn.disabled = false;
             btn.innerHTML = BTN_LOGIN_DEFAULT_HTML;
         }
+    }
+
+    // Tombol "Coba Lagi" di pesan gpsErrorMsg - re-cek izin lokasi SAJA (bukan submit ulang
+    // login), karena username/password sudah dikosongkan saat gerbang gagal. Kalau kali ini
+    // diizinkan, minta user isi ulang kredensial & klik "Masuk ke Sistem" seperti biasa -
+    // requestGpsMandatory() di cekAksesLogin() nanti tidak akan munculin prompt kedua karena
+    // browser sudah tahu izinnya granted, langsung resolve diam-diam.
+    async function retryGpsCheck() {
+        if (loginInProgress) return;
+        const retryBtn = document.getElementById('btnRetryGps');
+        retryBtn.disabled = true;
+        retryBtn.innerHTML = '<span>Menunggu izin lokasi...</span>';
+
+        const gps = await requestGpsMandatory();
+
+        retryBtn.disabled = false;
+        retryBtn.innerHTML = '<span>🔄 Coba Lagi</span>';
+
+        if (!gps.granted) {
+            const pesan = gps.reason === 'unsupported' ? PESAN_GPS_UNSUPPORTED
+                        : gps.reason === 'denied'      ? PESAN_GPS_DITOLAK
+                        : PESAN_GPS_UNAVAILABLE;
+            showGpsError(pesan);
+            return;
+        }
+
+        hideGpsError();
+        showError('Akses lokasi berhasil diaktifkan! Masukkan username & password, lalu klik "Masuk ke Sistem".');
+        document.getElementById('username').focus();
     }
 
     async function finalMasuk() {
@@ -784,34 +907,15 @@
         localStorage.setItem('cabangHoki', cabangPilihan);
         localStorage.setItem('sessionToken', window._loginToken || '');
         localStorage.setItem('lastActivity', Date.now().toString());
-        await catatLogLogin(user.user, user.role, cabangPilihan);
+        await catatLogLogin(user.user, user.role, cabangPilihan, loginGpsCoords);
         localStorage.removeItem('tempUser');
         window.location.href = 'dashboard.html';
     }
 
-    // Coba dapat koordinat lokasi best-effort - TIDAK PERNAH menghalangi/menggagalkan proses
-    // ini. Timeout pendek (5 detik); kalau user menolak izin, timeout, atau browser tidak
-    // support geolocation, resolve null dan log tetap terkirim tanpa GPS (server fallback ke
-    // IP-geolocation, lihat get_geo_location() di api.php).
-    function getGpsCoords(timeoutMs = 5000) {
-        return new Promise((resolve) => {
-            if (!('geolocation' in navigator)) { resolve(null); return; }
-            let done = false;
-            const finish = (val) => { if (!done) { done = true; resolve(val); } };
-            const timer = setTimeout(() => finish(null), timeoutMs);
-            try {
-                navigator.geolocation.getCurrentPosition(
-                    (pos) => { clearTimeout(timer); finish({ lat: pos.coords.latitude, lng: pos.coords.longitude }); },
-                    () => { clearTimeout(timer); finish(null); }, // ditolak / gagal
-                    { enableHighAccuracy: false, timeout: timeoutMs, maximumAge: 0 }
-                );
-            } catch (e) { clearTimeout(timer); finish(null); }
-        });
-    }
-
-    async function catatLogLogin(username, role, cabang) {
+    // GPS sudah didapat WAJIB di cekAksesLogin() sebelum request login terkirim, jadi di
+    // titik ini (login sudah sukses) gps SELALU ada - tidak perlu logic fallback lagi.
+    async function catatLogLogin(username, role, cabang, gps) {
         try {
-            const gps = await getGpsCoords();
             const payload = { user: username, role: role, cabang: cabang };
             if (gps) {
                 payload.gps_lat = gps.lat;
