@@ -708,9 +708,12 @@
     }
 
     /* ── LOKASI GPS (WAJIB SEBELUM LOGIN) ──
-       Kebijakan: akses lokasi WAJIB, bukan opsional. Diminta di sini (begitu user klik
-       "Masuk", SEBELUM kredensial dikirim ke action=login) - kalau ditolak/timeout/browser
-       tidak support, login diblok total & kredensial tidak pernah tervalidasi ke server. */
+       Kebijakan: IZIN lokasi wajib, bukan hasil koordinatnya. Diminta di sini (begitu user
+       klik "Masuk", SEBELUM kredensial dikirim ke action=login) - yang memblokir login cuma
+       penolakan izin yang eksplisit (atau browser tidak support geolocation sama sekali).
+       Kalau izin diberikan tapi device gagal dapat fix presisi (sinyal lemah dll), itu BUKAN
+       penolakan - login tetap lanjut, cuma koordinatnya kosong. Jadi tidak ada retry/nunggu
+       lama - sekali minta izin, keputusannya langsung dipakai. */
     const BTN_LOGIN_DEFAULT_HTML = '<span>Masuk ke Sistem</span><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
     // Sekali dapat GPS di awal alur login, dipakai ulang nanti di catatLogLogin() -
@@ -718,39 +721,33 @@
     // cabang (bukan di titik ini), supaya tidak minta izin lokasi 2x ke user yang sama.
     let loginGpsCoords = null;
 
-    function requestGpsOnce(timeoutMs) {
+    // Yang jadi syarat login itu IZINnya, bukan berhasil-tidaknya dapat koordinat presisi.
+    // Browser cuma balikin error PERMISSION_DENIED kalau user beneran menolak/blokir izin
+    // lokasi - error POSITION_UNAVAILABLE (device gagal dapat fix) & TIMEOUT (device lambat)
+    // CUMA BISA terjadi SETELAH izin diberikan (kalau ditolak, browser langsung
+    // PERMISSION_DENIED tanpa sempat nyoba GPS sama sekali). Jadi keduanya dihitung
+    // "diizinkan", cuma koordinatnya kosong - tetap lanjut login, tidak nunggu retry lagi.
+    // Sekali coba, timeout 10 detik, done.
+    function requestGpsPermission(timeoutMs) {
         return new Promise((resolve) => {
             let done = false;
+            // Kalau timeout dari sisi kita sendiri (bukan dari browser) sebelum callback manapun
+            // kepanggil, anggap tetap diizinkan (fail-open) - jangan blokir login gara-gara
+            // ambiguitas teknis, cuma blokir kalau user EKSPLISIT bilang tidak.
             const finish = (val) => { if (!done) { done = true; resolve(val); } };
-            const timer = setTimeout(() => finish(null), timeoutMs);
+            const timer = setTimeout(() => finish({ granted: true, coords: null }), timeoutMs);
             try {
                 navigator.geolocation.getCurrentPosition(
-                    (pos) => { clearTimeout(timer); finish({ lat: pos.coords.latitude, lng: pos.coords.longitude }); },
-                    () => { clearTimeout(timer); finish(null); }, // ditolak / gagal
-                    // enableHighAccuracy:false - pakai estimasi wifi/cell tower (biasanya <1-2
-                    // detik di device dengan internet), bukan fix GPS chip presisi tinggi yang bisa
-                    // makan 10-20 detik di dalam ruangan. Radius akurasi lebih longgar (ratusan
-                    // meter, bukan meteran), trade-off yang diterima demi login tidak terhambat.
+                    (pos) => { clearTimeout(timer); finish({ granted: true, coords: { lat: pos.coords.latitude, lng: pos.coords.longitude } }); },
+                    (err) => {
+                        clearTimeout(timer);
+                        const ditolak = err && err.code === err.PERMISSION_DENIED;
+                        finish({ granted: !ditolak, coords: null });
+                    },
                     { enableHighAccuracy: false, timeout: timeoutMs, maximumAge: 0 }
                 );
-            } catch (e) { clearTimeout(timer); finish(null); }
+            } catch (e) { clearTimeout(timer); finish({ granted: true, coords: null }); }
         });
-    }
-
-    // Coba 2x (percobaan awal + 1x retry otomatis, masing-masing timeout ~10 detik) sebelum
-    // benar-benar dianggap gagal - sinyal GPS lemah di dalam ruangan sering baru dapat fix
-    // di percobaan ke-2. Return null kalau browser tidak support geolocation sama sekali,
-    // atau tetap gagal setelah retry - caller yang memutuskan blok login dari situ.
-    async function requestGpsMandatory(onStatus) {
-        if (!('geolocation' in navigator)) return null;
-
-        if (onStatus) onStatus('Mencari lokasi...');
-        let coords = await requestGpsOnce(10000);
-        if (coords) return coords;
-
-        if (onStatus) onStatus('Mencoba sekali lagi...');
-        coords = await requestGpsOnce(10000);
-        return coords;
     }
 
     /* ── LOGIN ── */
@@ -776,16 +773,18 @@
             return;
         }
 
-        btn.innerHTML = '<span>Mencari lokasi...</span>';
-        const gps = await requestGpsMandatory((status) => { btn.innerHTML = `<span>${status}</span>`; });
+        btn.innerHTML = '<span>Meminta izin lokasi...</span>';
+        const result = await requestGpsPermission(10000);
 
-        if (!gps) {
+        if (!result.granted) {
             btn.disabled = false;
             btn.innerHTML = BTN_LOGIN_DEFAULT_HTML;
             showGpsError('Aplikasi ini butuh akses lokasi untuk login. Aktifkan izin lokasi di browser lalu coba lagi.');
             return;
         }
-        loginGpsCoords = gps;
+        // Izin diberikan - lanjut login walau coords bisa null (device gagal dapat fix teknis,
+        // itu bukan penolakan izin). add_log/catatLogLogin() sudah menangani coords null dgn aman.
+        loginGpsCoords = result.coords;
 
         btn.innerHTML = '<span>Memverifikasi...</span>';
 
