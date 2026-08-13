@@ -7,7 +7,8 @@
  * Belum ada integrasi WA API pihak ketiga (Fonnte/Wablas/dll) di project ini, jadi fungsi ini
  * cuma menyiapkan pesan + link wa.me siap kirim (staf tinggal klik) - sama seperti pola WA
  * lain yang sudah ada di seluruh project ini (wa_link() di order/includes/functions.php,
- * waLink() di kelola-order.html, dll), bukan auto-send lewat API.
+ * waLink() di dashboard.html tab Order Online - dipindah dari kelola-order.html di Task 2 -
+ * dll), bukan auto-send lewat API.
  */
 
 function build_order_completed_wa_notif(PDO $pdo, int $orderId): ?array

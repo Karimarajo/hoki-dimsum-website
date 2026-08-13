@@ -1671,7 +1671,69 @@
        text-align: center;
        flex-shrink: 0;
    }
-   
+
+   /* ── TAB HALAMAN (kmo-tabs) — dipakai di halaman yang digabung jadi beberapa tab
+      (Kasir/Order Online/History di dashboard.html, Stok, Restock, dst). Nama "kmo"
+      dipertahankan dari pola tab pertama di kelola-order.html supaya konsisten. ── */
+   .kmo-tabs {
+       display: flex;
+       flex-wrap: wrap;
+       margin-bottom: 20px;
+       border-bottom: 1.5px solid var(--border);
+   }
+   .kmo-tabs > * + * { margin-left: 8px; } /* fallback utk flex gap (Chrome lama) */
+
+   .kmo-tab-btn {
+       display: inline-flex;
+       align-items: center;
+       padding: 10px 18px;
+       border: none;
+       background: none;
+       font-family: 'Nunito', sans-serif;
+       font-weight: 700;
+       font-size: 13px;
+       color: var(--text-muted);
+       cursor: pointer;
+       border-bottom: 3px solid transparent;
+       transition: color 0.15s, border-color 0.15s;
+   }
+
+   .kmo-tab-btn.active {
+       color: var(--red);
+       border-bottom-color: var(--red);
+   }
+
+   .kmo-panel { display: none; }
+   .kmo-panel.active { display: block; }
+
+   .kmo-tab-badge {
+       display: inline-flex;
+       align-items: center;
+       justify-content: center;
+       min-width: 16px;
+       height: 16px;
+       padding: 0 4px;
+       margin-left: 6px;
+       border-radius: 99px;
+       background: var(--red);
+       color: #fff;
+       font-size: 10px;
+       font-weight: 800;
+   }
+
+   @media (max-width: 844px) {
+       .kmo-tabs {
+           overflow-x: auto;
+           flex-wrap: nowrap;
+           -webkit-overflow-scrolling: touch;
+       }
+       .kmo-tab-btn {
+           padding: 10px 14px;
+           white-space: nowrap;
+           flex-shrink: 0;
+       }
+   }
+
    /* ── ACTION BUTTONS (Simpan, Cetak, dll) ── */
    .btn-action-green {
        width: 100%;
