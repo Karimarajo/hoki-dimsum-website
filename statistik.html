@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Hoki POS - Statistik</title>
+    <title>Hoki POS - Statistik & Analitik</title>
         <link rel="icon" href="Assets/2.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=DM+Mono:wght@400;500&family=Poppins:wght@700;800&display=swap" rel="stylesheet">
@@ -286,6 +286,78 @@
         .main-content { margin: 0 !important; }
         .page-body { padding: 16px !important; }
     }
+
+    /* ── TAB ANALITIK (Task 5) ── */
+    .grid-analitik-cards {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 16px;
+        margin-bottom: 16px;
+    }
+
+    @media (max-width: 844px) {
+        .grid-analitik-cards { grid-template-columns: 1fr; }
+    }
+
+    .card-analitik {
+        background: var(--surface);
+        border: 1.5px solid var(--border);
+        border-radius: var(--r-lg);
+        padding: 18px;
+        box-shadow: var(--sh-sm);
+        cursor: pointer;
+        transition: border-color 0.15s, box-shadow 0.15s;
+    }
+
+    .card-analitik:hover { border-color: var(--red); }
+
+    .card-analitik.open {
+        border-color: var(--red);
+        box-shadow: 0 0 0 3px var(--red-soft);
+    }
+
+    .card-analitik h3 {
+        margin: 0 0 4px;
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--text);
+        border: none;
+        padding: 0;
+    }
+
+    .card-analitik-total {
+        font-family: 'DM Mono', monospace;
+        font-size: 18px;
+        font-weight: 800;
+        color: var(--red);
+        margin-bottom: 14px;
+    }
+
+    .card-analitik-empty {
+        font-size: 12px;
+        color: var(--text-light);
+        padding: 8px 0;
+    }
+
+    .analitik-seg-row {
+        margin-bottom: 10px;
+        cursor: pointer;
+        border-radius: var(--r-sm);
+        padding: 4px;
+        transition: background 0.12s;
+    }
+
+    .analitik-seg-row:hover { background: var(--surface-2); }
+    .analitik-seg-row.active { background: var(--red-soft); }
+    .analitik-seg-row:last-child { margin-bottom: 0; }
+
+    .analitik-history-total {
+        font-family: 'DM Mono', monospace;
+        font-size: 14px;
+        font-weight: 700;
+        color: var(--red);
+        margin-bottom: 10px;
+    }
     </style>
   <script src="config.js"></script>
 </head>
@@ -321,7 +393,7 @@
 
     <header class="top-header">
         <div class="header-left">
-            <div class="header-page-title">📈 Statistik</div>
+            <div class="header-page-title">📈 Statistik & Analitik</div>
         </div>
         <div class="header-right">
             <button class="btn-cetak-pdf" onclick="cetakPDF()">🖨️ Cetak PDF</button>
@@ -333,6 +405,13 @@
     </header>
 
     <div class="page-body">
+
+        <div class="kmo-tabs">
+            <button class="kmo-tab-btn active" data-tab="statistik" onclick="switchStatTab('statistik')">📈 Statistik</button>
+            <button class="kmo-tab-btn" data-tab="analitik" onclick="switchStatTab('analitik')">📊 Analitik</button>
+        </div>
+
+        <div class="kmo-panel active" id="panel-statistik">
 
         <!-- FILTER -->
         <div class="filter-container">
@@ -433,6 +512,65 @@
             </div>
 
         </div>
+        </div>
+
+        <!-- TAB ANALITIK (Task 5) -->
+        <div class="kmo-panel" id="panel-analitik">
+
+            <div class="filter-container">
+                <div class="filter-group">
+                    <label for="analitikStartDate">📅 Dari Tanggal</label>
+                    <input type="date" id="analitikStartDate" onchange="loadAnalitik()" style="height:42px;">
+                </div>
+                <div class="filter-group">
+                    <label for="analitikEndDate">📅 Sampai Tanggal</label>
+                    <input type="date" id="analitikEndDate" onchange="loadAnalitik()" style="height:42px;">
+                </div>
+                <div class="filter-group" style="flex:0;">
+                    <label style="visibility:hidden;">x</label>
+                    <button class="btn-reset" onclick="resetAnalitikFilter()" style="height:42px;white-space:nowrap;margin:0;">Reset</button>
+                </div>
+            </div>
+
+            <div class="grid-analitik-cards">
+                <div class="card-analitik" id="cardAnalitikIN" onclick="toggleAnalitikCard('IN')">
+                    <h3>💰 Pemasukan</h3>
+                    <div class="card-analitik-total" id="totalAnalitikIN">Rp 0</div>
+                    <div id="chartAnalitikIN"></div>
+                </div>
+                <div class="card-analitik" id="cardAnalitikBO" onclick="toggleAnalitikCard('BO')">
+                    <h3>📉 Biaya Operasional</h3>
+                    <div class="card-analitik-total" id="totalAnalitikBO">Rp 0</div>
+                    <div id="chartAnalitikBO"></div>
+                </div>
+                <div class="card-analitik" id="cardAnalitikBM" onclick="toggleAnalitikCard('BM')">
+                    <h3>🏗️ Biaya Modal</h3>
+                    <div class="card-analitik-total" id="totalAnalitikBM">Rp 0</div>
+                    <div id="chartAnalitikBM"></div>
+                </div>
+            </div>
+
+            <div class="card-insight" id="analitikHistoryCard" style="display:none;">
+                <h3 id="analitikHistoryTitle">Detail Transaksi</h3>
+                <div class="analitik-history-total" id="analitikHistoryTotal"></div>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Tanggal</th>
+                                <th>Jenis</th>
+                                <th>Transaksi</th>
+                                <th>Nominal</th>
+                                <th>Keterangan</th>
+                            </tr>
+                        </thead>
+                        <tbody id="analitikHistoryBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+
     </div>
 </div>
 
@@ -533,7 +671,7 @@ function buildSidebar() {
     }
     if (['Owner','VIP'].includes(role)) {
         let exec = navItem('📊','Keuangan Global','laporan.html')
-            + navItem('📈','Statistik','statistik.html')
+            + navItem('📈','Statistik & Analitik','statistik.html')
             + navItem('🏷️','Promo','promo.html')
             + navItem('🧂','Bahan Baku','bahan_baku.html')
             + navItem('🗃️','HPP Produk','hpp_produk.html')
@@ -598,7 +736,7 @@ function buildMoreMenu() {
         items.push({icon:'📝',label:'Belanja',link:'belanja.html'});
         items.push({icon:'💵',label:'Salary Staff',link:'salary_staff.html'});
         items.push({icon:'📊',label:'Keuangan',link:'laporan.html'});
-        items.push({icon:'📈',label:'Statistik',link:'statistik.html'});
+        items.push({icon:'📈',label:'Statistik & Analitik',link:'statistik.html'});
         items.push({icon:'👨‍👩‍👦',label:'Customer Hoki',link:'customer_hoki.html'});
     }
     if (['Owner','VIP','Investor'].includes(role)) {
@@ -646,6 +784,176 @@ document.addEventListener('click', function(e) {
         if (!wrap.contains(e.target)) wrap.classList.remove('open');
     });
 });
+
+/* ── TAB HALAMAN (Statistik / Analitik, Task 5) ── */
+let analitikLoadedOnce = false;
+function switchStatTab(tab) {
+    document.querySelectorAll('.kmo-tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+    document.querySelectorAll('.kmo-panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('panel-' + tab).classList.add('active');
+    if (tab === 'analitik' && !analitikLoadedOnce) {
+        analitikLoadedOnce = true;
+        loadAnalitik();
+    }
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   TAB ANALITIK — kategori kas IN/BO/BM (Task 5). Diagram custom div+CSS,
+   pola sama dengan #chartCabang yang sudah ada di tab Statistik (bar-container
+   /bar-fill), tidak pakai library chart eksternal apa pun.
+   ══════════════════════════════════════════════════════════════════════ */
+let analitikCacheKas = [];
+let analitikSelectedKategori = null; // 'IN' | 'BO' | 'BM' | null (null = tidak ada kartu terbuka)
+let analitikSelectedJenis    = null; // string | null (drill-down tambahan di dalam kategori terpilih)
+
+const ANALITIK_KATEGORI_LABEL = { IN: 'Pemasukan', BO: 'Biaya Operasional', BM: 'Biaya Modal' };
+
+async function loadAnalitik() {
+    try {
+        const startStr = document.getElementById('analitikStartDate').value;
+        const endStr   = document.getElementById('analitikEndDate').value;
+        const params = new URLSearchParams({ role: currentUser.role, cabang: currentUser.cabang || '' });
+        if (startStr) params.set('tgl_mulai', startStr);
+        if (endStr)   params.set('tgl_selesai', endStr);
+
+        const res = await fetch(`${API_BASE}?action=get_kas_data&${params.toString()}`);
+        const data = await res.json();
+        analitikCacheKas = Array.isArray(data) ? data : [];
+    } catch (e) {
+        console.error('Gagal muat data Analitik:', e);
+        analitikCacheKas = [];
+    }
+
+    ['IN', 'BO', 'BM'].forEach(renderAnalitikCard);
+    renderAnalitikHistory(); // refresh history kalau lagi ada kartu/segmen terbuka, tanpa perlu klik ulang
+}
+
+// Data lama (sebelum fitur kategori ada) punya kategori NULL - otomatis tidak lolos filter
+// ini (bukan bug), sesuai spek: baru muncul di diagram setelah dikategorikan ulang lewat edit.
+function analitikDataByKategori(kategori) {
+    return analitikCacheKas.filter(d => {
+        if ((d.kategori || '') !== kategori) return false;
+        if (kategori === 'IN' && d.mode !== 'Credit') return false;
+        return true;
+    });
+}
+
+function renderAnalitikCard(kategori) {
+    const data    = analitikDataByKategori(kategori);
+    const totalEl = document.getElementById(`totalAnalitik${kategori}`);
+    const chartEl = document.getElementById(`chartAnalitik${kategori}`);
+    const cardEl  = document.getElementById(`cardAnalitik${kategori}`);
+
+    let total = 0;
+    const perJenis = {};
+    data.forEach(d => {
+        const nom = parseFloat(d.nominal) || 0;
+        total += nom;
+        const jenis = d.jenis || '(Tanpa Jenis)';
+        perJenis[jenis] = (perJenis[jenis] || 0) + nom;
+    });
+
+    totalEl.innerText = `Rp ${total.toLocaleString('id-ID')}`;
+    cardEl.classList.toggle('open', analitikSelectedKategori === kategori);
+
+    const entries = Object.entries(perJenis).sort((a, b) => b[1] - a[1]);
+    if (!entries.length) {
+        chartEl.innerHTML = `<div class="card-analitik-empty">Belum ada transaksi ${ANALITIK_KATEGORI_LABEL[kategori].toLowerCase()} pada rentang ini.</div>`;
+        return;
+    }
+
+    const maxVal = Math.max(...entries.map(e => e[1]), 1);
+    chartEl.innerHTML = entries.map(([jenis, val]) => {
+        const pct      = (val / maxVal) * 100;
+        const isActive = analitikSelectedKategori === kategori && analitikSelectedJenis === jenis;
+        const jenisEsc = jenis.replace(/'/g, "\\'");
+        return `<div class="analitik-seg-row cabang-row${isActive ? ' active' : ''}" onclick="toggleAnalitikJenis('${kategori}','${jenisEsc}',event)">
+            <div class="cabang-row-header">
+                <span>${jenis}</span>
+                <b>Rp ${val.toLocaleString('id-ID')}</b>
+            </div>
+            <div class="bar-container">
+                <div class="bar-fill" style="width:${pct}%"></div>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+// Klik area kartu (di luar segmen) - buka/tutup history level kategori (semua jenis).
+function toggleAnalitikCard(kategori) {
+    if (analitikSelectedKategori === kategori && !analitikSelectedJenis) {
+        analitikSelectedKategori = null;
+        analitikSelectedJenis    = null;
+    } else {
+        analitikSelectedKategori = kategori;
+        analitikSelectedJenis    = null;
+    }
+    ['IN', 'BO', 'BM'].forEach(renderAnalitikCard);
+    renderAnalitikHistory();
+}
+
+// Klik segmen/jenis di dalam diagram - drill-down lebih spesifik (kategori + jenis).
+// stopPropagation supaya tidak ikut memicu toggleAnalitikCard() di parent card.
+function toggleAnalitikJenis(kategori, jenis, event) {
+    event.stopPropagation();
+    if (analitikSelectedKategori === kategori && analitikSelectedJenis === jenis) {
+        analitikSelectedKategori = null;
+        analitikSelectedJenis    = null;
+    } else {
+        analitikSelectedKategori = kategori;
+        analitikSelectedJenis    = jenis;
+    }
+    ['IN', 'BO', 'BM'].forEach(renderAnalitikCard);
+    renderAnalitikHistory();
+}
+
+function renderAnalitikHistory() {
+    const card = document.getElementById('analitikHistoryCard');
+    if (!analitikSelectedKategori) {
+        card.style.display = 'none';
+        return;
+    }
+    card.style.display = '';
+
+    let data = analitikDataByKategori(analitikSelectedKategori);
+    let titleSuffix = ANALITIK_KATEGORI_LABEL[analitikSelectedKategori];
+    if (analitikSelectedJenis) {
+        data = data.filter(d => (d.jenis || '(Tanpa Jenis)') === analitikSelectedJenis);
+        titleSuffix += ` — ${analitikSelectedJenis}`;
+    }
+
+    document.getElementById('analitikHistoryTitle').innerText = `📄 Detail Transaksi ${titleSuffix}`;
+
+    const total = data.reduce((sum, d) => sum + (parseFloat(d.nominal) || 0), 0);
+    document.getElementById('analitikHistoryTotal').innerText = `Total: Rp ${total.toLocaleString('id-ID')}`;
+
+    const tbody = document.getElementById('analitikHistoryBody');
+    if (!data.length) {
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--text-light);padding:20px;">Tidak ada transaksi pada rentang ini</td></tr>`;
+        return;
+    }
+
+    const sorted = [...data].sort((a, b) => (b.waktu || '').localeCompare(a.waktu || ''));
+    tbody.innerHTML = sorted.map(d => {
+        const nom = parseFloat(d.nominal) || 0;
+        const tgl = (d.waktu || '').replace('T', ' ');
+        return `<tr>
+            <td style="font-size:12px;font-family:'DM Mono',monospace;color:var(--text-muted);">${tgl}</td>
+            <td>${d.jenis || '-'}</td>
+            <td><b>${d.nama}</b></td>
+            <td style="font-family:'DM Mono',monospace;font-weight:700;color:var(--red);">Rp ${nom.toLocaleString('id-ID')}</td>
+            <td><small style="color:var(--text-muted);">${d.ket || '-'}</small></td>
+        </tr>`;
+    }).join('');
+}
+
+function resetAnalitikFilter() {
+    document.getElementById('analitikStartDate').value = '';
+    document.getElementById('analitikEndDate').value   = '';
+    analitikSelectedKategori = null;
+    analitikSelectedJenis    = null;
+    loadAnalitik();
+}
 
 async function loadFilters() {
     try {
@@ -884,7 +1192,12 @@ window.onload = async () => {
 
     document.getElementById('startDate').value = formatDate(pastDate);
     document.getElementById('endDate').value = formatDate(today);
-    
+
+    // Tab Analitik (Task 5) pakai rentang default yang sama; datanya baru difetch
+    // begitu tab dibuka pertama kali (lihat switchStatTab()).
+    document.getElementById('analitikStartDate').value = formatDate(pastDate);
+    document.getElementById('analitikEndDate').value   = formatDate(today);
+
     loadStatistik();
     muatTopCustomers();
 };
