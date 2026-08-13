@@ -339,17 +339,96 @@
         padding: 8px 0;
     }
 
-    .analitik-seg-row {
-        margin-bottom: 10px;
-        cursor: pointer;
-        border-radius: var(--r-sm);
-        padding: 4px;
-        transition: background 0.12s;
+    /* ── Donut chart per kartu ── palet kategorikal tervalidasi (validate_palette.js,
+       8 slot, urutan tetap - lihat catatan commit), scoped di sini karena app ini
+       tidak punya sistem ramp kategorikal sendiri (cuma token semantik red/green/blue). */
+    .grid-analitik-cards {
+        --series-1: #2a78d6;
+        --series-2: #eb6834;
+        --series-3: #1baf7a;
+        --series-4: #eda100;
+        --series-5: #e87ba4;
+        --series-6: #008300;
+        --series-7: #4a3aa7;
+        --series-8: #e34948;
     }
 
-    .analitik-seg-row:hover { background: var(--surface-2); }
-    .analitik-seg-row.active { background: var(--red-soft); }
-    .analitik-seg-row:last-child { margin-bottom: 0; }
+    .analitik-donut-wrap {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        margin-bottom: 4px;
+    }
+    .analitik-donut-wrap > * + * { margin-top: 16px; }
+
+    .donut-svg {
+        width: 200px;
+        height: 200px;
+        max-width: 100%;
+        flex-shrink: 0;
+        overflow: visible;
+    }
+
+    .donut-seg {
+        cursor: pointer;
+        transition: stroke-width 0.15s, opacity 0.15s;
+        outline: none;
+    }
+    .donut-seg:hover,
+    .donut-seg:focus-visible,
+    .donut-seg.hovered,
+    .donut-seg.active { stroke-width: 8.4; }
+    .donut-seg.dim { opacity: 0.35; }
+
+    .analitik-legend {
+        width: 100%;
+        min-width: 0;
+    }
+
+    .analitik-legend-row {
+        display: flex;
+        align-items: center;
+        cursor: pointer;
+        border-radius: var(--r-sm);
+        padding: 5px 6px;
+        transition: background 0.12s;
+    }
+    .analitik-legend-row > * + * { margin-left: 8px; }
+    .analitik-legend-row:hover,
+    .analitik-legend-row.hovered { background: var(--surface-2); }
+    .analitik-legend-row.active { background: var(--red-soft); }
+    .analitik-legend-row.dim { opacity: 0.45; }
+
+    .analitik-legend-swatch {
+        width: 10px;
+        height: 10px;
+        border-radius: 3px;
+        flex-shrink: 0;
+    }
+
+    .analitik-legend-info {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        justify-content: space-between;
+        font-size: 12px;
+    }
+    .analitik-legend-info > * + * { margin-left: 8px; }
+
+    .analitik-legend-label {
+        color: var(--text);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .analitik-legend-value {
+        font-family: 'DM Mono', monospace;
+        font-weight: 700;
+        color: var(--red);
+        white-space: nowrap;
+        flex-shrink: 0;
+    }
 
     .analitik-history-total {
         font-family: 'DM Mono', monospace;
@@ -811,6 +890,14 @@ let analitikSelectedJenis    = null; // string jenis LENGKAP (mis. "BO - Bahan B
 
 const ANALITIK_KATEGORI_LABEL = { IN: 'Pemasukan', BO: 'Biaya Operasional', BM: 'Biaya Modal' };
 
+// Palet kategorikal tervalidasi (validate_palette.js: lightness band, chroma floor,
+// CVD adjacent >=8 target, normal-vision floor >=15, semua PASS di surface #ffffff
+// app ini) - 8 slot hex-nya didefinisikan sebagai custom property --series-1..8 di
+// .grid-analitik-cards (lihat <style>). Urutan slot TETAP, itu mekanisme keamanan
+// CVD-nya, jangan diacak.
+const ANALITIK_PALETTE_SIZE = 8;
+let analitikColorMap = { IN: {}, BO: {}, BM: {} }; // jenis lengkap -> nomor slot (1..8), stabil per identitas
+
 // Pecah "jenis" jadi { kode, label } dari prefix sebelum tanda strip pertama.
 // Toleran ke variasi spasi di sekitar strip ("IN - Modal", "IN- Modal", "IN -Modal"),
 // tapi tetap butuh format "<KODE> - <Nama>" - jenis tanpa prefix ini return null,
@@ -822,6 +909,35 @@ function parseJenisKategori(jenisRaw) {
     return { kode: m[1].toUpperCase(), label: m[2] };
 }
 
+// Warna tiap jenis dibuat STABIL (tidak ikut berubah walau filter tanggal ganti /
+// urutan nominal berubah) - "color follows the entity, never its rank". Dibangun
+// dari gabungan katalog resmi hoki_kas_jenis + jenis yang muncul di data aktual
+// (fallback kalau ada jenis lama yang sudah dihapus dari katalog), diurutkan
+// alfabetis per kategori supaya slot warna konsisten antar sesi/reload.
+function buildAnalitikColorMap(jenisMasterList) {
+    const universe = new Set(jenisMasterList);
+    analitikCacheKas.forEach(d => { if (d.jenis) universe.add(d.jenis); });
+
+    const byKategori = { IN: [], BO: [], BM: [] };
+    universe.forEach(j => {
+        const parsed = parseJenisKategori(j);
+        if (parsed && byKategori[parsed.kode]) byKategori[parsed.kode].push({ full: j, label: parsed.label });
+    });
+
+    analitikColorMap = { IN: {}, BO: {}, BM: {} };
+    Object.keys(byKategori).forEach(kode => {
+        byKategori[kode].sort((a, b) => a.label.localeCompare(b.label, 'id'));
+        byKategori[kode].forEach((item, i) => {
+            analitikColorMap[kode][item.full] = (i % ANALITIK_PALETTE_SIZE) + 1; // slot 1..8
+        });
+    });
+}
+
+function analitikColorFor(kategori, jenisFull) {
+    const slot = analitikColorMap[kategori] && analitikColorMap[kategori][jenisFull];
+    return slot ? `var(--series-${slot})` : 'var(--text-light)';
+}
+
 async function loadAnalitik() {
     try {
         const startStr = document.getElementById('analitikStartDate').value;
@@ -830,12 +946,19 @@ async function loadAnalitik() {
         if (startStr) params.set('tgl_mulai', startStr);
         if (endStr)   params.set('tgl_selesai', endStr);
 
-        const res = await fetch(`${API_BASE}?action=get_kas_data&${params.toString()}`);
-        const data = await res.json();
-        analitikCacheKas = Array.isArray(data) ? data : [];
+        const [resKas, resJenis] = await Promise.all([
+            fetch(`${API_BASE}?action=get_kas_data&${params.toString()}`),
+            fetch(`${API_BASE}?action=get_kas_jenis`)
+        ]);
+        const dataKas   = await resKas.json();
+        const dataJenis = await resJenis.json();
+        analitikCacheKas = Array.isArray(dataKas) ? dataKas : [];
+        const jenisMaster = Array.isArray(dataJenis) ? dataJenis.map(j => j.nama_jenis) : [];
+        buildAnalitikColorMap(jenisMaster);
     } catch (e) {
         console.error('Gagal muat data Analitik:', e);
         analitikCacheKas = [];
+        buildAnalitikColorMap([]);
     }
 
     ['IN', 'BO', 'BM'].forEach(renderAnalitikCard);
@@ -852,6 +975,9 @@ function analitikDataByKategori(kategori) {
     });
 }
 
+// Diagram donat (SVG murni, teknik stroke-dasharray/dashoffset - viewBox 0 0 42 42
+// & r=15.9155 supaya keliling lingkaran ~100, jadi dasharray langsung dalam persen).
+// Tiap segmen + baris legend bisa diklik & fokus keyboard, hover saling sinkron.
 function renderAnalitikCard(kategori) {
     const data    = analitikDataByKategori(kategori);
     const totalEl = document.getElementById(`totalAnalitik${kategori}`);
@@ -871,26 +997,72 @@ function renderAnalitikCard(kategori) {
     totalEl.innerText = `Rp ${total.toLocaleString('id-ID')}`;
     cardEl.classList.toggle('open', analitikSelectedKategori === kategori);
 
+    // Urutan tampil (legend + gambar segmen) tetap by-nilai terbesar; yang STABIL
+    // cuma warnanya (lihat analitikColorFor), bukan posisi/urutannya.
     const entries = Object.entries(perJenis).sort((a, b) => b[1].total - a[1].total);
     if (!entries.length) {
         chartEl.innerHTML = `<div class="card-analitik-empty">Belum ada transaksi ${ANALITIK_KATEGORI_LABEL[kategori].toLowerCase()} pada rentang ini.</div>`;
         return;
     }
 
-    chartEl.innerHTML = entries.map(([jenisFull, info]) => {
-        const pct      = total > 0 ? (info.total / total) * 100 : 0;
-        const isActive = analitikSelectedKategori === kategori && analitikSelectedJenis === jenisFull;
-        const jenisEsc = jenisFull.replace(/'/g, "\\'");
-        return `<div class="analitik-seg-row cabang-row${isActive ? ' active' : ''}" onclick="toggleAnalitikJenis('${kategori}','${jenisEsc}',event)">
-            <div class="cabang-row-header">
-                <span>${info.label}</span>
-                <b>${pct.toFixed(1)}% · Rp ${info.total.toLocaleString('id-ID')}</b>
-            </div>
-            <div class="bar-container">
-                <div class="bar-fill" style="width:${pct}%"></div>
-            </div>
+    const R   = 15.9155; // 2*pi*r ~ 100 -> panjang dash = langsung persen
+    const GAP = entries.length > 1 ? 0.6 : 0; // celah kecil antar segmen (spacer, bukan stroke)
+    let cumulative = 0;
+
+    const segs = entries.map(([jenisFull, info]) => {
+        const pct       = total > 0 ? (info.total / total) * 100 : 0;
+        const drawLen   = Math.max(0.001, pct - GAP);
+        const offset    = -cumulative;
+        cumulative     += pct;
+        const isActive  = analitikSelectedKategori === kategori && analitikSelectedJenis === jenisFull;
+        const isDim     = analitikSelectedKategori === kategori && !!analitikSelectedJenis && !isActive;
+        const jenisEsc  = jenisFull.replace(/'/g, "\\'");
+        const jenisAttr = jenisFull.replace(/"/g, '&quot;');
+        return { jenisFull, jenisEsc, jenisAttr, info, pct, drawLen, offset, color: analitikColorFor(kategori, jenisFull), isActive, isDim };
+    });
+
+    const stateClass = s => `${s.isActive ? ' active' : ''}${s.isDim ? ' dim' : ''}`;
+
+    const svgSegs = segs.map(s => `<circle class="donut-seg${stateClass(s)}" data-jenis="${s.jenisAttr}"
+            style="stroke:${s.color};" cx="21" cy="21" r="${R}" fill="transparent" stroke-width="7"
+            stroke-dasharray="${s.drawLen} ${100 - s.drawLen}" stroke-dashoffset="${s.offset}"
+            transform="rotate(-90 21 21)" tabindex="0" role="button"
+            aria-label="${s.info.label}: ${s.pct.toFixed(1)} persen, Rp ${s.info.total.toLocaleString('id-ID')}"
+            onmouseenter="analitikHoverSeg('${kategori}','${s.jenisEsc}',true)"
+            onmouseleave="analitikHoverSeg('${kategori}','${s.jenisEsc}',false)"
+            onclick="toggleAnalitikJenis('${kategori}','${s.jenisEsc}',event)"
+            onkeypress="if(event.key==='Enter'||event.key===' '){toggleAnalitikJenis('${kategori}','${s.jenisEsc}',event);}"
+            ><title>${s.info.label}: Rp ${s.info.total.toLocaleString('id-ID')} (${s.pct.toFixed(1)}%)</title></circle>`).join('');
+
+    const legendRows = segs.map(s => `<div class="analitik-legend-row${stateClass(s)}" data-jenis="${s.jenisAttr}"
+            onmouseenter="analitikHoverSeg('${kategori}','${s.jenisEsc}',true)"
+            onmouseleave="analitikHoverSeg('${kategori}','${s.jenisEsc}',false)"
+            onclick="toggleAnalitikJenis('${kategori}','${s.jenisEsc}',event)">
+            <span class="analitik-legend-swatch" style="background:${s.color};"></span>
+            <span class="analitik-legend-info">
+                <span class="analitik-legend-label">${s.info.label}</span>
+                <span class="analitik-legend-value">${s.pct.toFixed(1)}% · Rp ${s.info.total.toLocaleString('id-ID')}</span>
+            </span>
+        </div>`).join('');
+
+    chartEl.innerHTML = `<div class="analitik-donut-wrap">
+            <svg class="donut-svg" viewBox="0 0 42 42">
+                <circle style="stroke:var(--border);" cx="21" cy="21" r="${R}" fill="transparent" stroke-width="7"></circle>
+                ${svgSegs}
+            </svg>
+            <div class="analitik-legend">${legendRows}</div>
         </div>`;
-    }).join('');
+}
+
+// Sinkron highlight segmen donut <-> baris legend saat hover. Dibandingkan lewat
+// dataset.jenis (bukan CSS attribute-selector) supaya tidak perlu CSS.escape()
+// utk nama jenis sembarang - lebih aman & kompatibel browser lama.
+function analitikHoverSeg(kategori, jenisFull, on) {
+    const container = document.getElementById(`chartAnalitik${kategori}`);
+    if (!container) return;
+    container.querySelectorAll('.donut-seg, .analitik-legend-row').forEach(el => {
+        if (el.dataset.jenis === jenisFull) el.classList.toggle('hovered', on);
+    });
 }
 
 // Klik area kartu (di luar segmen) - buka/tutup history level kategori (semua jenis).
