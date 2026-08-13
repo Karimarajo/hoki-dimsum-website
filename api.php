@@ -311,11 +311,13 @@ $conn->query("CREATE TABLE IF NOT EXISTS hoki_kas_data (
     ket TEXT,
     cabang VARCHAR(100) DEFAULT ''
 )");
-// Task 5: kategori transaksi kas (IN/BO/BM) - kolom baru, NULL utk data lama yang belum
-// dikategorikan (tetap tampil apa adanya di history, cuma tidak ikut ke agregasi Analitik).
+// Koreksi: kolom kategori terpisah di hoki_kas_data (sempat ditambahkan di iterasi
+// sebelumnya) di-drop lagi - kategori transaksi kas (IN/BO/BM) sudah cukup terbaca dari
+// prefix pada kolom jenis yang sudah ada (mis. "BO - Bahan Baku"), tidak perlu kolom baru.
+// DROP idempotent (aman dijalankan ulang), tidak menyentuh baris/kolom lain sama sekali.
 $checkColKasKategori = $conn->query("SHOW COLUMNS FROM hoki_kas_data LIKE 'kategori'");
-if ($checkColKasKategori && $checkColKasKategori->num_rows === 0) {
-    $conn->query("ALTER TABLE hoki_kas_data ADD COLUMN kategori VARCHAR(2) NULL");
+if ($checkColKasKategori && $checkColKasKategori->num_rows > 0) {
+    $conn->query("ALTER TABLE hoki_kas_data DROP COLUMN kategori");
 }
 $conn->query("CREATE TABLE IF NOT EXISTS laporan_settlement (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -1597,11 +1599,7 @@ switch ($action) {
         $nom = (int)($input['nominal'] ?? 0);
         $ket = $conn->real_escape_string($input['ket'] ?? '');
         $cab = $conn->real_escape_string($input['cabang'] ?? '');
-        // Task 5: kategori IN/BO/BM - opsional di level DB (NULL kalau tidak dikirim), tapi
-        // sudah wajib diisi di form belanja.html sebelum request ini dikirim.
-        $katRaw = trim($input['kategori'] ?? '');
-        $kat    = $katRaw !== '' ? "'" . $conn->real_escape_string($katRaw) . "'" : "NULL";
-        $conn->query("INSERT INTO hoki_kas_data (waktu, user, jenis, kategori, nama, qty, mode, nominal, ket, cabang) VALUES ('$wkt','$usr','$jns',$kat,'$nam',$qty,'$mod',$nom,'$ket','$cab')");
+        $conn->query("INSERT INTO hoki_kas_data (waktu, user, jenis, nama, qty, mode, nominal, ket, cabang) VALUES ('$wkt','$usr','$jns','$nam',$qty,'$mod',$nom,'$ket','$cab')");
         echo json_encode(["status"=>"success"]);
         break;
 
@@ -1616,10 +1614,8 @@ switch ($action) {
         $nom = (int)($input['nominal'] ?? 0);
         $ket = $conn->real_escape_string($input['ket'] ?? '');
         $cab = $conn->real_escape_string($input['cabang'] ?? '');
-        $katRaw = trim($input['kategori'] ?? '');
-        $kat    = $katRaw !== '' ? "'" . $conn->real_escape_string($katRaw) . "'" : "NULL";
 
-        $conn->query("UPDATE hoki_kas_data SET waktu='$wkt', user='$usr', jenis='$jns', kategori=$kat, nama='$nam', qty=$qty, mode='$mod', nominal=$nom, ket='$ket', cabang='$cab' WHERE id=$id");
+        $conn->query("UPDATE hoki_kas_data SET waktu='$wkt', user='$usr', jenis='$jns', nama='$nam', qty=$qty, mode='$mod', nominal=$nom, ket='$ket', cabang='$cab' WHERE id=$id");
         echo json_encode(["status"=>"success"]);
         break;
 

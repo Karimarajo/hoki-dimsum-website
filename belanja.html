@@ -297,22 +297,6 @@
                     </div>
                 </div>
                 <div class="input-group">
-                    <label for="wrapKategori">Kategori</label>
-                    <div class="custom-select-wrap" id="wrapKategori">
-                        <button class="custom-select-btn" onclick="toggleDropdown('wrapKategori')">
-                            <span id="iconKategori">🏷️</span>
-                            <span id="labelKategori">Pilih Kategori</span>
-                            <svg width="12" height="8" viewBox="0 0 12 8" fill="none"><path d="M1 1l5 5 5-5" stroke="#d32f2f" stroke-width="1.5" stroke-linecap="round"/></svg>
-                        </button>
-                        <div class="custom-dropdown" id="dropdownKategori">
-                            <div class="dropdown-item" onclick="pilihKategori('IN','💰','IN — Pemasukan',this)"><span class="dd-icon">💰</span><span>IN — Pemasukan</span></div>
-                            <div class="dropdown-item" onclick="pilihKategori('BO','📉','BO — Biaya Operasional',this)"><span class="dd-icon">📉</span><span>BO — Biaya Operasional</span></div>
-                            <div class="dropdown-item" onclick="pilihKategori('BM','🏗️','BM — Biaya Modal',this)"><span class="dd-icon">🏗️</span><span>BM — Biaya Modal</span></div>
-                        </div>
-                        <input type="hidden" id="fKategori" value="">
-                    </div>
-                </div>
-                <div class="input-group">
                     <label for="fNama">Nama Transaksi</label>
                     <input type="text" id="fNama" list="listNama" placeholder="Cth: Penjualan Event / Beli Sabun">
                     <datalist id="listNama"></datalist>
@@ -657,15 +641,6 @@ function pilihJenis(value, icon, label, el) {
     document.getElementById('wrapJenis').classList.remove('open');
 }
 
-function pilihKategori(value, icon, label, el) {
-    document.getElementById('fKategori').value = value;
-    document.getElementById('iconKategori').innerText = icon;
-    document.getElementById('labelKategori').innerText = label;
-    document.querySelectorAll('#dropdownKategori .dropdown-item').forEach(i => i.classList.remove('active'));
-    el.classList.add('active');
-    document.getElementById('wrapKategori').classList.remove('open');
-}
-
 function pilihMode(value, icon, label, el) {
     // Set nilai ke input hidden
     document.getElementById('fMode').value = value;
@@ -775,19 +750,17 @@ let editKasId = null;
 
 async function simpanTransaksi() {
     const payload = {
-        waktu:    document.getElementById('fWaktu').value,
-        user:     document.getElementById('fUser').value, // Ambil dari input agar tidak berubah saat diedit
-        jenis:    document.getElementById('fJenis').value,
-        kategori: document.getElementById('fKategori').value,
-        nama:     document.getElementById('fNama').value,
-        qty:      document.getElementById('fQty').value,
-        mode:     document.getElementById('fMode').value,
-        nominal:  document.getElementById('fNominal').value,
-        ket:      document.getElementById('fKet').value,
-        cabang:   localStorage.getItem('cabangHoki') || 'Pusat'
+        waktu:   document.getElementById('fWaktu').value,
+        user:    document.getElementById('fUser').value, // Ambil dari input agar tidak berubah saat diedit
+        jenis:   document.getElementById('fJenis').value,
+        nama:    document.getElementById('fNama').value,
+        qty:     document.getElementById('fQty').value,
+        mode:    document.getElementById('fMode').value,
+        nominal: document.getElementById('fNominal').value,
+        ket:     document.getElementById('fKet').value,
+        cabang:  localStorage.getItem('cabangHoki') || 'Pusat'
     };
     if (!payload.nama || !payload.nominal) return toast.warning('Nama transaksi dan Nominal wajib diisi!');
-    if (!payload.kategori) return toast.warning('Kategori (IN/BO/BM) wajib dipilih!');
     try {
         let action = 'save_kas_data';
         if (editKasId) {
@@ -805,9 +778,6 @@ async function simpanTransaksi() {
             document.getElementById('fNominal').value = '';
             document.getElementById('fKet').value     = '';
             document.getElementById('fUser').value    = currentUser.user; // Kembalikan ke current user
-            document.getElementById('fKategori').value = '';
-            document.getElementById('labelKategori').innerText = 'Pilih Kategori';
-            document.querySelectorAll('#dropdownKategori .dropdown-item').forEach(i => i.classList.remove('active'));
             editKasId = null;
             
             const btn = document.querySelector('.btn-simpan-kas');
@@ -983,17 +953,6 @@ function editKas(id) {
         document.getElementById('labelJenis').innerText = d.jenis;
     }
     
-    // Set Kategori - data lama sebelum fitur ini belum tentu punya kategori, biarkan
-    // kosong (wajib dipilih ulang) kalau tidak ketemu, jangan sampai error.
-    document.querySelectorAll('#dropdownKategori .dropdown-item').forEach(i => i.classList.remove('active'));
-    if (d.kategori) {
-        const elKategori = Array.from(document.querySelectorAll('#dropdownKategori .dropdown-item')).find(el => el.innerText.includes(d.kategori));
-        if (elKategori) elKategori.click();
-    } else {
-        document.getElementById('fKategori').value = '';
-        document.getElementById('labelKategori').innerText = 'Pilih Kategori';
-    }
-
     document.getElementById('fNama').value = d.nama;
     document.getElementById('fQty').value = d.qty || 1;
 

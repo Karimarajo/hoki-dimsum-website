@@ -798,15 +798,29 @@ function switchStatTab(tab) {
 }
 
 /* ══════════════════════════════════════════════════════════════════════
-   TAB ANALITIK — kategori kas IN/BO/BM (Task 5). Diagram custom div+CSS,
-   pola sama dengan #chartCabang yang sudah ada di tab Statistik (bar-container
-   /bar-fill), tidak pakai library chart eksternal apa pun.
+   TAB ANALITIK — kategori kas IN/BO/BM (koreksi). Kategori BUKAN kolom
+   terpisah - diturunkan on-the-fly dari prefix pada kolom "jenis" yang
+   sudah ada (dikelola di hoki_kas_jenis / dropdown "Jenis Transaksi" di
+   belanja.html), format "<KODE> - <Nama>" mis. "BO - Bahan Baku". Diagram
+   custom div+CSS, pola sama dengan #chartCabang yang sudah ada di tab
+   Statistik (bar-container/bar-fill), tidak pakai library chart eksternal.
    ══════════════════════════════════════════════════════════════════════ */
 let analitikCacheKas = [];
 let analitikSelectedKategori = null; // 'IN' | 'BO' | 'BM' | null (null = tidak ada kartu terbuka)
-let analitikSelectedJenis    = null; // string | null (drill-down tambahan di dalam kategori terpilih)
+let analitikSelectedJenis    = null; // string jenis LENGKAP (mis. "BO - Bahan Baku") | null
 
 const ANALITIK_KATEGORI_LABEL = { IN: 'Pemasukan', BO: 'Biaya Operasional', BM: 'Biaya Modal' };
+
+// Pecah "jenis" jadi { kode, label } dari prefix sebelum tanda strip pertama.
+// Toleran ke variasi spasi di sekitar strip ("IN - Modal", "IN- Modal", "IN -Modal"),
+// tapi tetap butuh format "<KODE> - <Nama>" - jenis tanpa prefix ini return null,
+// otomatis diabaikan dari 3 diagram (bukan error, sesuai spek).
+function parseJenisKategori(jenisRaw) {
+    const jenis = String(jenisRaw || '');
+    const m = jenis.match(/^\s*([A-Za-z]+)\s*-\s*(.+?)\s*$/);
+    if (!m) return null;
+    return { kode: m[1].toUpperCase(), label: m[2] };
+}
 
 async function loadAnalitik() {
     try {
@@ -828,11 +842,11 @@ async function loadAnalitik() {
     renderAnalitikHistory(); // refresh history kalau lagi ada kartu/segmen terbuka, tanpa perlu klik ulang
 }
 
-// Data lama (sebelum fitur kategori ada) punya kategori NULL - otomatis tidak lolos filter
-// ini (bukan bug), sesuai spek: baru muncul di diagram setelah dikategorikan ulang lewat edit.
+// kategori kode diturunkan dari prefix jenis (bukan kolom kategori terpisah).
 function analitikDataByKategori(kategori) {
     return analitikCacheKas.filter(d => {
-        if ((d.kategori || '') !== kategori) return false;
+        const parsed = parseJenisKategori(d.jenis);
+        if (!parsed || parsed.kode !== kategori) return false;
         if (kategori === 'IN' && d.mode !== 'Credit') return false;
         return true;
     });
@@ -845,32 +859,32 @@ function renderAnalitikCard(kategori) {
     const cardEl  = document.getElementById(`cardAnalitik${kategori}`);
 
     let total = 0;
-    const perJenis = {};
+    const perJenis = {}; // key: jenis lengkap (mis. "BO - Bahan Baku") -> { label, total }
     data.forEach(d => {
         const nom = parseFloat(d.nominal) || 0;
         total += nom;
-        const jenis = d.jenis || '(Tanpa Jenis)';
-        perJenis[jenis] = (perJenis[jenis] || 0) + nom;
+        const parsed = parseJenisKategori(d.jenis); // pasti match, sudah difilter analitikDataByKategori
+        if (!perJenis[d.jenis]) perJenis[d.jenis] = { label: parsed.label, total: 0 };
+        perJenis[d.jenis].total += nom;
     });
 
     totalEl.innerText = `Rp ${total.toLocaleString('id-ID')}`;
     cardEl.classList.toggle('open', analitikSelectedKategori === kategori);
 
-    const entries = Object.entries(perJenis).sort((a, b) => b[1] - a[1]);
+    const entries = Object.entries(perJenis).sort((a, b) => b[1].total - a[1].total);
     if (!entries.length) {
         chartEl.innerHTML = `<div class="card-analitik-empty">Belum ada transaksi ${ANALITIK_KATEGORI_LABEL[kategori].toLowerCase()} pada rentang ini.</div>`;
         return;
     }
 
-    const maxVal = Math.max(...entries.map(e => e[1]), 1);
-    chartEl.innerHTML = entries.map(([jenis, val]) => {
-        const pct      = (val / maxVal) * 100;
-        const isActive = analitikSelectedKategori === kategori && analitikSelectedJenis === jenis;
-        const jenisEsc = jenis.replace(/'/g, "\\'");
+    chartEl.innerHTML = entries.map(([jenisFull, info]) => {
+        const pct      = total > 0 ? (info.total / total) * 100 : 0;
+        const isActive = analitikSelectedKategori === kategori && analitikSelectedJenis === jenisFull;
+        const jenisEsc = jenisFull.replace(/'/g, "\\'");
         return `<div class="analitik-seg-row cabang-row${isActive ? ' active' : ''}" onclick="toggleAnalitikJenis('${kategori}','${jenisEsc}',event)">
             <div class="cabang-row-header">
-                <span>${jenis}</span>
-                <b>Rp ${val.toLocaleString('id-ID')}</b>
+                <span>${info.label}</span>
+                <b>${pct.toFixed(1)}% · Rp ${info.total.toLocaleString('id-ID')}</b>
             </div>
             <div class="bar-container">
                 <div class="bar-fill" style="width:${pct}%"></div>
@@ -892,16 +906,16 @@ function toggleAnalitikCard(kategori) {
     renderAnalitikHistory();
 }
 
-// Klik segmen/jenis di dalam diagram - drill-down lebih spesifik (kategori + jenis).
-// stopPropagation supaya tidak ikut memicu toggleAnalitikCard() di parent card.
-function toggleAnalitikJenis(kategori, jenis, event) {
+// Klik segmen/jenis di dalam diagram - drill-down lebih spesifik (kategori + jenis LENGKAP,
+// exact match). stopPropagation supaya tidak ikut memicu toggleAnalitikCard() di parent card.
+function toggleAnalitikJenis(kategori, jenisFull, event) {
     event.stopPropagation();
-    if (analitikSelectedKategori === kategori && analitikSelectedJenis === jenis) {
+    if (analitikSelectedKategori === kategori && analitikSelectedJenis === jenisFull) {
         analitikSelectedKategori = null;
         analitikSelectedJenis    = null;
     } else {
         analitikSelectedKategori = kategori;
-        analitikSelectedJenis    = jenis;
+        analitikSelectedJenis    = jenisFull;
     }
     ['IN', 'BO', 'BM'].forEach(renderAnalitikCard);
     renderAnalitikHistory();
@@ -918,8 +932,9 @@ function renderAnalitikHistory() {
     let data = analitikDataByKategori(analitikSelectedKategori);
     let titleSuffix = ANALITIK_KATEGORI_LABEL[analitikSelectedKategori];
     if (analitikSelectedJenis) {
-        data = data.filter(d => (d.jenis || '(Tanpa Jenis)') === analitikSelectedJenis);
-        titleSuffix += ` — ${analitikSelectedJenis}`;
+        data = data.filter(d => d.jenis === analitikSelectedJenis); // exact match jenis lengkap
+        const parsed = parseJenisKategori(analitikSelectedJenis);
+        titleSuffix += ` — ${parsed ? parsed.label : analitikSelectedJenis}`;
     }
 
     document.getElementById('analitikHistoryTitle').innerText = `📄 Detail Transaksi ${titleSuffix}`;
