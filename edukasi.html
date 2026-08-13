@@ -222,11 +222,24 @@
         .form-group { min-width: unset; }
     }
 
-    /* Fallback jarak antar-anak flex utk #inputRoleAccess (gap tidak didukung Chrome flex < 84).
-       Wrap-fallback: pakai margin-left & margin-top sekaligus karena flex-wrap aktif
-       dengan banyak anak - trade-off kecil: anak pertama tiap baris wrap dapat
-       margin-left kecil yang tidak diinginkan, tapi lebih aman daripada numpuk. */
-    #inputRoleAccess > * + * { margin-left: 10px; margin-top: 10px; }
+    /* Isi dropdown Akses Role (checkbox per role, dibuka dari #wrapRoleAccess) */
+    .role-access-item {
+        display: flex;
+        align-items: center;
+        padding: 9px 16px;
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--text);
+        cursor: pointer;
+        font-family: 'Nunito', sans-serif;
+    }
+
+    .role-access-item:hover { background: var(--bg); }
+
+    .role-access-item input[type="checkbox"] {
+        margin: 0 10px 0 0;
+        cursor: pointer;
+    }
     </style>
     <script src="config.js"></script>
 </head>
@@ -295,12 +308,18 @@
                 </div>
                 <div class="form-group">
                     <label>Akses Role (centang yang boleh lihat)</label>
-                    <div id="inputRoleAccess" style="display:flex;flex-wrap:wrap;padding:8px 0;">
-                        <label style="display:flex;align-items:center;font-weight:normal;"><input type="checkbox" value="Staff" checked><span style="margin-left:4px;">Staff</span></label>
-                        <label style="display:flex;align-items:center;font-weight:normal;"><input type="checkbox" value="Senior Staff" checked><span style="margin-left:4px;">Senior Staff</span></label>
-                        <label style="display:flex;align-items:center;font-weight:normal;"><input type="checkbox" value="SPV" checked><span style="margin-left:4px;">SPV</span></label>
-                        <label style="display:flex;align-items:center;font-weight:normal;"><input type="checkbox" value="Owner" checked><span style="margin-left:4px;">Owner</span></label>
-                        <label style="display:flex;align-items:center;font-weight:normal;"><input type="checkbox" value="VIP" checked><span style="margin-left:4px;">VIP</span></label>
+                    <div class="custom-select-wrap" id="wrapRoleAccess" style="margin:0;">
+                        <button type="button" class="custom-select-btn" onclick="toggleRoleAccessDropdown()" style="height:38px;">
+                            <span id="labelRoleAccess">Semua Role</span>
+                            <svg width="12" height="8" viewBox="0 0 12 8" fill="none"><path d="M1 1l5 5 5-5" stroke="#d32f2f" stroke-width="1.5" stroke-linecap="round"/></svg>
+                        </button>
+                        <div class="custom-dropdown" id="inputRoleAccess">
+                            <label class="role-access-item"><input type="checkbox" value="Staff" checked onchange="updateRoleAccessLabel()"><span>Staff</span></label>
+                            <label class="role-access-item"><input type="checkbox" value="Senior Staff" checked onchange="updateRoleAccessLabel()"><span>Senior Staff</span></label>
+                            <label class="role-access-item"><input type="checkbox" value="SPV" checked onchange="updateRoleAccessLabel()"><span>SPV</span></label>
+                            <label class="role-access-item"><input type="checkbox" value="Owner" checked onchange="updateRoleAccessLabel()"><span>Owner</span></label>
+                            <label class="role-access-item"><input type="checkbox" value="VIP" checked onchange="updateRoleAccessLabel()"><span>VIP</span></label>
+                        </div>
                     </div>
                 </div>
                 <div class="form-group" style="flex:0;">
@@ -593,6 +612,25 @@ function getRoleAccessChecked() {
     return checked.join(',');
 }
 
+function toggleRoleAccessDropdown() {
+    document.getElementById('wrapRoleAccess').classList.toggle('open');
+}
+
+// Update teks ringkas di tombol Akses Role tiap kali checkbox di dalam dropdown diklik.
+function updateRoleAccessLabel() {
+    const role_access = getRoleAccessChecked();
+    const label = document.getElementById('labelRoleAccess');
+    if (!label) return;
+    if (role_access === 'Semua') label.textContent = 'Semua Role';
+    else if (!role_access) label.textContent = 'Pilih Role';
+    else label.textContent = role_access.split(',').length + ' role dipilih';
+}
+
+document.addEventListener('click', function(e) {
+    const wrap = document.getElementById('wrapRoleAccess');
+    if (wrap && !wrap.contains(e.target)) wrap.classList.remove('open');
+});
+
 async function simpanEdukasi() {
     const judul = document.getElementById('inputJudul').value.trim();
     const kategori = document.getElementById('inputKategori').value;
@@ -614,6 +652,7 @@ async function simpanEdukasi() {
             document.getElementById('inputJudul').value = '';
             document.getElementById('inputUrl').value = '';
             document.querySelectorAll('#inputRoleAccess input[type="checkbox"]').forEach(c => c.checked = true);
+            updateRoleAccessLabel();
             muatEdukasi();
         } else {
             toast.error(json.message || 'Gagal menyimpan dokumen.');
@@ -658,6 +697,7 @@ window.onload = () => {
         document.getElementById('formTambahEdukasi').style.display = '';
     }
 
+    updateRoleAccessLabel();
     muatEdukasi();
 };
 </script>
