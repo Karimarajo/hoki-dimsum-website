@@ -692,13 +692,28 @@
         const now  = new Date();
         const jam  = now.toLocaleTimeString('id-ID', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
         const hari = now.toLocaleDateString('id-ID', {weekday:'long',year:'numeric',month:'long',day:'numeric'});
-        document.getElementById('clockTime').innerText = jam;
-        document.getElementById('clockDate').innerText = hari;
+
+        // Null-check di semua 3 elemen (bukan cuma shiftInfo) supaya fungsi ini tidak akan
+        // pernah lagi bisa menghentikan eksekusi script cuma gara-gara satu elemen hilang -
+        // updateClock() dipanggil top-level (baris di bawah) SEBELUM deklarasi
+        // loginGpsCoords/loginInProgress punya fitur wajib-lokasi, jadi exception di sini
+        // dulu bikin kedua variabel itu terjebak di temporal dead zone selamanya.
+        const clockTimeEl = document.getElementById('clockTime');
+        const clockDateEl = document.getElementById('clockDate');
+        if (clockTimeEl) clockTimeEl.innerText = jam;
+        if (clockDateEl) clockDateEl.innerText = hari;
+
+        // #shiftInfo TIDAK ADA di HTML halaman ini (sisa fitur lama yang elemennya sudah
+        // dihapus tapi baris ini lupa ikut dibersihkan) - null-check di sini, JANGAN
+        // menambahkan elemennya balik tanpa keputusan terpisah apakah fitur ini masih mau
+        // dipakai.
         const h = now.getHours();
         const shiftEl = document.getElementById('shiftInfo');
-        if (h >= 6 && h < 14)       shiftEl.innerText = 'Pagi (06:00–14:00)';
-        else if (h >= 14 && h < 22) shiftEl.innerText = 'Sore (14:00–22:00)';
-        else                         shiftEl.innerText = 'Malam (22:00–06:00)';
+        if (shiftEl) {
+            if (h >= 6 && h < 14)       shiftEl.innerText = 'Pagi (06:00–14:00)';
+            else if (h >= 14 && h < 22) shiftEl.innerText = 'Sore (14:00–22:00)';
+            else                         shiftEl.innerText = 'Malam (22:00–06:00)';
+        }
     }
     updateClock();
     setInterval(updateClock, 1000);
