@@ -259,9 +259,10 @@ $checkColLogLocation = $conn->query("SHOW COLUMNS FROM logs_login LIKE 'location
 if ($checkColLogLocation && $checkColLogLocation->num_rows === 0) {
     $conn->query("ALTER TABLE logs_login ADD COLUMN location VARCHAR(150) NULL");
 }
-// GPS presisi dari browser (opsional - NULL kalau user menolak/timeout/browser tidak
-// support geolocation). Kolom "location" (hasil IP-geolocation) tetap diisi sebagai
-// fallback, tidak dihapus - lihat action add_log.
+// GPS presisi dari browser - wajib di alur login normal sekarang (index.html memblok
+// login kalau ditolak), tapi kolom tetap NULL-able buat data lama & kasus tak terduga.
+// Kolom "location" (hasil IP-geolocation) tetap diisi sebagai fallback, tidak dihapus -
+// lihat action add_log.
 $checkColLogGpsLat = $conn->query("SHOW COLUMNS FROM logs_login LIKE 'gps_lat'");
 if ($checkColLogGpsLat && $checkColLogGpsLat->num_rows === 0) {
     $conn->query("ALTER TABLE logs_login ADD COLUMN gps_lat DECIMAL(10,7) NULL");
@@ -1413,11 +1414,14 @@ switch ($action) {
         $device   = $conn->real_escape_string(detect_device($_SERVER['HTTP_USER_AGENT'] ?? ''));
         $location = $conn->real_escape_string(get_geo_location($ipRaw));
 
-        // GPS presisi dari browser - opsional, dikirim cuma kalau user mengizinkan &
-        // browser support geolocation (lihat catatLogLogin() di index.html). Divalidasi
-        // sebagai angka & dibatasi ke rentang lat/lng yang valid supaya tidak ada input
-        // sampah masuk kolom DECIMAL; NULL kalau tidak dikirim/tidak valid - "location"
-        // dari IP-geolocation di atas tetap jadi fallback informasi seperti sebelumnya.
+        // GPS presisi dari browser - sekarang WAJIB di alur login normal (index.html
+        // memblok login total kalau user menolak/timeout izin lokasi, lihat
+        // requestGpsMandatory()/cekAksesLogin()), jadi harusnya selalu ada di payload.
+        // Endpoint ini tetap ditangani secara defensif (tidak pernah 500) buat jaga-jaga
+        // request tak terduga/lama - divalidasi sebagai angka & dibatasi ke rentang
+        // lat/lng yang valid supaya tidak ada input sampah masuk kolom DECIMAL; NULL
+        // kalau tidak dikirim/tidak valid - "location" dari IP-geolocation di atas tetap
+        // jadi fallback informasi (dipertahankan di skema, bukan dihapus).
         $gpsLatRaw = $input['gps_lat'] ?? null;
         $gpsLngRaw = $input['gps_lng'] ?? null;
         $gpsLat = 'NULL';

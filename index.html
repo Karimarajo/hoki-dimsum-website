@@ -560,6 +560,18 @@
                     <span id="errorText">Username atau Password salah!</span>
                 </div>
 
+                <!-- Izin lokasi GPS wajib sebelum login - beda dari errorMsg (auto-hide 4dtk):
+                     ini tetap tampil sampai user klik "Coba Lagi", karena login memang diblok. -->
+                <div class="error-msg" id="gpsErrorMsg" style="flex-direction:column;align-items:stretch;">
+                    <div style="display:flex;align-items:center;">
+                        <span>📍</span>
+                        <span id="gpsErrorText">Aplikasi ini butuh akses lokasi untuk login. Aktifkan izin lokasi di browser lalu coba lagi.</span>
+                    </div>
+                    <button type="button" class="btn-login" style="margin-top:10px;" onclick="cekAksesLogin()">
+                        <span>🔄 Coba Lagi</span>
+                    </button>
+                </div>
+
                 <div class="form-group">
                     <label for="username">Username</label>
                     <div class="input-wrap">
@@ -647,6 +659,16 @@
         setTimeout(() => el.classList.remove('show'), 4000);
     }
 
+    // Beda dari showError(): TIDAK auto-hide, karena kalau ini tampil artinya login
+    // memang diblok - baru hilang begitu user berhasil dapat lokasi (retry) atau ganti halaman.
+    function showGpsError(msg) {
+        document.getElementById('gpsErrorText').innerText = msg;
+        document.getElementById('gpsErrorMsg').classList.add('show');
+    }
+    function hideGpsError() {
+        document.getElementById('gpsErrorMsg').classList.remove('show');
+    }
+
     function togglePassword() {
         const input  = document.getElementById('password');
         const eyeOn  = document.getElementById('eyeIcon');
@@ -685,8 +707,52 @@
         setTimeout(() => showError(logoutMsg), 500);
     }
 
+    /* ── LOKASI GPS (WAJIB SEBELUM LOGIN) ──
+       Kebijakan: akses lokasi WAJIB, bukan opsional. Diminta di sini (begitu user klik
+       "Masuk", SEBELUM kredensial dikirim ke action=login) - kalau ditolak/timeout/browser
+       tidak support, login diblok total & kredensial tidak pernah tervalidasi ke server. */
+    const BTN_LOGIN_DEFAULT_HTML = '<span>Masuk ke Sistem</span><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+    // Sekali dapat GPS di awal alur login, dipakai ulang nanti di catatLogLogin() -
+    // termasuk utk Staff yang add_log-nya baru terjadi di finalMasuk(), setelah pilih
+    // cabang (bukan di titik ini), supaya tidak minta izin lokasi 2x ke user yang sama.
+    let loginGpsCoords = null;
+
+    function requestGpsOnce(timeoutMs) {
+        return new Promise((resolve) => {
+            let done = false;
+            const finish = (val) => { if (!done) { done = true; resolve(val); } };
+            const timer = setTimeout(() => finish(null), timeoutMs);
+            try {
+                navigator.geolocation.getCurrentPosition(
+                    (pos) => { clearTimeout(timer); finish({ lat: pos.coords.latitude, lng: pos.coords.longitude }); },
+                    () => { clearTimeout(timer); finish(null); }, // ditolak / gagal
+                    { enableHighAccuracy: true, timeout: timeoutMs, maximumAge: 0 }
+                );
+            } catch (e) { clearTimeout(timer); finish(null); }
+        });
+    }
+
+    // Coba 2x (percobaan awal + 1x retry otomatis, masing-masing timeout ~10 detik) sebelum
+    // benar-benar dianggap gagal - sinyal GPS lemah di dalam ruangan sering baru dapat fix
+    // di percobaan ke-2. Return null kalau browser tidak support geolocation sama sekali,
+    // atau tetap gagal setelah retry - caller yang memutuskan blok login dari situ.
+    async function requestGpsMandatory(onStatus) {
+        if (!('geolocation' in navigator)) return null;
+
+        if (onStatus) onStatus('Mencari lokasi...');
+        let coords = await requestGpsOnce(10000);
+        if (coords) return coords;
+
+        if (onStatus) onStatus('Mencoba sekali lagi...');
+        coords = await requestGpsOnce(10000);
+        return coords;
+    }
+
     /* ── LOGIN ── */
     async function cekAksesLogin() {
+        hideGpsError(); // bersihkan sisa error percobaan sebelumnya di setiap awal percobaan baru
+
         const userIn = document.getElementById('username').value.trim();
         const passIn = document.getElementById('password').value.trim();
 
@@ -697,6 +763,26 @@
 
         const btn = document.getElementById('btnLogin');
         btn.disabled = true;
+
+        // ── Gerbang lokasi wajib - kredensial belum dikirim ke server sama sekali di titik ini ──
+        if (!('geolocation' in navigator)) {
+            btn.disabled = false;
+            btn.innerHTML = BTN_LOGIN_DEFAULT_HTML;
+            showGpsError('Browser ini tidak mendukung akses lokasi. Gunakan browser lain (versi terbaru) untuk login.');
+            return;
+        }
+
+        btn.innerHTML = '<span>Mencari lokasi...</span>';
+        const gps = await requestGpsMandatory((status) => { btn.innerHTML = `<span>${status}</span>`; });
+
+        if (!gps) {
+            btn.disabled = false;
+            btn.innerHTML = BTN_LOGIN_DEFAULT_HTML;
+            showGpsError('Aplikasi ini butuh akses lokasi untuk login. Aktifkan izin lokasi di browser lalu coba lagi.');
+            return;
+        }
+        loginGpsCoords = gps;
+
         btn.innerHTML = '<span>Memverifikasi...</span>';
 
         try {
@@ -717,7 +803,7 @@
                     localStorage.setItem('cabangHoki', 'Semua');
                     localStorage.setItem('sessionToken', hasil.token || '');
                     localStorage.setItem('lastActivity', Date.now().toString());
-                    await catatLogLogin(ketemu.user, ketemu.role, 'Semua');
+                    await catatLogLogin(ketemu.user, ketemu.role, 'Semua', loginGpsCoords);
                     window.location.href = 'dashboard.html';
 
                 } else if (ketemu.role === 'SPV' || ketemu.role === 'Investor') {
@@ -727,8 +813,8 @@
                     localStorage.setItem('cabangHoki', lokasi);
                     localStorage.setItem('sessionToken', hasil.token || '');
                     localStorage.setItem('lastActivity', Date.now().toString());
-                    await catatLogLogin(ketemu.user, ketemu.role, lokasi);
-                    
+                    await catatLogLogin(ketemu.user, ketemu.role, lokasi, loginGpsCoords);
+
                     if (ketemu.role === 'Investor') {
                         window.location.href = 'investor_omset.html';
                     } else {
@@ -767,7 +853,7 @@
             showError('Terjadi kesalahan: ' + err.message);
         } finally {
             btn.disabled = false;
-            btn.innerHTML = '<span>Masuk ke Sistem</span><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+            btn.innerHTML = BTN_LOGIN_DEFAULT_HTML;
         }
     }
 
@@ -779,36 +865,20 @@
         localStorage.setItem('cabangHoki', cabangPilihan);
         localStorage.setItem('sessionToken', window._loginToken || '');
         localStorage.setItem('lastActivity', Date.now().toString());
-        await catatLogLogin(user.user, user.role, cabangPilihan);
+        await catatLogLogin(user.user, user.role, cabangPilihan, loginGpsCoords);
         localStorage.removeItem('tempUser');
         window.location.href = 'dashboard.html';
     }
 
-    // Coba minta lokasi presisi dari browser, timeout pendek (default 5 detik) supaya
-    // proses login TIDAK PERNAH terhambat lama - kalau user tidak merespons izin lokasi,
-    // browser tidak support geolocation (Chrome sangat lama dll), atau ditolak, resolve
-    // ke null dan login lanjut seperti biasa (fallback ke IP-geolocation di server).
-    function getGpsCoords(timeoutMs = 5000) {
-        return new Promise((resolve) => {
-            if (!('geolocation' in navigator)) { resolve(null); return; }
-            let done = false;
-            const finish = (val) => { if (!done) { done = true; resolve(val); } };
-            const timer = setTimeout(() => finish(null), timeoutMs);
-            try {
-                navigator.geolocation.getCurrentPosition(
-                    (pos) => { clearTimeout(timer); finish({ lat: pos.coords.latitude, lng: pos.coords.longitude }); },
-                    () => { clearTimeout(timer); finish(null); }, // ditolak / gagal
-                    { enableHighAccuracy: false, timeout: timeoutMs, maximumAge: 0 }
-                );
-            } catch (e) { clearTimeout(timer); finish(null); }
-        });
-    }
-
-    async function catatLogLogin(username, role, cabang) {
+    // GPS sudah didapat wajib di cekAksesLogin() sebelum request login terkirim, jadi di
+    // titik ini (setelah login sukses) gps SELALU ada - tidak perlu logic fallback lagi.
+    async function catatLogLogin(username, role, cabang, gps) {
         try {
-            const gps = await getGpsCoords();
             const payload = { user: username, role: role, cabang: cabang };
-            if (gps) { payload.gps_lat = gps.lat; payload.gps_lng = gps.lng; }
+            if (gps && typeof gps.lat === 'number' && typeof gps.lng === 'number') {
+                payload.gps_lat = gps.lat;
+                payload.gps_lng = gps.lng;
+            }
             await fetch(`${API_BASE}?action=add_log`, {
                 method:  'POST',
                 headers: { 'Content-Type': 'application/json' },
