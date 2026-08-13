@@ -928,6 +928,61 @@ switch ($action) {
             : json_encode(["status"=>"error","message"=>$conn->error]);
         break;
 
+    // Task 4: edit user lengkap (nama/username/password/role) dari modal Edit di Database Tim.
+    // UPDATE by id (bukan username seperti save_user) supaya username bisa diganti tanpa
+    // bikin baris baru. docs dikirim opsional per slot - slot yang tidak dikirim/kosong
+    // di-merge dengan docs_json lama, tidak menimpanya jadi kosong.
+    case 'update_user':
+        $id = (int)($input['id'] ?? 0);
+        if ($id <= 0) {
+            echo json_encode(["status"=>"error","message"=>"ID user tidak valid"]);
+            break;
+        }
+
+        $u  = $conn->real_escape_string($input['username'] ?? '');
+        $p  = $conn->real_escape_string($input['password'] ?? '');
+        $r  = $conn->real_escape_string($input['role'] ?? '');
+        $fn = $conn->real_escape_string($input['fullName'] ?? '');
+        $cb = $conn->real_escape_string($input['cabang'] ?? '');
+
+        if ($u === '' || $p === '' || $fn === '') {
+            echo json_encode(["status"=>"error","message"=>"Nama, username, dan password wajib diisi"]);
+            break;
+        }
+
+        $docsRes = $conn->query("SELECT docs_json FROM users WHERE id=$id");
+        $docsRow = $docsRes ? $docsRes->fetch_assoc() : null;
+        if (!$docsRow) {
+            echo json_encode(["status"=>"error","message"=>"User tidak ditemukan"]);
+            break;
+        }
+        $oldDocs = json_decode($docsRow['docs_json'] ?? '{}', true);
+        if (!is_array($oldDocs)) $oldDocs = [];
+        $newDocs = is_array($input['docs'] ?? null) ? $input['docs'] : [];
+        foreach (['ktp', 'kk', 'spk'] as $slot) {
+            if (!empty($newDocs[$slot])) $oldDocs[$slot] = $newDocs[$slot];
+        }
+        $docs = $conn->real_escape_string(json_encode($oldDocs));
+
+        $sql = "UPDATE users SET username='$u', password='$p', role='$r', fullName='$fn', cabang='$cb', docs_json='$docs' WHERE id=$id";
+
+        // Username diketik ulang bebas di form ini (beda dari save_user yang UPSERT by username),
+        // jadi bentrok ke UNIQUE KEY username user lain realistis terjadi - tangkap manual di sini
+        // karena PHP 8.1+ default mysqli_report melempar mysqli_sql_exception (bukan return false)
+        // saat query gagal, yang kalau dibiarkan bikin fatal error/HTTP 500 tanpa JSON ke frontend.
+        try {
+            $ok = $conn->query($sql);
+            echo $ok
+                ? json_encode(["status"=>"success"])
+                : json_encode(["status"=>"error","message"=>$conn->error]);
+        } catch (\mysqli_sql_exception $ex) {
+            $msg = (stripos($ex->getMessage(), 'Duplicate entry') !== false)
+                ? "Username '$u' sudah dipakai user lain"
+                : $ex->getMessage();
+            echo json_encode(["status"=>"error","message"=>$msg]);
+        }
+        break;
+
     // ── PRODUK ────────────────────────────────────────
     case 'get_produk':
         $res = $conn->query("SELECT * FROM produk ORDER BY urutan ASC, nama ASC");
