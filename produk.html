@@ -118,17 +118,65 @@
         transform: translateX(16px);
     }
 
-    /* ── CHIP CABANG per baris tabel (dipakai bareng .cb-label dari style.css) ── */
-    .cabang-chip-list {
-        display: flex;
-        flex-wrap: wrap;
-        max-width: 260px;
+    /* ── TOMBOL RINGKASAN CABANG per baris tabel (buka popover, ganti chip yang selalu terbuka) ── */
+    .cabang-summary-btn {
+        display: inline-flex;
+        align-items: center;
+        padding: 6px 12px;
+        border-radius: 99px;
+        border: 1.5px solid var(--border-2);
+        background: var(--surface-2);
+        color: var(--text-muted);
+        font-size: 12px;
+        font-weight: 700;
+        font-family: 'Nunito', sans-serif;
+        cursor: pointer;
+        white-space: nowrap;
+        transition: background 0.15s, border-color 0.15s, color 0.15s;
     }
 
-    /* Fallback gap (flex-wrap + jumlah cabang bisa banyak): margin-left & margin-top
-       sekaligus di "> * + *". Trade-off kecil: item pertama tiap baris wrap dapat
-       margin-left yang tidak perlu, tapi aman dari numpuk/overlap di Chrome lama. */
-    .cabang-chip-list > * + * { margin-left: 5px; margin-top: 5px; }
+    .cabang-summary-btn:hover { border-color: var(--red); color: var(--red); }
+
+    .cabang-summary-btn.all-active {
+        background: var(--red-soft);
+        border-color: var(--red);
+        color: var(--red);
+    }
+
+    .cabang-summary-btn .dd-caret {
+        font-size: 9px;
+        margin-left: 6px;
+        transition: transform 0.15s;
+    }
+
+    .cabang-summary-btn.open .dd-caret { transform: rotate(180deg); }
+
+    /* Popover tunggal (dipakai bergantian utk semua baris), posisi fixed supaya
+       tidak terpotong oleh overflow-x:auto pada .table-wrap. */
+    .cabang-popover {
+        position: fixed;
+        display: none;
+        min-width: 190px;
+        max-width: 260px;
+        max-height: 320px;
+        overflow-y: auto;
+        background: var(--surface);
+        border: 1.5px solid var(--border);
+        border-radius: 14px;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.14);
+        padding: 8px;
+        z-index: 500;
+        animation: dropIn 0.15s ease;
+    }
+
+    .cabang-popover.open { display: block; }
+
+    .cabang-popover .cb-label {
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    .cabang-popover .cb-label + .cb-label { margin-top: 4px; }
 
     @media (max-width: 844px) {
         .grid-input-detail {
@@ -345,6 +393,9 @@
     <button class="bn-item active" onclick="openSheet('moreSheet')"><span class="bn-icon">☰</span><span class="bn-label">Lainnya</span></button>
 </nav>
 
+<!-- POPOVER CABANG (dipakai bergantian per baris tabel produk) -->
+<div class="cabang-popover" id="cabangPopover"></div>
+
 <!-- MORE SHEET -->
 <div class="sheet-overlay" id="moreSheet" onclick="closeSheetOutside(event,'moreSheet')">
     <div class="bottom-sheet" onclick="event.stopPropagation()">
@@ -523,6 +574,14 @@ function buildMoreMenu() {
 function openSheet(id) { if(id==='moreSheet') buildMoreMenu(); document.getElementById(id).classList.add('open'); }
 function closeSheetOutside(e,id) { if(e.target===document.getElementById(id)) document.getElementById(id).classList.remove('open'); }
 
+// Hitung ringkasan "X/Y Aktif" cabang untuk satu produk, dipakai di tombol ringkas & popover.
+function hitungRingkasanCabang(p) {
+    const total = (window.daftarCabang || []).length;
+    const nonaktifSet = new Set(p.nonaktif_cabang || []);
+    const aktif = (window.daftarCabang || []).filter(c => !nonaktifSet.has(c.nama_cabang)).length;
+    return { aktif, total };
+}
+
 /* ── LOGIKA PRODUK (TIDAK BERUBAH) ── */
 async function muatProduk() {
     const [resProduk, resHPP] = await Promise.all([
@@ -553,16 +612,7 @@ async function muatProduk() {
         const margin = harga > 0 ? Math.round((harga - hpp) / harga * 100) : 0;
         const mColor = margin >= 30 ? 'var(--green)' : margin >= 15 ? 'var(--orange)' : 'var(--red)';
         const aktifKasir   = parseInt(p.aktif_kasir, 10) !== 0; // DEFAULT 1 di DB - data lama otomatis aktif
-        const nonaktifSet  = new Set(p.nonaktif_cabang || []);
-        const cabangChips  = (window.daftarCabang || []).map(c => {
-            const namaCabang = c.nama_cabang;
-            const aktifDiCabangIni = !nonaktifSet.has(namaCabang);
-            const namaEsc = namaCabang.replace(/'/g, "\\'");
-            return `<label class="cb-label" title="${aktifDiCabangIni ? 'Aktif' : 'Nonaktif'} di ${namaCabang}">
-                <input type="checkbox" ${aktifDiCabangIni ? 'checked' : ''} onchange="toggleProdukCabang(${p.id}, '${namaEsc}', this.checked)">
-                ${namaCabang}
-            </label>`;
-        }).join('');
+        const cabangSummary = hitungRingkasanCabang(p);
         tr.innerHTML = `
             <td><span class="drag-handle">☰</span></td>
             <td><span class="sku-badge">${p.sku}</span></td>
@@ -576,7 +626,12 @@ async function muatProduk() {
                     <span class="slider"></span>
                 </label>
             </td>
-            <td><div class="cabang-chip-list">${cabangChips || '<span style="font-size:11px;color:var(--text-light);">Belum ada cabang</span>'}</div></td>
+            <td>${(window.daftarCabang || []).length
+                ? `<button type="button" class="cabang-summary-btn${cabangSummary.aktif === cabangSummary.total ? ' all-active' : ''}" id="cabangBtn-${p.id}" onclick="toggleCabangPopover(event, ${p.id})" title="Atur cabang aktif">
+                        <span id="cabangBtnLabel-${p.id}">${cabangSummary.aktif}/${cabangSummary.total} Aktif</span>
+                        <span class="dd-caret">▾</span>
+                    </button>`
+                : '<span style="font-size:11px;color:var(--text-light);">Belum ada cabang</span>'}</td>
             <td>
                 <button class="btn-edit-icon" onclick="siapkanEdit(${index})" title="Edit Data">✏️</button>
                 <button class="btn-hapus-icon" onclick="hapusProduk(${p.id})" title="Hapus Data">🗑️</button>
@@ -626,6 +681,7 @@ async function toggleProdukCabang(id, cabangNama, aktif) {
             if (p) {
                 const list = p.nonaktif_cabang || [];
                 p.nonaktif_cabang = aktif ? list.filter(c => c !== cabangNama) : [...list, cabangNama];
+                refreshCabangSummary(id);
             }
         } else {
             toast.error('Gagal menyimpan: ' + (hasil.message || 'error'));
@@ -634,6 +690,89 @@ async function toggleProdukCabang(id, cabangNama, aktif) {
         toast.error('Gagal koneksi ke server!');
     }
 }
+
+// Update label tombol ringkas "X/Y Aktif" di baris tabel setelah sebuah cabang di-toggle di popover.
+function refreshCabangSummary(id) {
+    const p = (window.allProduk || []).find(x => Number(x.id) === id);
+    if (!p) return;
+    const summary = hitungRingkasanCabang(p);
+    const label = document.getElementById(`cabangBtnLabel-${id}`);
+    if (label) label.textContent = `${summary.aktif}/${summary.total} Aktif`;
+    const btn = document.getElementById(`cabangBtn-${id}`);
+    if (btn) btn.classList.toggle('all-active', summary.aktif === summary.total);
+}
+
+// Isi popover cabang dengan checkbox aktif/nonaktif per cabang untuk satu produk.
+function renderCabangPopoverContent(p) {
+    const nonaktifSet = new Set(p.nonaktif_cabang || []);
+    const popover = document.getElementById('cabangPopover');
+    popover.innerHTML = (window.daftarCabang || []).map(c => {
+        const namaCabang = c.nama_cabang;
+        const aktifDiCabangIni = !nonaktifSet.has(namaCabang);
+        const namaEsc = namaCabang.replace(/'/g, "\\'");
+        return `<label class="cb-label" title="${aktifDiCabangIni ? 'Aktif' : 'Nonaktif'} di ${namaCabang}">
+            <input type="checkbox" ${aktifDiCabangIni ? 'checked' : ''} onchange="toggleProdukCabang(${p.id}, '${namaEsc}', this.checked)">
+            ${namaCabang}
+        </label>`;
+    }).join('');
+}
+
+// Posisikan popover (fixed) menempel di bawah tombol, geser ke kiri kalau kepotong tepi layar.
+function positionCabangPopover(btn) {
+    const popover = document.getElementById('cabangPopover');
+    const rect = btn.getBoundingClientRect();
+    popover.style.top = `${rect.bottom + 6}px`;
+    popover.style.left = `${rect.left}px`;
+    // Ukur lebar setelah dibuka, lalu geser kalau meluber dari tepi kanan viewport.
+    requestAnimationFrame(() => {
+        const pw = popover.offsetWidth;
+        if (rect.left + pw > window.innerWidth - 8) {
+            popover.style.left = `${Math.max(8, window.innerWidth - pw - 8)}px`;
+        }
+        const ph = popover.offsetHeight;
+        if (rect.bottom + 6 + ph > window.innerHeight - 8) {
+            popover.style.top = `${Math.max(8, rect.top - ph - 6)}px`;
+        }
+    });
+}
+
+// Buka/tutup popover cabang milik satu baris; klik tombol yang sama saat sudah terbuka akan menutupnya.
+function toggleCabangPopover(event, id) {
+    event.stopPropagation();
+    const popover = document.getElementById('cabangPopover');
+    const btn = document.getElementById(`cabangBtn-${id}`);
+    const sedangTerbukaUntukId = popover.classList.contains('open') && popover.dataset.produkId === String(id);
+    closeCabangPopover();
+    if (sedangTerbukaUntukId) return; // klik ulang tombol yang sama = toggle tutup
+    const p = (window.allProduk || []).find(x => Number(x.id) === id);
+    if (!p || !btn) return;
+    renderCabangPopoverContent(p);
+    popover.dataset.produkId = String(id);
+    popover.classList.add('open');
+    btn.classList.add('open');
+    positionCabangPopover(btn);
+}
+
+function closeCabangPopover() {
+    const popover = document.getElementById('cabangPopover');
+    if (!popover.classList.contains('open')) return;
+    const openId = popover.dataset.produkId;
+    popover.classList.remove('open');
+    delete popover.dataset.produkId;
+    if (openId) {
+        const btn = document.getElementById(`cabangBtn-${openId}`);
+        if (btn) btn.classList.remove('open');
+    }
+}
+
+document.addEventListener('click', function(e) {
+    const popover = document.getElementById('cabangPopover');
+    if (popover && popover.classList.contains('open') && !popover.contains(e.target)) closeCabangPopover();
+});
+// Capture:true supaya scroll di dalam .table-wrap (overflow-x:auto) ikut menutup popover,
+// walau event 'scroll' tidak bubble - listener capture di window tetap kena semua descendant.
+window.addEventListener('scroll', closeCabangPopover, true);
+window.addEventListener('resize', closeCabangPopover);
 
 async function tambahProduk() {
     const data = {
