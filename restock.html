@@ -473,9 +473,13 @@
     </div>
 
     <div class="page-body">
-        <div class="grid-stok">
 
-            <!-- KOLOM KIRI: Input -->
+        <div class="kmo-tabs">
+            <button class="kmo-tab-btn active" data-tab="input" onclick="switchRestockTab('input')">📝 Input Laporan Restock</button>
+            <button class="kmo-tab-btn" data-tab="history" onclick="switchRestockTab('history')">📄 History Laporan Restock</button>
+        </div>
+
+        <div class="kmo-panel active" id="panel-input">
             <div class="card-stok">
                 <h4>📝 Input Laporan Restock</h4>
                 <p class="sub">*List barang mengikuti Master Data di menu Stok Harian.</p>
@@ -504,8 +508,9 @@
 
                 <button class="btn-save-restock" onclick="simpanLaporanFinal()">💾 Simpan Laporan Restock</button>
             </div>
+        </div>
 
-            <!-- KOLOM KANAN: History -->
+        <div class="kmo-panel" id="panel-history">
             <div class="card-stok">
                 <h4 style="margin-bottom:14px;">📄 History Laporan Restock</h4>
                 <div class="history-wrap" style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
@@ -525,8 +530,8 @@
                     </table>
                 </div>
             </div>
-
         </div>
+
     </div>
 </div>
 
@@ -750,6 +755,13 @@ function buildMoreMenu() {
 
 function openSheet(id) { if(id==='moreSheet') buildMoreMenu(); document.getElementById(id).classList.add('open'); }
 function closeSheetOutside(e,id) { if(e.target===document.getElementById(id)) document.getElementById(id).classList.remove('open'); }
+
+/* ── TAB HALAMAN (Input Laporan / History) ── */
+function switchRestockTab(tab) {
+    document.querySelectorAll('.kmo-tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+    document.querySelectorAll('.kmo-panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('panel-' + tab).classList.add('active');
+}
 
 /* ── CUSTOM DROPDOWN BARANG ── */
 function toggleDropdownBarang() {

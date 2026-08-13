@@ -277,9 +277,38 @@
     </header>
 
     <div class="page-body">
-        <div class="grid-admin">
 
-            <!-- KOLOM KIRI: Cabang + Role -->
+        <div class="kmo-tabs">
+            <button class="kmo-tab-btn active" data-tab="database" onclick="switchUserTab('database')">👥 Database Tim</button>
+            <button class="kmo-tab-btn" data-tab="cabang-role" onclick="switchUserTab('cabang-role')">🏢 Cabang & Role</button>
+            <button class="kmo-tab-btn" data-tab="pendaftaran" onclick="switchUserTab('pendaftaran')">📝 Pendaftaran Akun</button>
+        </div>
+
+        <!-- DATABASE TIM -->
+        <div class="kmo-panel active" id="panel-database">
+            <div class="box box-db" style="margin-bottom:0;">
+                <h3 class="section-title">👥 Database Tim</h3>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Nama</th>
+                                <th>User</th>
+                                <th>Pass</th>
+                                <th>Role</th>
+                                <th>Cabang</th>
+                                <th>File</th>
+                                <th>Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabelUser"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- CABANG + ROLE -->
+        <div class="kmo-panel" id="panel-cabang-role">
             <div class="col-side">
                 <div class="box">
                     <h3 class="section-title">🏢 List Cabang</h3>
@@ -300,8 +329,10 @@
                     </table>
                 </div>
             </div>
+        </div>
 
-            <!-- KOLOM TENGAH: Pendaftaran -->
+        <!-- PENDAFTARAN AKUN -->
+        <div class="kmo-panel" id="panel-pendaftaran">
             <div class="box" style="margin-bottom:0;">
                 <h3 class="section-title">📝 Pendaftaran Akun</h3>
 
@@ -351,29 +382,8 @@
 
                 <button class="btn-save" onclick="tambahUser()">💾 Daftarkan Sekarang</button>
             </div>
-
-            <!-- DATABASE TIM: full width di bawah -->
-            <div class="box box-db" style="margin-bottom:0;">
-                <h3 class="section-title">👥 Database Tim</h3>
-                <div class="table-wrap">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Nama</th>
-                                <th>User</th>
-                                <th>Pass</th>
-                                <th>Role</th>
-                                <th>Cabang</th>
-                                <th>File</th>
-                                <th>Aksi</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tabelUser"></tbody>
-                    </table>
-                </div>
-            </div>
-
         </div>
+
 <!-- ── MODAL EDIT CABANG ── -->
 <div id="modalEditCabang" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:2000;align-items:center;justify-content:center;">
     <div style="background:var(--surface);border-radius:var(--r-lg);padding:24px;width:min(380px,92vw);box-shadow:var(--sh-lg);">
@@ -572,6 +582,13 @@ function buildMoreMenu() {
 
 function openSheet(id) { if(id==='moreSheet') buildMoreMenu(); document.getElementById(id).classList.add('open'); }
 function closeSheetOutside(e,id) { if(e.target===document.getElementById(id)) document.getElementById(id).classList.remove('open'); }
+
+/* ── TAB HALAMAN (Database Tim / Cabang & Role / Pendaftaran Akun) ── */
+function switchUserTab(tab) {
+    document.querySelectorAll('.kmo-tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+    document.querySelectorAll('.kmo-panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('panel-' + tab).classList.add('active');
+}
 
 /* ── CUSTOM DROPDOWN ROLE ── */
 function toggleDropdownRole() {

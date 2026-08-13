@@ -315,6 +315,12 @@
 
     <div class="page-body">
 
+        <div class="kmo-tabs">
+            <button class="kmo-tab-btn active" data-tab="hitung" onclick="switchSalaryTab('hitung')">💵 Hitung Gaji Karyawan</button>
+            <button class="kmo-tab-btn" data-tab="konfigurasi" onclick="switchSalaryTab('konfigurasi')">⚙️ Konfigurasi Gaji & Struktur Tim</button>
+        </div>
+
+        <div class="kmo-panel active" id="panel-hitung">
         <div class="payroll-filter-card">
             <div class="wh-card-title">📅 Filter & Hitung Gaji Karyawan</div>
             <div class="wh-form-row" style="display: flex; align-items: flex-end; flex-wrap: wrap;">
@@ -330,6 +336,30 @@
             </div>
         </div>
 
+        <div class="payroll-result-card">
+            <div class="wh-card-title">📋 Hasil Perhitungan Penggajian Real-time</div>
+            <div class="wh-table-wrap">
+                <table class="wh-tbl">
+                    <thead>
+                        <tr>
+                            <th>Karyawan</th>
+                            <th>Role Karyawan</th>
+                            <th>Cabang Utama</th>
+                            <th>Masuk (Weekday/Weekend)</th>
+                            <th>Total Omset Jaga</th>
+                            <th>Total Gaji + Bonus</th>
+                            <th style="width: 100px; text-align:center;">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="payrollTableBody">
+                        <tr><td class="wh-empty-td" colspan="7">Silakan pilih tanggal dan klik "Hitung Payroll" di atas.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        </div>
+
+        <div class="kmo-panel" id="panel-konfigurasi">
         <div class="salary-grid">
 
             <div class="salary-card">
@@ -473,27 +503,6 @@
             </div>
 
         </div>
-
-        <div class="payroll-result-card">
-            <div class="wh-card-title">📋 Hasil Perhitungan Penggajian Real-time</div>
-            <div class="wh-table-wrap">
-                <table class="wh-tbl">
-                    <thead>
-                        <tr>
-                            <th>Karyawan</th>
-                            <th>Role Karyawan</th>
-                            <th>Cabang Utama</th>
-                            <th>Masuk (Weekday/Weekend)</th>
-                            <th>Total Omset Jaga</th>
-                            <th>Total Gaji + Bonus</th>
-                            <th style="width: 100px; text-align:center;">Aksi</th>
-                        </tr>
-                    </thead>
-                    <tbody id="payrollTableBody">
-                        <tr><td class="wh-empty-td" colspan="7">Silakan pilih tanggal dan klik "Hitung Payroll" di atas.</td></tr>
-                    </tbody>
-                </table>
-            </div>
         </div>
 
     </div>
@@ -650,6 +659,13 @@ function buildMoreMenu() {
 
 function openSheet(id) { if(id==='moreSheet') buildMoreMenu(); document.getElementById(id).classList.add('open'); }
 function closeSheetOutside(e,id) { if(e.target===document.getElementById(id)) document.getElementById(id).classList.remove('open'); }
+
+/* ── TAB HALAMAN (Hitung Gaji Karyawan / Konfigurasi Gaji & Struktur Tim) ── */
+function switchSalaryTab(tab) {
+    document.querySelectorAll('.kmo-tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+    document.querySelectorAll('.kmo-panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('panel-' + tab).classList.add('active');
+}
 
 function buildSidebar() {
     if (localStorage.getItem('sidebarState') === 'small') {

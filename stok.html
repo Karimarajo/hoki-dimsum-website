@@ -521,61 +521,55 @@
     </div>
 
     <div class="page-body">
-        <div class="grid-stok">
 
-            <div class="left-col">
-                <!-- Master Barang (Owner/VIP) -->
-                <div class="card-stok" id="boxMasterOwner" style="display:none;">
-                    <h4>🛡️ Kelola Master Barang</h4>
-                    <p>Tambah barang yang dilaporkan stoknya.</p>
-                    <div class="master-input-wrap">
-                        <input type="text" id="newMasterItem" class="form-input" style="margin-bottom:0;" placeholder="Nama Barang Baru...">
-                        <button class="btn-plus" onclick="tambahMasterItem()">+</button>
-                    </div>
-                    <div class="master-item-list" id="listMasterItem"></div>
+        <div class="kmo-tabs" id="stokTabs">
+            <button class="kmo-tab-btn active" data-tab="input" onclick="switchStokTab('input')">📝 Input Laporan Harian</button>
+            <button class="kmo-tab-btn" data-tab="history" onclick="switchStokTab('history')">📄 History Laporan Stok</button>
+            <!-- Tab "🛡️ Kelola Master Barang" ditambahkan lewat JS di initMasterAccess() cuma kalau
+                 role Owner/VIP - supaya tab-nya sendiri tidak pernah muncul di daftar tab utk role lain. -->
+        </div>
+
+        <div class="kmo-panel active" id="panel-input">
+            <div class="card-stok">
+                <h4 style="margin-bottom:14px;">📝 Input Laporan Harian</h4>
+
+                <!-- Mode Pekapuran: list langsung -->
+                <div id="modePekapuran" style="display:none;">
+                    <span class="pkp-mode-label">🏭 Mode Stok Gudang (Pekapuran)</span>
+                    <div class="pekapuran-list" id="pekapuranList"></div>
                 </div>
 
-                <!-- Input Laporan -->
-                <div class="card-stok">
-                    <h4 style="margin-bottom:14px;">📝 Input Laporan Harian</h4>
-
-                    <!-- Mode Pekapuran: list langsung -->
-                    <div id="modePekapuran" style="display:none;">
-                        <span class="pkp-mode-label">🏭 Mode Stok Gudang (Pekapuran)</span>
-                        <div class="pekapuran-list" id="pekapuranList"></div>
-                    </div>
-
-                    <!-- Mode Normal: dropdown -->
-                    <div id="modeNormal">
-                    <label class="form-label">Pilih Barang</label>
-                    <div class="custom-select-wrap" id="selectBarangWrap">
-                        <button class="custom-select-btn" onclick="toggleDropdownBarang()">
-                            <span id="selectedBarangLabel">Pilih Barang...</span>
-                            <svg width="12" height="8" viewBox="0 0 12 8" fill="none">
-                                <path d="M1 1l5 5 5-5" stroke="#d32f2f" stroke-width="1.5" stroke-linecap="round"/>
-                            </svg>
-                        </button>
-                        <div class="custom-dropdown" id="dropdownBarang"></div>
-                    </div>
-
-                    <label class="form-label">Jumlah / Qty</label>
-                    <input type="number" id="qtyItemLaporan" placeholder="0" class="form-input">
-                    </div><!-- end modeNormal -->
-
-                    <button class="btn-add-draft" onclick="tambahKeDraft()">+ Masukkan ke Daftar</button>
-
-                    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
-                    <table class="draft-table">
-                        <thead><tr><th>Material</th><th>Qty</th><th>X</th></tr></thead>
-                        <tbody id="tabelDraft"></tbody>
-                    </table>
-                    </div>
-
-                    <button class="btn-save-stok" onclick="simpanLaporanFinal()">💾 Simpan & Update Stok</button>
+                <!-- Mode Normal: dropdown -->
+                <div id="modeNormal">
+                <label class="form-label">Pilih Barang</label>
+                <div class="custom-select-wrap" id="selectBarangWrap">
+                    <button class="custom-select-btn" onclick="toggleDropdownBarang()">
+                        <span id="selectedBarangLabel">Pilih Barang...</span>
+                        <svg width="12" height="8" viewBox="0 0 12 8" fill="none">
+                            <path d="M1 1l5 5 5-5" stroke="#d32f2f" stroke-width="1.5" stroke-linecap="round"/>
+                        </svg>
+                    </button>
+                    <div class="custom-dropdown" id="dropdownBarang"></div>
                 </div>
+
+                <label class="form-label">Jumlah / Qty</label>
+                <input type="number" id="qtyItemLaporan" placeholder="0" class="form-input">
+                </div><!-- end modeNormal -->
+
+                <button class="btn-add-draft" onclick="tambahKeDraft()">+ Masukkan ke Daftar</button>
+
+                <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
+                <table class="draft-table">
+                    <thead><tr><th>Material</th><th>Qty</th><th>X</th></tr></thead>
+                    <tbody id="tabelDraft"></tbody>
+                </table>
+                </div>
+
+                <button class="btn-save-stok" onclick="simpanLaporanFinal()">💾 Simpan & Update Stok</button>
             </div>
+        </div>
 
-            <!-- History -->
+        <div class="kmo-panel" id="panel-history">
             <div class="card-stok">
                 <h4 style="margin-bottom:14px;">📄 History Laporan Stok</h4>
                 <div class="history-table-wrap">
@@ -594,8 +588,22 @@
                     </table>
                 </div>
             </div>
-
         </div>
+
+        <!-- Master Barang (Owner/VIP) - panel default tersembunyi (tidak ada class "active"),
+             dan tab-button-nya cuma di-render lewat JS kalau role qualify (lihat initMasterAccess()). -->
+        <div class="kmo-panel" id="panel-master">
+            <div class="card-stok" id="boxMasterOwner">
+                <h4>🛡️ Kelola Master Barang</h4>
+                <p>Tambah barang yang dilaporkan stoknya.</p>
+                <div class="master-input-wrap">
+                    <input type="text" id="newMasterItem" class="form-input" style="margin-bottom:0;" placeholder="Nama Barang Baru...">
+                    <button class="btn-plus" onclick="tambahMasterItem()">+</button>
+                </div>
+                <div class="master-item-list" id="listMasterItem"></div>
+            </div>
+        </div>
+
     </div>
 </div>
 
@@ -839,10 +847,20 @@ document.addEventListener('click', function(e) {
     if (wrap && !wrap.contains(e.target)) wrap.classList.remove('open');
 });
 
+/* ── TAB HALAMAN (Input Laporan / History / Kelola Master Barang) ── */
+function switchStokTab(tab) {
+    document.querySelectorAll('#stokTabs .kmo-tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+    document.querySelectorAll('.kmo-panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('panel-' + tab).classList.add('active');
+}
+
 /* ── MASTER BARANG ── */
 function initMasterAccess() {
     if (['Owner','VIP'].includes(currentUser.role)) {
-        document.getElementById('boxMasterOwner').style.display = 'block';
+        // Tab "Kelola Master Barang" cuma ditambahkan ke daftar tab utk role yang boleh akses -
+        // bukan cuma di-hide lewat CSS, supaya role lain tidak melihat tab-nya sama sekali.
+        document.getElementById('stokTabs').insertAdjacentHTML('beforeend',
+            `<button class="kmo-tab-btn" data-tab="master" onclick="switchStokTab('master')">🛡️ Kelola Master Barang</button>`);
     }
     renderMaster();
 }

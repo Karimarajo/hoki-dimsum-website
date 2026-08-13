@@ -423,9 +423,13 @@
     </div>
 
     <div class="page-body">
-        <div class="grid-laporan">
 
-            <!-- KOLOM KIRI: Form Settlement -->
+        <div class="kmo-tabs">
+            <button class="kmo-tab-btn active" data-tab="settlement" onclick="switchLaporanTab('settlement')">📝 Settlement Harian</button>
+            <button class="kmo-tab-btn" data-tab="history" onclick="switchLaporanTab('history')">📄 History Settlement</button>
+        </div>
+
+        <div class="kmo-panel active" id="panel-settlement">
             <div class="card-laporan">
                 <div class="card-header">
                     <div class="card-header-left">
@@ -477,8 +481,9 @@
                 <!-- Hanya tombol Simpan di halaman utama -->
                 <button class="btn-simpan-laporan" onclick="simpanLaporan()">💾 Simpan Laporan</button>
             </div>
+        </div>
 
-            <!-- KOLOM KANAN: History -->
+        <div class="kmo-panel" id="panel-history">
             <div class="card-laporan">
                 <div class="hs-head" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap;">
                     <h3 style="margin:0;">📄 History Settlement</h3>
@@ -516,8 +521,8 @@
                     </table>
                 </div>
             </div>
-
         </div>
+
     </div>
 </div>
 
@@ -773,6 +778,13 @@ function buildMoreMenu() {
 
 function openSheet(id) { if(id==='moreSheet') buildMoreMenu(); document.getElementById(id).classList.add('open'); }
 function closeSheetOutside(e,id) { if(e.target===document.getElementById(id)) document.getElementById(id).classList.remove('open'); }
+
+/* ── TAB HALAMAN (Settlement Harian / History Settlement) ── */
+function switchLaporanTab(tab) {
+    document.querySelectorAll('.kmo-tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+    document.querySelectorAll('.kmo-panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('panel-' + tab).classList.add('active');
+}
 
 /* ── FETCH DATA ── */
 async function fetchLaporanData() {
