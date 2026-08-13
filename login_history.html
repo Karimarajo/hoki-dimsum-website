@@ -383,7 +383,13 @@ async function tampilkanLogs() {
             // Log lama (sebelum fitur IP/device/lokasi ada) tidak punya nilai ini - tampilkan "-".
             const ipStr       = log.ip       || '-';
             const deviceStr   = log.device   || '-';
-            const locationStr = log.location || '-';
+            // GPS presisi dari browser diprioritaskan (kalau user izinkan saat login) -
+            // fallback ke teks lokasi dari IP-geolocation kalau tidak ada data GPS.
+            const lat = log.gps_lat !== null && log.gps_lat !== undefined && log.gps_lat !== '' ? parseFloat(log.gps_lat) : null;
+            const lng = log.gps_lng !== null && log.gps_lng !== undefined && log.gps_lng !== '' ? parseFloat(log.gps_lng) : null;
+            const locationStr = (lat !== null && lng !== null && !isNaN(lat) && !isNaN(lng))
+                ? `<a href="https://www.google.com/maps?q=${lat},${lng}" target="_blank" rel="noopener">📍 Lihat di Maps</a>`
+                : (log.location || '-');
             tbody.innerHTML += `
                 <tr>
                     <td class="waktu-cell">${tglStr}</td>

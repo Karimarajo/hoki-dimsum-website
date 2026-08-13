@@ -78,6 +78,50 @@
     /* Run guard once on load */
     guardSession();
 
+    // ── SINGLE-DEVICE SESSION ENFORCEMENT ──
+    // Polling ke check_session tiap 10 detik - paling cepat yang wajar tanpa infrastruktur
+    // push/websocket (di luar stack PHP+vanilla JS project ini). Server sudah overwrite
+    // session_token tiap login sukses (action 'login' di api.php), jadi begitu ada device
+    // lain login pakai akun yang sama, polling berikutnya di sini dapat valid:false dan
+    // sesi ini otomatis keluar. Berlaku semua role, tidak ada pengecualian.
+    function checkSessionValidity() {
+        const uStr  = localStorage.getItem('currentUser');
+        const token = localStorage.getItem('sessionToken');
+        if (!uStr || !token) return; // tidak/sudah tidak login - tidak ada yang perlu dicek
+
+        let username;
+        try { username = JSON.parse(uStr).user; } catch (e) { return; }
+        if (!username) return;
+
+        fetch(`${API_BASE}?action=check_session&user=${encodeURIComponent(username)}&token=${encodeURIComponent(token)}`)
+            .then(res => res.json())
+            .then(hasil => {
+                if (!hasil || hasil.valid !== false) return; // valid, atau respons tak terduga - jangan paksa logout
+
+                // Sesi ini sudah "dilangkahi" login dari device lain - hapus daftar yang
+                // sama dengan auto-logout tengah malam di atas.
+                localStorage.removeItem('currentUser');
+                localStorage.removeItem('loginDate');
+                localStorage.removeItem('cabangHoki');
+                localStorage.removeItem('sessionToken');
+
+                const pesan = 'Akun ini baru saja login di perangkat lain — sesi ini otomatis keluar.';
+                if (typeof toast !== 'undefined' && toast.error) {
+                    toast.error('Sesi Berakhir', pesan);
+                    setTimeout(() => { window.location.href = LOGIN_PAGE; }, 1800);
+                } else {
+                    alert(pesan);
+                    window.location.href = LOGIN_PAGE;
+                }
+            })
+            .catch(() => {
+                // Gagal koneksi ke server (network error sesaat) - jangan paksa logout
+                // cuma gara-gara itu, coba lagi di polling berikutnya.
+            });
+    }
+
+    setInterval(checkSessionValidity, 10000);
+
     // ── GLOBAL NUMBER FORMATTER ──
     function formatRibuan(val) {
         if (val === undefined || val === null || val === '') return '';

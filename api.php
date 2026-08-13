@@ -259,6 +259,17 @@ $checkColLogLocation = $conn->query("SHOW COLUMNS FROM logs_login LIKE 'location
 if ($checkColLogLocation && $checkColLogLocation->num_rows === 0) {
     $conn->query("ALTER TABLE logs_login ADD COLUMN location VARCHAR(150) NULL");
 }
+// GPS presisi dari browser (opsional - NULL kalau user menolak/timeout/browser tidak
+// support geolocation). Kolom "location" (hasil IP-geolocation) tetap diisi sebagai
+// fallback, tidak dihapus - lihat action add_log.
+$checkColLogGpsLat = $conn->query("SHOW COLUMNS FROM logs_login LIKE 'gps_lat'");
+if ($checkColLogGpsLat && $checkColLogGpsLat->num_rows === 0) {
+    $conn->query("ALTER TABLE logs_login ADD COLUMN gps_lat DECIMAL(10,7) NULL");
+}
+$checkColLogGpsLng = $conn->query("SHOW COLUMNS FROM logs_login LIKE 'gps_lng'");
+if ($checkColLogGpsLng && $checkColLogGpsLng->num_rows === 0) {
+    $conn->query("ALTER TABLE logs_login ADD COLUMN gps_lng DECIMAL(10,7) NULL");
+}
 $conn->query("CREATE TABLE IF NOT EXISTS hoki_cabang (
     id INT AUTO_INCREMENT PRIMARY KEY,
     nama_cabang VARCHAR(100) UNIQUE
@@ -1401,12 +1412,29 @@ switch ($action) {
         $ip       = $conn->real_escape_string($ipRaw);
         $device   = $conn->real_escape_string(detect_device($_SERVER['HTTP_USER_AGENT'] ?? ''));
         $location = $conn->real_escape_string(get_geo_location($ipRaw));
-        $conn->query("INSERT INTO logs_login (waktu, username, role, cabang, ip, device, location) VALUES (NOW(),'$u','$r','$c','$ip','$device','$location')");
+
+        // GPS presisi dari browser - opsional, dikirim cuma kalau user mengizinkan &
+        // browser support geolocation (lihat catatLogLogin() di index.html). Divalidasi
+        // sebagai angka & dibatasi ke rentang lat/lng yang valid supaya tidak ada input
+        // sampah masuk kolom DECIMAL; NULL kalau tidak dikirim/tidak valid - "location"
+        // dari IP-geolocation di atas tetap jadi fallback informasi seperti sebelumnya.
+        $gpsLatRaw = $input['gps_lat'] ?? null;
+        $gpsLngRaw = $input['gps_lng'] ?? null;
+        $gpsLat = 'NULL';
+        $gpsLng = 'NULL';
+        if (is_numeric($gpsLatRaw) && is_numeric($gpsLngRaw) &&
+            (float)$gpsLatRaw >= -90 && (float)$gpsLatRaw <= 90 &&
+            (float)$gpsLngRaw >= -180 && (float)$gpsLngRaw <= 180) {
+            $gpsLat = (float)$gpsLatRaw;
+            $gpsLng = (float)$gpsLngRaw;
+        }
+
+        $conn->query("INSERT INTO logs_login (waktu, username, role, cabang, ip, device, location, gps_lat, gps_lng) VALUES (NOW(),'$u','$r','$c','$ip','$device','$location',$gpsLat,$gpsLng)");
         echo json_encode(["status"=>"success"]);
         break;
 
     case 'get_logs':
-        $res = $conn->query("SELECT id, DATE_FORMAT(waktu,'%Y-%m-%d %H:%i:%s') as waktu, username, role, cabang, ip, device, location FROM logs_login ORDER BY waktu DESC LIMIT 200");
+        $res = $conn->query("SELECT id, DATE_FORMAT(waktu,'%Y-%m-%d %H:%i:%s') as waktu, username, role, cabang, ip, device, location, gps_lat, gps_lng FROM logs_login ORDER BY waktu DESC LIMIT 200");
         echo json_encode($res ? $res->fetch_all(MYSQLI_ASSOC) : []);
         break;
 

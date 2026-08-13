@@ -784,12 +784,35 @@
         window.location.href = 'dashboard.html';
     }
 
+    // Coba minta lokasi presisi dari browser, timeout pendek (default 5 detik) supaya
+    // proses login TIDAK PERNAH terhambat lama - kalau user tidak merespons izin lokasi,
+    // browser tidak support geolocation (Chrome sangat lama dll), atau ditolak, resolve
+    // ke null dan login lanjut seperti biasa (fallback ke IP-geolocation di server).
+    function getGpsCoords(timeoutMs = 5000) {
+        return new Promise((resolve) => {
+            if (!('geolocation' in navigator)) { resolve(null); return; }
+            let done = false;
+            const finish = (val) => { if (!done) { done = true; resolve(val); } };
+            const timer = setTimeout(() => finish(null), timeoutMs);
+            try {
+                navigator.geolocation.getCurrentPosition(
+                    (pos) => { clearTimeout(timer); finish({ lat: pos.coords.latitude, lng: pos.coords.longitude }); },
+                    () => { clearTimeout(timer); finish(null); }, // ditolak / gagal
+                    { enableHighAccuracy: false, timeout: timeoutMs, maximumAge: 0 }
+                );
+            } catch (e) { clearTimeout(timer); finish(null); }
+        });
+    }
+
     async function catatLogLogin(username, role, cabang) {
         try {
+            const gps = await getGpsCoords();
+            const payload = { user: username, role: role, cabang: cabang };
+            if (gps) { payload.gps_lat = gps.lat; payload.gps_lng = gps.lng; }
             await fetch(`${API_BASE}?action=add_log`, {
                 method:  'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body:    JSON.stringify({user:username, role:role, cabang:cabang})
+                body:    JSON.stringify(payload)
             });
         } catch (e) { console.error('Gagal mencatat log login'); }
     }
