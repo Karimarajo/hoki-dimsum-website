@@ -371,13 +371,13 @@
                 </div>
 
                 <div class="upload-box">
-                    <label>📂 Upload Dokumen (Format Gambar)</label>
+                    <label>📂 Upload Dokumen (JPG, PNG, atau PDF)</label>
                     <span class="upload-label">KTP:</span>
-                    <input type="file" id="fileKTP" accept="image/*">
+                    <input type="file" id="fileKTP" accept="image/*,.pdf,application/pdf">
                     <span class="upload-label">KK:</span>
-                    <input type="file" id="fileKK" accept="image/*">
+                    <input type="file" id="fileKK" accept="image/*,.pdf,application/pdf">
                     <span class="upload-label">Surat Kerja:</span>
-                    <input type="file" id="fileSPK" accept="image/*">
+                    <input type="file" id="fileSPK" accept="image/*,.pdf,application/pdf">
                 </div>
 
                 <button class="btn-save" onclick="tambahUser()">💾 Daftarkan Sekarang</button>
@@ -425,13 +425,13 @@
         </div>
 
         <div class="upload-box">
-            <label>📂 Upload Dokumen (biarkan kosong kalau tidak mau ganti)</label>
+            <label>📂 Upload Dokumen (JPG, PNG, atau PDF — biarkan kosong kalau tidak mau ganti)</label>
             <span class="upload-label">KTP: <b id="editDocStatusKTP" style="font-weight:700;">—</b></span>
-            <input type="file" id="editFileKTP" accept="image/*">
+            <input type="file" id="editFileKTP" accept="image/*,.pdf,application/pdf">
             <span class="upload-label">KK: <b id="editDocStatusKK" style="font-weight:700;">—</b></span>
-            <input type="file" id="editFileKK" accept="image/*">
+            <input type="file" id="editFileKK" accept="image/*,.pdf,application/pdf">
             <span class="upload-label">Surat Kerja: <b id="editDocStatusSPK" style="font-weight:700;">—</b></span>
-            <input type="file" id="editFileSPK" accept="image/*">
+            <input type="file" id="editFileSPK" accept="image/*,.pdf,application/pdf">
         </div>
 
         <div class="modal-btn-row" style="display:flex;">
@@ -990,6 +990,22 @@ function readFile(file) {
     });
 }
 
+// Dokumen bisa berupa gambar (JPG/PNG) atau PDF - tipe file dibaca langsung dari
+// prefix data URL-nya (data:application/pdf;... vs data:image/...;...), bukan dari
+// nama field, supaya tidak perlu nyimpen tipe terpisah. PDF ditampilkan lewat <embed>
+// (viewer PDF bawaan browser) + link "Buka di tab baru" sebagai fallback kalau embed-nya
+// tidak didukung; gambar tetap <img> seperti sebelumnya.
+function renderDokPreview(dataUrl, label) {
+    if (!dataUrl) return '';
+    const isPdf = dataUrl.indexOf('data:application/pdf') === 0;
+    if (isPdf) {
+        return `<h3>${label}</h3>
+            <embed src="${dataUrl}" type="application/pdf" width="500" height="600" style="border:1px solid #ccc;">
+            <p><a href="${dataUrl}" target="_blank" rel="noopener">📄 Buka PDF di tab baru</a></p>`;
+    }
+    return `<h3>${label}</h3><img src="${dataUrl}" width="400"><br>`;
+}
+
 function lihatDokumen(idx) {
     const user = window.allUsersData[idx];
     const docs = JSON.parse(user.docs_json || '{}');
@@ -997,9 +1013,9 @@ function lihatDokumen(idx) {
     const win = window.open("", "_blank");
     win.document.write(`<html><body style="font-family:sans-serif;padding:20px;">
         <h2>Berkas: ${user.fullName}</h2><hr>
-        ${docs.ktp ? `<h3>KTP</h3><img src="${docs.ktp}" width="400"><br>` : ''}
-        ${docs.kk  ? `<h3>KK</h3><img src="${docs.kk}" width="400"><br>`  : ''}
-        ${docs.spk ? `<h3>SPK</h3><img src="${docs.spk}" width="400">`    : ''}
+        ${renderDokPreview(docs.ktp, 'KTP')}
+        ${renderDokPreview(docs.kk, 'KK')}
+        ${renderDokPreview(docs.spk, 'SPK')}
     </body></html>`);
 }
 
