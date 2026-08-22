@@ -439,8 +439,8 @@
             <img src="Assets/3.png" alt="Hoki">
         </div>
         <div class="sidebar-brand-text">
-            <div class="sidebar-brand-name">Hoki Dimsum V4.1</div>
-            <div class="sidebar-brand-sub">POS System v4.1</div>
+            <div class="sidebar-brand-name">Hoki Dimsum <span class="app-ver">V4.1</span></div>
+            <div class="sidebar-brand-sub">POS System <span class="app-ver-lower">v4.1</span></div>
         </div>
     </div>
     <button class="sidebar-toggle" onclick="toggleSidebar()">‹</button>
@@ -952,7 +952,7 @@ function kirimLaporanWA(data) {
     });
     
     txt += `--------------------------------\n`;
-    txt += `✅ _Laporan via Web Pos-Kasir Hoki Dimsum V4.1_`;
+    txt += `✅ _Laporan via Web Pos-Kasir Hoki Dimsum ${APP_VERSION}_`;
 
     window.open(`https://wa.me/?text=${encodeURIComponent(txt)}`, '_blank');
 }

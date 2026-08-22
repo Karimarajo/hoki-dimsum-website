@@ -1,7 +1,7 @@
 {
   "name": "Hoki POS - Hoki Dimsum",
   "short_name": "Hoki POS",
-  "description": "Aplikasi POS & manajemen bisnis Hoki Dimsum V4.1",
+  "description": "Aplikasi POS & manajemen bisnis Hoki Dimsum",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
