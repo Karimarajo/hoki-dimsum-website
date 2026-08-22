@@ -956,7 +956,7 @@ function kirimLaporanWA(data) {
     txt += `--------------------------------\n`;
     txt += `✅ _Laporan via Web Pos-Kasir Hoki Dimsum ${APP_VERSION}_`;
 
-    window.open(`https://wa.me/?text=${encodeURIComponent(txt)}`, '_blank');
+    bukaLinkWA(`https://wa.me/?text=${encodeURIComponent(txt)}`);
 }
 
 function tutupDetail() {

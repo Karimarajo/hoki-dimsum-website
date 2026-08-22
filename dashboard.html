@@ -2314,7 +2314,7 @@ async function prosesTransaksi(denganCetak, metodeOverride) {
                 const waUrl = waNumber
                     ? `https://api.whatsapp.com/send?phone=${waNumber}&text=${encodeURIComponent(tekstStruk)}`
                     : `https://api.whatsapp.com/send?text=${encodeURIComponent(tekstStruk)}`;
-                window.open(waUrl, '_blank');
+                bukaLinkWA(waUrl);
                 toast.success('Struk WA terkirim! Order #' + orderId);
                 keranjang = [];
                 kuponAktif = null;

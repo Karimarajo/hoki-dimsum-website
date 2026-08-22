@@ -619,6 +619,20 @@ function applyAppVersion() {
 }
 document.addEventListener('DOMContentLoaded', applyAppVersion);
 
+// Sama seperti APP_VERSION di atas - halaman ini sengaja tidak load config.js,
+// jadi bukaLinkWA() didefinisikan lokal juga. Lihat komentar lengkap versi
+// config.js soal kenapa fungsi ini perlu: window.open(url,'_blank') diam saja
+// kalau app-nya sedang jalan sebagai PWA yang di-install ke Home Screen iPhone.
+function bukaLinkWA(url) {
+    const isStandalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)
+        || window.navigator.standalone === true;
+    if (isStandalone) {
+        window.location.href = url;
+    } else {
+        window.open(url, '_blank');
+    }
+}
+
 const currentUser = JSON.parse(localStorage.getItem('currentUser')) || {};
 if (!currentUser.user) window.location.href = 'index.html';
 
@@ -1071,7 +1085,7 @@ function kirimWAPayroll() {
     text += `Terima kasih atas dedikasi dan kerja keras Anda bersama Hoki Dimsum ${APP_VERSION} 🙏\n\n`;
     text += `_Dokumen ini resmi dan dicetak otomatis oleh Hoki POS System ${APP_VERSION.toLowerCase()}_`;
     
-    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
+    bukaLinkWA(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`);
 }
 
 window.onload = async () => {

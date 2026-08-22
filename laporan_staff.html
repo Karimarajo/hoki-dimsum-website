@@ -1039,7 +1039,7 @@ function kirimWADariDetail() {
     txt += `✅ _Laporan via Web Pos-Kasir Hoki Dimsum ${APP_VERSION}_`;
 
     // Mengirim ke WhatsApp tanpa nomor tujuan tetap (Solusi 1)
-    window.open(`https://wa.me/?text=${encodeURIComponent(txt)}`, '_blank');
+    bukaLinkWA(`https://wa.me/?text=${encodeURIComponent(txt)}`);
 }
 
 /* ── RENDER HISTORY ── */

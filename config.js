@@ -34,3 +34,24 @@ function applyAppVersion() {
     });
 }
 document.addEventListener('DOMContentLoaded', applyAppVersion);
+
+// ── Buka link WhatsApp (kirim laporan/struk/slip) ──────────────────
+// BUG: sejak app ini bisa di-install ke Home Screen iPhone (mode "standalone"),
+// window.open(url,'_blank') diam saja tanpa efek apapun kalau dipanggil dari
+// dalam app yang sudah di-install - ini keterbatasan WebKit/Safari yang memang
+// sengaja menonaktifkan buka tab baru di luar app Safari biasa (bukan bug di
+// kode kita). Makanya tombol "Kirim ke WA" terasa "gak bisa" khusus buat user
+// yang sudah nge-install app-nya ke layar utama, padahal di browser tab biasa
+// baik-baik saja. Solusi: kalau lagi jalan sebagai app standalone, pindah pakai
+// window.location.href (tetap bisa buka app WhatsApp/WhatsApp Web di tab yang
+// sama) - kalau masih di tab browser biasa, tetap window.open supaya halaman
+// asal tidak ikut hilang.
+function bukaLinkWA(url) {
+    const isStandalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)
+        || window.navigator.standalone === true;
+    if (isStandalone) {
+        window.location.href = url;
+    } else {
+        window.open(url, '_blank');
+    }
+}

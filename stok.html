@@ -1139,7 +1139,7 @@ function kirimWALaporanStok() {
     txt += `✅ _Laporan via Web Pos-Kasir Hoki Dimsum ${APP_VERSION}_`;
 
     // Menggunakan Solusi 1: Bebas pilih kontak WhatsApp
-    window.open(`https://wa.me/?text=${encodeURIComponent(txt)}`, '_blank');
+    bukaLinkWA(`https://wa.me/?text=${encodeURIComponent(txt)}`);
 }
 
 function tutupDetail() {
