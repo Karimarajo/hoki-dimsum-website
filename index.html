@@ -5,6 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Hoki POS 2026 — Login</title>
         <link rel="icon" href="Assets/2.png">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#d32f2f">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Hoki POS">
+    <link rel="apple-touch-icon" href="Assets/2.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
@@ -429,10 +436,18 @@
             background: var(--surface);
             border: 1.5px solid var(--border);
             border-radius: 12px;
-            overflow: hidden;
             z-index: 300;
             box-shadow: 0 8px 24px rgba(0,0,0,0.10);
             animation: cabangDropIn 0.15s ease;
+            /* Scroll internal - dulu overflow:hidden + tanpa max-height bikin daftar cabang
+               "statis" begitu isinya lebih panjang dari layar (parah kalau cabang sampai
+               puluhan/ratusan) - list bisa kepotong dan tidak ada cara nge-gulir sampai ke
+               item paling bawah, apalagi di mobile. Sekarang list-nya sendiri yang scroll,
+               jadi tidak bergantung ke perilaku scroll body/right-panel di sekitarnya. */
+            max-height: min(50vh, 320px);
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            overscroll-behavior: contain;
         }
 
         @keyframes cabangDropIn {

@@ -1,0 +1,15 @@
+{
+  "name": "Hoki POS - Hoki Dimsum",
+  "short_name": "Hoki POS",
+  "description": "Aplikasi POS & manajemen bisnis Hoki Dimsum V4.1",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#f4f4ef",
+  "theme_color": "#d32f2f",
+  "lang": "id",
+  "icons": [
+    { "src": "Assets/2.png", "sizes": "1080x1080", "type": "image/png", "purpose": "any" }
+  ]
+}
