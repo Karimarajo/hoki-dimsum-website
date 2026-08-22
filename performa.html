@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Hoki POS - Performa Staff</title>
+    <link rel="icon" href="Assets/2.png">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#d32f2f">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Hoki POS">
+    <link rel="apple-touch-icon" href="Assets/2.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css?v=20260501">
+    <style>
+    .payroll-filter-card {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 16px !important;
+        padding: 24px;
+        margin-bottom: 28px;
+    }
+    .payroll-result-card {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 16px !important;
+        padding: 24px;
+        margin-top: 28px;
+    }
+    .stat-cards-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 20px;
+        margin-bottom: 24px;
+    }
+    .stat-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 20px;
+        text-align: center;
+        box-shadow: var(--sh-sm);
+    }
+    .stat-title {
+        font-size: 11px;
+        font-weight: 700;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 8px;
+    }
+    .stat-value {
+        font-family: 'Nunito', sans-serif;
+        font-size: 18px;
+        font-weight: 800;
+        color: var(--text);
+    }
+
+    .wh-table-wrap {
+        border-radius: 12px !important;
+        overflow-x: auto !important;
+        border: 1px solid #e2e8f0 !important;
+        margin-top: 20px;
+    }
+    table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    th {
+        background: var(--red);
+        color: white;
+        padding: 12px;
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        text-align: left;
+    }
+    td {
+        padding: 12px;
+        border-bottom: 1px solid var(--border);
+        color: var(--text);
+        font-size: 13px;
+    }
+
+    .salary-form-control {
+        display: flex;
+        flex-direction: column;
+    }
+    .salary-form-control label {
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--text-muted);
+        margin-bottom: 4px;
+    }
+    .salary-form-control input, .salary-form-control select {
+        padding: 8px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        font-family: 'Nunito', sans-serif;
+        font-size: 13px;
+        background: var(--surface);
+        color: var(--text);
+    }
+
+    .btn-toggle-detail {
+        border: none;
+        background: var(--surface-2);
+        color: var(--text);
+        width: 26px;
+        height: 26px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 12px;
+    }
+
+    /* Fallback jarak flex (gap tidak didukung Chrome flex < 84) */
+    .wh-form-row > * + * { margin-left: 16px; margin-top: 16px; }
+    </style>
+    <script src="config.js"></script>
+</head>
+<body>
+
+<aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand" onclick="toggleSidebar()">
+        <div class="sidebar-logo"><img src="Assets/3.png" alt="Hoki"></div>
+        <div class="sidebar-brand-text">
+            <div class="sidebar-brand-name">Hoki Dimsum <span class="app-ver">V4.1</span></div>
+            <div class="sidebar-brand-sub">POS System <span class="app-ver-lower">v4.1</span></div>
+        </div>
+    </div>
+    <button class="sidebar-toggle" onclick="toggleSidebar()">‹</button>
+    <nav class="sidebar-nav" id="sidebarNav"></nav>
+    <div class="sidebar-user">
+        <div class="user-card">
+            <div class="user-avatar" id="userAvatarInitial">?</div>
+            <div class="user-info">
+                <div class="user-name" id="sidebarUserName">Loading...</div>
+                <div class="user-role" id="sidebarUserRole">—</div>
+            </div>
+            <button class="btn-logout-icon" onclick="logout()" title="Logout">🚪</button>
+        </div>
+    </div>
+</aside>
+
+<main class="main-content" id="mainContent">
+    <header class="top-header">
+        <div class="header-left">
+            <button class="btn-menu" onclick="toggleSidebar()">☰</button>
+            <div class="header-page-title">🏆 Performa Staff</div>
+        </div>
+        <div class="header-right">
+            <div class="clock-pill">
+                <div id="realtimeClock">00:00:00</div>
+                <div id="realtimeDate">—</div>
+            </div>
+        </div>
+    </header>
+
+    <div class="page-body">
+
+        <!-- LEADERBOARD - selalu tampil ke SEMUA role, termasuk Staff -->
+        <div class="stat-cards-grid">
+            <div class="stat-card">
+                <div class="stat-title">🥇 Tertinggi Minggu Ini</div>
+                <div class="stat-value" id="boardMingguNama">—</div>
+                <div style="font-size:11px; color:var(--text-muted); margin-top:4px;" id="boardMingguSub">Memuat...</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-title">🥇 Tertinggi Bulan Ini</div>
+                <div class="stat-value" id="boardBulanNama">—</div>
+                <div style="font-size:11px; color:var(--text-muted); margin-top:4px;" id="boardBulanSub">Memuat...</div>
+            </div>
+        </div>
+
+        <div class="payroll-filter-card">
+            <div class="wh-card-title" style="font-size:14px; font-weight:700; color:var(--text); margin-bottom:4px;">📅 Filter Performa</div>
+            <p style="font-size:12px; color:var(--text-muted); margin:0 0 12px;">
+                Mingguan dihitung per pekan Senin–Minggu (bukan potongan tanggal), Bulanan dari tanggal 1 s/d akhir bulan.
+            </p>
+
+            <div class="kmo-tabs">
+                <button class="kmo-tab-btn active" data-mode="weekly" onclick="setPerformaMode('weekly')">📆 Mingguan</button>
+                <button class="kmo-tab-btn" data-mode="monthly" onclick="setPerformaMode('monthly')">🗓️ Bulanan</button>
+                <button class="kmo-tab-btn" data-mode="custom" onclick="setPerformaMode('custom')">🔧 Custom</button>
+            </div>
+
+            <div class="wh-form-row" id="filterBulanWrap" style="display:flex; align-items:flex-end; flex-wrap:wrap;">
+                <div class="salary-form-control">
+                    <label>Pilih Bulan</label>
+                    <input type="month" id="filterBulan" style="width:180px;">
+                </div>
+                <div class="salary-form-control" id="filterMingguWrap">
+                    <label>Pilih Minggu</label>
+                    <select id="filterMinggu" style="width:220px;">
+                        <option value="">Semua Minggu</option>
+                    </select>
+                </div>
+                <button class="btn-simpan" onclick="loadPerforma()" style="height:38px; white-space:nowrap; border-radius:8px; padding:0 16px; background:var(--red); color:white; border:none; font-weight:600; cursor:pointer;">🔍 Cari</button>
+            </div>
+
+            <div class="wh-form-row" id="filterCustomWrap" style="display:none; align-items:flex-end; flex-wrap:wrap;">
+                <div class="salary-form-control">
+                    <label>Dari Tanggal</label>
+                    <input type="date" id="filterTglMulai">
+                </div>
+                <div class="salary-form-control">
+                    <label>Sampai Tanggal</label>
+                    <input type="date" id="filterTglSelesai">
+                </div>
+                <button class="btn-simpan" onclick="loadPerforma()" style="height:38px; white-space:nowrap; border-radius:8px; padding:0 16px; background:var(--red); color:white; border:none; font-weight:600; cursor:pointer;">🔍 Cari</button>
+            </div>
+        </div>
+
+        <div class="payroll-result-card">
+            <div class="wh-card-title" id="resultTitle" style="font-size:14px; font-weight:700; color:var(--text); margin-bottom:4px;">📋 Performa Staff</div>
+            <p style="font-size:11px; color:var(--text-muted); margin:0 0 4px;" id="scopeNote"></p>
+            <div class="wh-table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width:32px;"></th>
+                            <th>Nama</th>
+                            <th>Role</th>
+                            <th>Cabang</th>
+                            <th>Omset</th>
+                            <th>Hari Kerja</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabelPerforma">
+                        <tr><td colspan="6" style="text-align:center; color:var(--text-muted);">Memuat data...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</main>
+
+<nav class="bottom-nav">
+    <button class="bn-item" onclick="location.href='dashboard.html'"><span class="bn-icon">🛒</span><span class="bn-label">Kasir</span></button>
+    <button class="bn-item" onclick="location.href='history.html'"><span class="bn-icon">📄</span><span class="bn-label">History</span></button>
+    <button class="bn-item" onclick="location.href='stok.html'"><span class="bn-icon">📦</span><span class="bn-label">Stok</span></button>
+    <button class="bn-item" onclick="location.href='laporan_staff.html'"><span class="bn-icon">🚀</span><span class="bn-label">Laporan</span></button>
+    <button class="bn-item active" onclick="openSheet('moreSheet')"><span class="bn-icon">☰</span><span class="bn-label">Lainnya</span></button>
+</nav>
+
+<!-- MORE SHEET -->
+<div class="sheet-overlay" id="moreSheet" onclick="closeSheetOutside(event,'moreSheet')">
+    <div class="bottom-sheet" onclick="event.stopPropagation()">
+        <div class="sheet-handle"></div>
+        <p style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:14px;">Menu Lainnya</p>
+        <div class="more-grid" id="moreGrid"></div>
+    </div>
+</div>
+
+<script>
+const currentUser = JSON.parse(localStorage.getItem('currentUser')) || {user:'Guest', role:'Staff'};
+if (!currentUser.user) window.location.href = 'index.html';
+
+// ── SIDEBAR STATE ──
+function toggleSidebar() {
+    const sb = document.getElementById('sidebar');
+    const mc = document.getElementById('mainContent');
+    sb.classList.toggle('collapsed');
+    mc.classList.toggle('expanded');
+    localStorage.setItem('sidebarState', sb.classList.contains('collapsed') ? 'small' : 'large');
+}
+
+function buildMoreMenu() {
+    const role = currentUser.role;
+    const items = [{icon:'🚚',label:'Restock',link:'restock.html'}];
+    items.push({icon:'📚',label:'Edukasi & SOP',link:'edukasi.html'});
+    items.push({icon:'🏆',label:'Performa',link:'performa.html'});
+    if (['Senior Staff','SPV','Owner','VIP'].includes(role)) {
+        items.push({icon:'🍱',label:'Produk',link:'produk.html'});
+        items.push({icon:'📈',label:'Rekapan',link:'rekap.html'});
+    }
+    if (['Owner','VIP'].includes(role)) {
+        items.push({icon:'🏷️',label:'Promo',link:'promo.html'});
+        items.push({icon:'🧂',label:'Bahan Baku',link:'bahan_baku.html'});
+        items.push({icon:'🗃️',label:'HPP Produk',link:'hpp_produk.html'});
+        items.push({icon:'🏭',label:'Warehouse',link:'warehouse.html'});
+        items.push({icon:'📝',label:'Belanja',link:'belanja.html'});
+        items.push({icon:'💵',label:'Salary Staff',link:'salary_staff.html'});
+        items.push({icon:'📊',label:'Keuangan',link:'laporan.html'});
+        items.push({icon:'📈',label:'Statistik & Analitik',link:'statistik.html'});
+        items.push({icon:'👨‍👩‍👦',label:'Customer Hoki',link:'customer_hoki.html'});
+    }
+    if (['Owner','VIP','Investor'].includes(role)) {
+        items.push({icon:'💹',label:'Omset Cabang',link:'investor_omset.html'});
+        items.push({icon:'💰',label:'Profit Sharing',link:'investor_profit.html'});
+    }
+    if (role === 'VIP') {
+        items.push({icon:'⚙️',label:'Users',link:'user.html'});
+        items.push({icon:'🔑',label:'Login Log',link:'login_history.html'});
+        items.push({icon:'🍱',label:'Menu Order',link:'#',action:"window.open('https://order.pos-hokidimsum.com/admin/dashboard.php','_blank')"});
+    }
+    items.push({icon:'🚪',label:'Logout',link:'#',action:'logout()'});
+    document.getElementById('moreGrid').innerHTML = items.map(i =>
+        `<button class="more-btn" onclick="${i.action||`location.href='${i.link}'`}">
+            <span class="more-btn-icon">${i.icon}</span>
+            <span class="more-btn-label">${i.label}</span>
+        </button>`).join('');
+}
+
+function openSheet(id) { if(id==='moreSheet') buildMoreMenu(); document.getElementById(id).classList.add('open'); }
+function closeSheetOutside(e,id) { if(e.target===document.getElementById(id)) document.getElementById(id).classList.remove('open'); }
+
+
+function buildSidebar() {
+    if (localStorage.getItem('sidebarState') === 'small') {
+        document.getElementById('sidebar').classList.add('collapsed');
+        document.getElementById('mainContent').classList.add('expanded');
+    }
+    const role = currentUser.role;
+    const cur  = window.location.pathname.split('/').pop() || 'performa.html';
+    const navItem = (icon, label, link) => {
+        const active = cur === link ? 'active' : '';
+        return `<button class="nav-item ${active}" onclick="location.href='${link}'">
+            <span class="nav-icon">${icon}</span>
+            <span class="nav-label">${label}</span>
+        </button>`;
+    };
+    const navItemExternal = (icon, label, url) => {
+        return `<button class="nav-item" onclick="window.open('${url}', '_blank')">
+            <span class="nav-icon">${icon}</span>
+            <span class="nav-label">${label}</span>
+        </button>`;
+    };
+    const PAGES_FRONTLINE = ['dashboard.html','history.html','stok.html','restock.html','laporan_staff.html','performa.html','edukasi.html'];
+    const PAGES_MGMT      = ['rekap.html','produk.html'];
+    const PAGES_EXEC      = ['laporan.html','statistik.html','promo.html','bahan_baku.html','hpp_produk.html','belanja.html','warehouse.html','salary_staff.html','customer_hoki.html'];
+    const PAGES_VIP       = ['user.html','login_history.html'];
+    const PAGES_INVESTOR  = ['investor_omset.html','investor_profit.html'];
+    const inGroup = pages => pages.includes(cur);
+    const getOpen = (id, pages) => {
+        const s = localStorage.getItem('navGroup_' + id);
+        return s !== null ? s === '1' : true;
+    };
+    const GROUP_ICONS = { frontline:'🛒', management:'📊', executive:'📋', vip:'👑', investor:'🤝' };
+    const navGroup = (id, label, items, pages) => {
+        const open      = getOpen(id, pages);
+        const hasActive = inGroup(pages);
+        const icon      = GROUP_ICONS[id] || '📁';
+        return `<div class="nav-group-wrap">
+            <button class="nav-group-label${hasActive ? ' has-active' : ''}" onclick="toggleNavGroup('${id}')">
+                <span class="nav-group-icon">${icon}</span>
+                <span class="nav-group-text">${label}</span>
+                <span class="nav-group-ti">${open ? '−' : '+'}</span>
+            </button>
+            <div class="nav-group-items" id="navg-${id}"${open ? '' : ' style="display:none"'}>
+                ${items}
+            </div>
+        </div>`;
+    };
+
+    let frontline = navItem('🛒','Kasir','dashboard.html')
+        + navItem('📄','History Transaksi','history.html')
+        + navItem('📦','Stok Harian','stok.html')
+        + navItem('🚚','Restock Barang','restock.html')
+        + navItem('🚀','Laporan Penjualan','laporan_staff.html')
+        + navItem('🏆','Performa','performa.html');
+    let edukasiItem = navItem('📚','Edukasi & SOP','edukasi.html');
+    frontline += edukasiItem;
+    let h = '';
+    if (role !== 'Investor') {
+        h += navGroup('frontline', 'Frontline', frontline, PAGES_FRONTLINE);
+    }
+
+    if (['Senior Staff','SPV','Owner','VIP'].includes(role)) {
+        let mgmt = navItem('🗓️','Rekapan Penjualan','rekap.html')
+            + navItem('🍱','Master Produk','produk.html');
+        h += navGroup('management', 'Management', mgmt, PAGES_MGMT);
+    }
+    if (['Owner','VIP'].includes(role)) {
+        let exec = navItem('📊','Keuangan Global','laporan.html')
+            + navItem('📈','Statistik & Analitik','statistik.html')
+            + navItem('🏷️','Promo','promo.html')
+            + navItem('🧂','Bahan Baku','bahan_baku.html')
+            + navItem('🗃️','HPP Produk','hpp_produk.html')
+            + navItem('🏭','Warehouse','warehouse.html')
+            + navItem('📝','Belanja','belanja.html')
+            + navItem('💵','Salary Staff','salary_staff.html')
+            + navItem('👨‍👩‍👦','Customer Hoki','customer_hoki.html');
+        h += navGroup('executive', 'Executive', exec, PAGES_EXEC);
+    }
+    if (['Owner','VIP','Investor'].includes(role)) {
+        let inv = navItem('💹','Omset Cabang','investor_omset.html')
+            + navItem('💰','Profit Sharing','investor_profit.html');
+        h += navGroup('investor', 'Area Investor', inv, PAGES_INVESTOR);
+    }
+    if (role === 'VIP') {
+        let vip = navItem('⚙️','Manajemen User','user.html')
+            + navItem('🔑','History Login','login_history.html')
+            + navItemExternal('🍱','Menu Order','https://order.pos-hokidimsum.com/admin/dashboard.php');
+        h += navGroup('vip', 'VIP Access', vip, PAGES_VIP);
+    }
+    document.getElementById('sidebarNav').innerHTML = h;
+    const name = currentUser.user || '?';
+    document.getElementById('userAvatarInitial').innerText = name.charAt(0).toUpperCase();
+    document.getElementById('sidebarUserName').innerText = currentUser.fullName || name;
+    document.getElementById('sidebarUserRole').innerText = role;
+}
+
+function toggleNavGroup(id) {
+    const items = document.getElementById('navg-' + id);
+    const btn   = items.previousElementSibling;
+    const ti    = btn.querySelector('.nav-group-ti');
+    const open  = items.style.display !== 'none';
+    items.style.display = open ? 'none' : '';
+    if (ti) ti.textContent = open ? '+' : '−';
+    localStorage.setItem('navGroup_' + id, open ? '0' : '1');
+}
+
+/* ── CLOCK ── */
+function updateClock() {
+    const now = new Date();
+    document.getElementById('realtimeClock').innerText = now.toLocaleTimeString('id-ID');
+    document.getElementById('realtimeDate').innerText  = now.toLocaleDateString('id-ID',{weekday:'short',year:'numeric',month:'short',day:'numeric'});
+}
+setInterval(updateClock, 1000);
+
+/* ── HELPER TANGGAL & FORMAT ── */
+const NAMA_BULAN = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+const NAMA_BULAN_SHORT = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+
+function fmtYmd(d) {
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function formatTglShort(ymd) {
+    if (!ymd) return '-';
+    const [y, m, d] = ymd.split('-');
+    return `${parseInt(d,10)} ${NAMA_BULAN_SHORT[parseInt(m,10)-1]}`;
+}
+function formatTglFull(ymd) {
+    if (!ymd) return '-';
+    const [y] = ymd.split('-');
+    return `${formatTglShort(ymd)} ${y}`;
+}
+function formatRupiah(n) {
+    return `Rp ${(parseInt(n,10) || 0).toLocaleString('id-ID')}`;
+}
+
+// Bagi 1 bulan jadi minggu Senin-Minggu (sama persis dengan logika di api.php
+// action get_performa) - dipakai supaya dropdown "Pilih Minggu" bisa langsung
+// terisi begitu user ganti bulan, tanpa perlu nunggu round-trip ke server.
+function computeWeeksOfMonthJS(year, month) {
+    const first = new Date(year, month - 1, 1);
+    const last  = new Date(year, month, 0);
+    const weeks = [];
+    const seen  = new Set();
+    let cursor  = new Date(first);
+    while (cursor <= last) {
+        const dow = cursor.getDay() === 0 ? 7 : cursor.getDay(); // 1=Senin..7=Minggu
+        const weekStart = new Date(cursor);
+        weekStart.setDate(weekStart.getDate() - (dow - 1));
+        const weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekEnd.getDate() + 6);
+        const key = fmtYmd(weekStart);
+        if (!seen.has(key)) {
+            seen.add(key);
+            weeks.push({ start: key, end: fmtYmd(weekEnd) });
+        }
+        cursor.setDate(cursor.getDate() + 1);
+    }
+    return weeks.map((w, i) => ({ label: `Minggu ${i+1}`, start: w.start, end: w.end }));
+}
+
+function populateMingguSelect(weeks, selected) {
+    const sel = document.getElementById('filterMinggu');
+    const keep = (selected !== undefined && selected !== null) ? String(selected) : sel.value;
+    sel.innerHTML = '<option value="">Semua Minggu</option>' + weeks.map((w, i) =>
+        `<option value="${i+1}">${w.label} (${formatTglShort(w.start)}–${formatTglShort(w.end)})</option>`).join('');
+    if (keep) sel.value = keep;
+}
+
+/* ── MODE FILTER (Mingguan/Bulanan/Custom) ── */
+let currentPerformaMode = 'weekly';
+
+function setPerformaMode(mode) {
+    currentPerformaMode = mode;
+    document.querySelectorAll('.kmo-tab-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
+    document.getElementById('filterBulanWrap').style.display  = (mode === 'custom') ? 'none' : 'flex';
+    document.getElementById('filterMingguWrap').style.display = (mode === 'weekly') ? '' : 'none';
+    document.getElementById('filterCustomWrap').style.display = (mode === 'custom') ? 'flex' : 'none';
+    loadPerforma();
+}
+
+/* ── LEADERBOARD (tampil ke semua role) ── */
+function renderLeaderboard(board) {
+    board = board || {};
+    const mg = board.minggu_ini;
+    const bl = board.bulan_ini;
+    document.getElementById('boardMingguNama').innerText = mg ? (mg.fullName || mg.username) : '—';
+    document.getElementById('boardMingguSub').innerText   = mg ? `${mg.cabang} · ${formatRupiah(mg.omset)}` : 'Belum ada data minggu ini';
+    document.getElementById('boardBulanNama').innerText   = bl ? (bl.fullName || bl.username) : '—';
+    document.getElementById('boardBulanSub').innerText    = bl ? `${bl.cabang} · ${formatRupiah(bl.omset)}` : 'Belum ada data bulan ini';
+}
+
+/* ── TABEL HASIL ── */
+function buildResultTitle(period) {
+    if (period.mode === 'custom') {
+        return `📋 Performa ${formatTglFull(period.start)} – ${formatTglFull(period.end)}`;
+    }
+    if (period.mode === 'monthly') {
+        return `📋 Performa Bulanan – ${NAMA_BULAN[period.bulan-1]} ${period.tahun}`;
+    }
+    // weekly
+    if (period.minggu_ke && period.weeks && period.weeks[period.minggu_ke-1]) {
+        const w = period.weeks[period.minggu_ke-1];
+        return `📋 Performa ${w.label} – ${NAMA_BULAN[period.bulan-1]} ${period.tahun} (${formatTglShort(w.start)}–${formatTglShort(w.end)})`;
+    }
+    return `📋 Performa Mingguan – ${NAMA_BULAN[period.bulan-1]} ${period.tahun}`;
+}
+
+function scopeLabel(scope) {
+    if (scope === 'all') return 'Menampilkan performa SELURUH staff (akses VIP/Owner).';
+    if (scope === 'team') return 'Menampilkan performa Anda + anak buah Anda.';
+    return 'Menampilkan performa Anda sendiri.';
+}
+
+function togglePerformaDetail(rowId) {
+    const el = document.getElementById(rowId);
+    if (!el) return;
+    el.style.display = (el.style.display === 'none') ? '' : 'none';
+}
+
+function renderPerformaTable(payload) {
+    const tbody = document.getElementById('tabelPerforma');
+    tbody.innerHTML = '';
+    const rows = payload.data || [];
+
+    document.getElementById('resultTitle').innerText = buildResultTitle(payload.period);
+    document.getElementById('scopeNote').innerText = scopeLabel(payload.scope);
+
+    if (!rows.length) {
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--text-muted);">Tidak ada data untuk periode ini.</td></tr>`;
+        return;
+    }
+
+    const isWeeklyAll = payload.period.mode === 'weekly' && !payload.period.minggu_ke;
+    const myUser = (currentUser.user || '').toLowerCase();
+
+    rows.forEach((r, idx) => {
+        const isMe = myUser && r.username.toLowerCase() === myUser;
+        const rowId = `perf-detail-${idx}`;
+        const hasDetail = isWeeklyAll && Array.isArray(r.per_minggu) && r.per_minggu.length > 0;
+        const toggleBtn = hasDetail
+            ? `<button class="btn-toggle-detail" onclick="togglePerformaDetail('${rowId}')" title="Rincian per minggu">▸</button>`
+            : '';
+
+        const rowStyle = isMe ? 'background:var(--surface-2); font-weight:700;' : '';
+        tbody.innerHTML += `<tr style="${rowStyle}">
+            <td>${toggleBtn}</td>
+            <td>${r.fullName}${isMe ? ' <span style="color:var(--red); font-size:11px;">(Anda)</span>' : ''}</td>
+            <td>${r.role}</td>
+            <td style="font-size:12px;">${r.cabang || '-'}</td>
+            <td style="font-family:'DM Mono',monospace; font-weight:600;">${formatRupiah(r.omset)}</td>
+            <td style="text-align:center;">${r.hari_kerja}</td>
+        </tr>`;
+
+        if (hasDetail) {
+            const weekRows = r.per_minggu.map(w => `<tr>
+                <td style="padding:4px 8px;">${w.label} <span style="color:var(--text-muted); font-size:10px;">(${formatTglShort(w.start)}–${formatTglShort(w.end)})</span></td>
+                <td style="padding:4px 8px; font-family:'DM Mono',monospace;">${formatRupiah(w.omset)}</td>
+                <td style="padding:4px 8px; text-align:center;">${w.hari_kerja} hari</td>
+            </tr>`).join('');
+            tbody.innerHTML += `<tr id="${rowId}" style="display:none;">
+                <td></td>
+                <td colspan="5" style="background:var(--surface-2); padding:8px;">
+                    <table style="width:100%; font-size:12px;"><tbody>${weekRows}</tbody></table>
+                </td>
+            </tr>`;
+        }
+    });
+}
+
+/* ── FETCH DATA ── */
+async function loadPerforma() {
+    const tbody = document.getElementById('tabelPerforma');
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--text-muted);">Memuat data...</td></tr>`;
+
+    const token = localStorage.getItem('sessionToken') || '';
+    let url = `${API_BASE}?action=get_performa&user=${encodeURIComponent(currentUser.user)}&token=${encodeURIComponent(token)}&period=${currentPerformaMode}`;
+
+    if (currentPerformaMode === 'custom') {
+        const tglMulai = document.getElementById('filterTglMulai').value;
+        const tglSelesai = document.getElementById('filterTglSelesai').value;
+        if (!tglMulai || !tglSelesai) {
+            tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--text-muted);">Pilih rentang tanggal dulu.</td></tr>`;
+            return;
+        }
+        url += `&tgl_mulai=${tglMulai}&tgl_selesai=${tglSelesai}`;
+    } else {
+        const valBulan = document.getElementById('filterBulan').value; // "YYYY-MM"
+        if (!valBulan) {
+            tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--text-muted);">Pilih bulan dulu.</td></tr>`;
+            return;
+        }
+        const [y, m] = valBulan.split('-');
+        url += `&tahun=${y}&bulan=${parseInt(m,10)}`;
+        if (currentPerformaMode === 'weekly') {
+            const mingguKe = document.getElementById('filterMinggu').value;
+            if (mingguKe) url += `&minggu_ke=${mingguKe}`;
+        }
+    }
+
+    try {
+        const res = await fetch(url);
+        const payload = await res.json();
+        if (payload.status !== 'success') {
+            tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--text-muted);">${payload.message || 'Gagal memuat data.'}</td></tr>`;
+            if (typeof toast !== 'undefined' && toast.error && payload.message) {
+                toast.error('Performa', payload.message);
+            }
+            renderLeaderboard(null);
+            return;
+        }
+        renderPerformaTable(payload);
+        renderLeaderboard(payload.leaderboard);
+        if (currentPerformaMode === 'weekly' && payload.period.weeks) {
+            populateMingguSelect(payload.period.weeks, payload.period.minggu_ke);
+        }
+    } catch (e) {
+        console.error('Gagal memuat performa:', e);
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--text-muted);">Gagal terhubung ke server.</td></tr>`;
+    }
+}
+
+function logout() {
+    if (confirm('Logout dari sistem?')) {
+        localStorage.removeItem('currentUser');
+        localStorage.removeItem('cabangHoki');
+        window.location.href = 'index.html';
+    }
+}
+
+window.onload = async () => {
+    buildSidebar();
+    updateClock();
+
+    const today = new Date();
+    document.getElementById('filterBulan').value = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}`;
+    document.getElementById('filterBulan').addEventListener('change', () => {
+        const val = document.getElementById('filterBulan').value;
+        if (!val) return;
+        const [y, m] = val.split('-').map(Number);
+        populateMingguSelect(computeWeeksOfMonthJS(y, m), null);
+    });
+    populateMingguSelect(computeWeeksOfMonthJS(today.getFullYear(), today.getMonth()+1), null);
+
+    const firstOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    document.getElementById('filterTglMulai').value = fmtYmd(firstOfMonth);
+    document.getElementById('filterTglSelesai').value = fmtYmd(today);
+
+    await loadPerforma();
+};
+</script>
+<script src="session.js"></script>
+<script src="toast.js"></script>
+</body>
+</html>

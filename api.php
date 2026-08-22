@@ -2403,6 +2403,243 @@ switch ($action) {
         echo json_encode(array_values($payrollResults));
         break;
 
+    // ── PERFORMA STAFF (Mingguan/Bulanan/Custom - omset & absensi) ─────
+    // Sumber data sama dengan Laporan Penjualan (laporan_settlement). Atribusi
+    // per staff pakai pola yang sama seperti calculate_payroll: kolom petugas
+    // bisa berisi beberapa nama dipisah koma/"&" (shift bareng) - setiap nama
+    // yang match username/fullName seorang staff dapat kredit PENUH atas
+    // grand_total settlement itu (bukan dibagi rata), dan tanggalnya dihitung
+    // sebagai 1 hari kerja/absensi buat staff itu.
+    case 'get_performa':
+        header('Content-Type: application/json');
+
+        // Role tidak dipercaya dari parameter client begitu saja (data ini per-individu,
+        // beda dari kebanyakan endpoint get_* lain yang cuma filter per-cabang) - jadi
+        // identitas & role asli diverifikasi ke DB via session_token, sama seperti pola
+        // $actor di action del_transaksi/del_kas_data.
+        $callerUser  = $conn->real_escape_string($_GET['user']  ?? '');
+        $callerToken = $conn->real_escape_string($_GET['token'] ?? '');
+        if (empty($callerUser) || empty($callerToken)) {
+            echo json_encode(["status"=>"error","message"=>"Sesi tidak valid."]);
+            break;
+        }
+        $chkActorPerforma = $conn->query("SELECT username, fullName, role FROM users WHERE LOWER(username)=LOWER('$callerUser') AND session_token='$callerToken'");
+        $actorPerforma = ($chkActorPerforma && $chkActorPerforma->num_rows > 0) ? $chkActorPerforma->fetch_assoc() : null;
+        if (!$actorPerforma) {
+            http_response_code(403);
+            echo json_encode(["status"=>"error","message"=>"Sesi tidak valid atau sudah berakhir. Silakan login ulang."]);
+            break;
+        }
+        $callerRole = $actorPerforma['role'];
+        $callerUsernameReal = $actorPerforma['username'];
+
+        // Semua staff operasional (Owner/VIP/Investor bukan staff yang punya performa lapangan)
+        $resAllUsersPerforma = $conn->query("SELECT username, fullName, role, cabang FROM users WHERE role NOT IN ('Owner','VIP','Investor') ORDER BY fullName ASC");
+        $allUsersPerforma = $resAllUsersPerforma ? $resAllUsersPerforma->fetch_all(MYSQLI_ASSOC) : [];
+
+        // Peta atasan -> daftar bawahan langsung
+        $resHierPerforma = $conn->query("SELECT atasan_username, bawahan_username FROM hoki_staff_hierarchy");
+        $hierMapPerforma = [];
+        while ($resHierPerforma && ($hRow = $resHierPerforma->fetch_assoc())) {
+            $hierMapPerforma[strtolower($hRow['atasan_username'])][] = $hRow['bawahan_username'];
+        }
+
+        // Kumpulkan seluruh anak buah transitif (bawahan dari bawahan, dst) seorang atasan
+        $collectSubordinatesPerforma = function ($atasanUsername) use ($hierMapPerforma) {
+            $result = [];
+            $visited = [];
+            $queue = [strtolower($atasanUsername)];
+            while (!empty($queue)) {
+                $cur = array_shift($queue);
+                if (isset($visited[$cur])) continue;
+                $visited[$cur] = true;
+                foreach (($hierMapPerforma[$cur] ?? []) as $bawahan) {
+                    $result[] = $bawahan;
+                    $queue[] = strtolower($bawahan);
+                }
+            }
+            return $result;
+        };
+
+        // Tentukan cakupan visibilitas berdasar role asli (bukan dari client)
+        if (in_array($callerRole, ['Owner', 'VIP'])) {
+            $scopePerforma = 'all';
+            $visibleUsernamesPerforma = null; // null = tanpa batasan (semua staff)
+        } elseif (in_array($callerRole, ['Senior Staff', 'SPV'])) {
+            $scopePerforma = 'team';
+            $subsPerforma = $collectSubordinatesPerforma($callerUsernameReal);
+            $visibleUsernamesPerforma = array_map('strtolower', array_merge([$callerUsernameReal], $subsPerforma));
+        } else {
+            $scopePerforma = 'self';
+            $visibleUsernamesPerforma = [strtolower($callerUsernameReal)];
+        }
+
+        $visibleUsersPerforma = $allUsersPerforma;
+        if ($visibleUsernamesPerforma !== null) {
+            $visibleUsersPerforma = array_values(array_filter($allUsersPerforma, function ($u) use ($visibleUsernamesPerforma) {
+                return in_array(strtolower($u['username']), $visibleUsernamesPerforma);
+            }));
+        }
+
+        // Helper: hitung omset & hari-kerja per staff dalam 1 rentang tanggal [start, end]
+        $aggregatePerformaRange = function ($startYmd, $endYmd, $usersForAgg) use ($conn) {
+            $start = $conn->real_escape_string($startYmd);
+            $end   = $conn->real_escape_string($endYmd);
+            $resRows = $conn->query("SELECT waktu, petugas, grand_total FROM laporan_settlement WHERE waktu >= '$start 00:00:00' AND waktu <= '$end 23:59:59'");
+            $rows = $resRows ? $resRows->fetch_all(MYSQLI_ASSOC) : [];
+
+            $result = [];
+            foreach ($usersForAgg as $u) {
+                $result[$u['username']] = [
+                    'username'   => $u['username'],
+                    'fullName'   => $u['fullName'] ?: $u['username'],
+                    'role'       => $u['role'],
+                    'cabang'     => $u['cabang'],
+                    'omset'      => 0,
+                    'hari_kerja' => 0,
+                    '_tanggal'   => [],
+                ];
+            }
+            foreach ($rows as $row) {
+                $tgl = date('Y-m-d', strtotime($row['waktu']));
+                $petugasNames = array_map('trim', preg_split('/[,&]/', $row['petugas']));
+                $petugasNamesLower = array_map('strtolower', $petugasNames);
+                foreach ($usersForAgg as $u) {
+                    if (in_array(strtolower($u['username']), $petugasNamesLower) || in_array(strtolower($u['fullName']), $petugasNamesLower)) {
+                        $result[$u['username']]['omset'] += (int)$row['grand_total'];
+                        $result[$u['username']]['_tanggal'][$tgl] = true;
+                    }
+                }
+            }
+            foreach ($result as $k => $v) {
+                $result[$k]['hari_kerja'] = count($v['_tanggal']);
+                unset($result[$k]['_tanggal']);
+            }
+            return array_values($result);
+        };
+
+        // Helper: bagi 1 bulan jadi minggu Senin-Minggu (bukan potongan tanggal), diberi
+        // label "Minggu 1","Minggu 2",dst sesuai urutan kemunculan di bulan tsb. Kalau
+        // minggu itu menyambung ke bulan sebelum/sesudahnya, rentang yang dipakai tetap
+        // Senin-Minggu penuh (bukan dipotong tanggal 1 / tanggal akhir bulan).
+        $computeWeeksOfMonthPerforma = function ($year, $month) {
+            $first = new DateTime(sprintf('%04d-%02d-01', $year, $month));
+            $last  = clone $first;
+            $last->modify('last day of this month');
+            $weeks  = [];
+            $cursor = clone $first;
+            while ($cursor <= $last) {
+                $dow = (int)$cursor->format('N'); // 1=Senin .. 7=Minggu
+                $weekStart = clone $cursor;
+                $weekStart->modify('-' . ($dow - 1) . ' days');
+                $weekEnd = clone $weekStart;
+                $weekEnd->modify('+6 days');
+                $key = $weekStart->format('Y-m-d');
+                if (!isset($weeks[$key])) {
+                    $weeks[$key] = ['start' => $weekStart->format('Y-m-d'), 'end' => $weekEnd->format('Y-m-d')];
+                }
+                $cursor->modify('+1 day');
+            }
+            $out = [];
+            $i = 1;
+            foreach ($weeks as $w) {
+                $out[] = ['label' => 'Minggu ' . $i, 'start' => $w['start'], 'end' => $w['end']];
+                $i++;
+            }
+            return $out;
+        };
+
+        $periodMode = $_GET['period'] ?? 'weekly';
+        $tahunPerforma = (int)($_GET['tahun'] ?? date('Y'));
+        $bulanPerforma = (int)($_GET['bulan'] ?? date('n'));
+
+        $dataPerforma = [];
+        $periodInfo   = [];
+
+        if ($periodMode === 'custom') {
+            $cTglMulai   = $conn->real_escape_string($_GET['tgl_mulai'] ?? '');
+            $cTglSelesai = $conn->real_escape_string($_GET['tgl_selesai'] ?? '');
+            if (empty($cTglMulai) || empty($cTglSelesai)) {
+                echo json_encode(["status"=>"error","message"=>"Rentang tanggal belum dipilih."]);
+                break;
+            }
+            $dataPerforma = $aggregatePerformaRange($cTglMulai, $cTglSelesai, $visibleUsersPerforma);
+            $periodInfo = ['mode'=>'custom', 'start'=>$cTglMulai, 'end'=>$cTglSelesai];
+        } elseif ($periodMode === 'monthly') {
+            $mFirst = sprintf('%04d-%02d-01', $tahunPerforma, $bulanPerforma);
+            $mLastDt = new DateTime($mFirst);
+            $mLastDt->modify('last day of this month');
+            $mLast = $mLastDt->format('Y-m-d');
+            $dataPerforma = $aggregatePerformaRange($mFirst, $mLast, $visibleUsersPerforma);
+            $periodInfo = ['mode'=>'monthly', 'tahun'=>$tahunPerforma, 'bulan'=>$bulanPerforma, 'start'=>$mFirst, 'end'=>$mLast];
+        } else { // weekly
+            $weeksPerforma = $computeWeeksOfMonthPerforma($tahunPerforma, $bulanPerforma);
+            $mingguKeFilter = (isset($_GET['minggu_ke']) && $_GET['minggu_ke'] !== '') ? (int)$_GET['minggu_ke'] : null;
+
+            $perStaffPerforma = [];
+            foreach ($visibleUsersPerforma as $u) {
+                $perStaffPerforma[$u['username']] = [
+                    'username'   => $u['username'],
+                    'fullName'   => $u['fullName'] ?: $u['username'],
+                    'role'       => $u['role'],
+                    'cabang'     => $u['cabang'],
+                    'omset'      => 0,
+                    'hari_kerja' => 0,
+                    'per_minggu' => [],
+                ];
+            }
+            foreach ($weeksPerforma as $idx => $w) {
+                $wNum = $idx + 1;
+                if ($mingguKeFilter !== null && $wNum !== $mingguKeFilter) continue;
+                $weekAgg = $aggregatePerformaRange($w['start'], $w['end'], $visibleUsersPerforma);
+                foreach ($weekAgg as $row) {
+                    $perStaffPerforma[$row['username']]['omset'] += $row['omset'];
+                    $perStaffPerforma[$row['username']]['hari_kerja'] += $row['hari_kerja'];
+                    $perStaffPerforma[$row['username']]['per_minggu'][] = [
+                        'label'      => $w['label'],
+                        'start'      => $w['start'],
+                        'end'        => $w['end'],
+                        'omset'      => $row['omset'],
+                        'hari_kerja' => $row['hari_kerja'],
+                    ];
+                }
+            }
+            $dataPerforma = array_values($perStaffPerforma);
+            $periodInfo = ['mode'=>'weekly', 'tahun'=>$tahunPerforma, 'bulan'=>$bulanPerforma, 'weeks'=>$weeksPerforma, 'minggu_ke'=>$mingguKeFilter];
+        }
+
+        usort($dataPerforma, function ($a, $b) { return $b['omset'] <=> $a['omset']; });
+
+        // Leaderboard "tertinggi minggu ini / bulan ini" - boleh dilihat SEMUA role
+        // (termasuk Staff), selalu berdasar minggu/bulan yang sedang BERJALAN sekarang
+        // (independen dari filter periode yang lagi dilihat user), dan company-wide
+        // (tidak dibatasi cakupan visibilitas individu di atas).
+        $curDow = (int)date('N');
+        $curWeekStart = date('Y-m-d', strtotime('-' . ($curDow - 1) . ' days'));
+        $curWeekEnd   = date('Y-m-d', strtotime($curWeekStart . ' +6 days'));
+        $curMonthStart = date('Y-m-01');
+        $curMonthEnd   = date('Y-m-t');
+
+        $boardWeek  = $aggregatePerformaRange($curWeekStart, $curWeekEnd, $allUsersPerforma);
+        $boardMonth = $aggregatePerformaRange($curMonthStart, $curMonthEnd, $allUsersPerforma);
+        usort($boardWeek, function ($a, $b) { return $b['omset'] <=> $a['omset']; });
+        usort($boardMonth, function ($a, $b) { return $b['omset'] <=> $a['omset']; });
+        $topWeek  = (!empty($boardWeek) && $boardWeek[0]['omset'] > 0) ? $boardWeek[0] : null;
+        $topMonth = (!empty($boardMonth) && $boardMonth[0]['omset'] > 0) ? $boardMonth[0] : null;
+
+        echo json_encode([
+            'status' => 'success',
+            'scope'  => $scopePerforma,
+            'caller' => ['username'=>$callerUsernameReal, 'fullName'=>$actorPerforma['fullName'] ?: $callerUsernameReal, 'role'=>$callerRole],
+            'period' => $periodInfo,
+            'data'   => $dataPerforma,
+            'leaderboard' => [
+                'minggu_ini' => $topWeek ? ['fullName'=>$topWeek['fullName'], 'username'=>$topWeek['username'], 'cabang'=>$topWeek['cabang'], 'omset'=>$topWeek['omset'], 'range'=>['start'=>$curWeekStart,'end'=>$curWeekEnd]] : null,
+                'bulan_ini'  => $topMonth ? ['fullName'=>$topMonth['fullName'], 'username'=>$topMonth['username'], 'cabang'=>$topMonth['cabang'], 'omset'=>$topMonth['omset'], 'range'=>['start'=>$curMonthStart,'end'=>$curMonthEnd]] : null,
+            ],
+        ]);
+        break;
+
     // ── INVESTOR PROFIT HISTORY ───────────────────────
     case 'save_profit_history':
         $tgl_rekam = $conn->real_escape_string($input['tanggal_rekam'] ?? date('Y-m-d'));
