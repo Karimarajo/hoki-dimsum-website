@@ -1109,7 +1109,7 @@
     }
 
     </style>
-  <script src="config.js"></script>
+  <script src="config.js?v=20260829"></script>
   <script src="error-log.js"></script>
 </head>
 <body>
@@ -2088,6 +2088,9 @@ function buildSidebar() {
             + navItem('📝','Belanja','belanja.html')
             + navItem('💵','Salary Staff','salary_staff.html')
             + navItem('👨‍👩‍👦','Customer Hoki','customer_hoki.html');
+        if (['kurniarp','hanazaf'].includes((currentUser.user || '').toLowerCase())) {
+            exec += navItemExternal('🏢','PT Marajo Barokah', `https://marajo.pos-hokidimsum.com/sso.php?u=${encodeURIComponent(currentUser.user)}&t=${encodeURIComponent(localStorage.getItem('sessionToken') || '')}`);
+        }
         h += navGroup('executive', 'Executive', exec, PAGES_EXEC);
     }
     if (['Owner','VIP','Investor'].includes(role)) {
