@@ -9,7 +9,7 @@ require __DIR__ . '/includes/layout_top.php';
     <div class="card">
         <div class="card-title">💰 Saldo Total</div>
         <div class="card-value" id="cardSaldo">Rp 0</div>
-        <div class="card-hint">Profit + Transaksi (Kredit − Debit)</div>
+        <div class="card-hint">Transaksi (Kredit − Debit) + Nilai Jual History Penjualan</div>
     </div>
     <div class="card">
         <div class="card-title">📈 Profit</div>

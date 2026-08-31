@@ -290,9 +290,10 @@ switch ($action) {
 
         $penjualan = computed_penjualan($pdo);
         $profitRealized = array_sum(array_column($penjualan, 'profit'));
+        $totalOmsetPenjualan = array_sum(array_column($penjualan, 'omset'));
 
-        // Saldo Total = Profit + Transaksi (Kredit - Debit)
-        $saldoTotal = $profitRealized + ($totalKredit - $totalDebit);
+        // Saldo Total = Transaksi (Kredit - Debit) + nilai harga jual History Penjualan (omset)
+        $saldoTotal = ($totalKredit - $totalDebit) + $totalOmsetPenjualan;
 
         $namaRows = $pdo->query('SELECT DISTINCT nama_barang FROM marajo_barang_masuk')->fetchAll();
         $whStock  = warehouse_stock_map();

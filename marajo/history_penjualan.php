@@ -11,9 +11,9 @@ require __DIR__ . '/includes/layout_top.php';
     <div class="table-wrap">
         <table class="data-table">
             <thead>
-                <tr><th>Tanggal</th><th>Nama Barang</th><th class="text-right">Qty</th><th class="text-right">Profit</th><th>Keterangan</th></tr>
+                <tr><th>Tanggal</th><th>Nama Barang</th><th class="text-right">Qty</th><th class="text-right">Harga</th><th class="text-right">Profit</th><th>Keterangan</th></tr>
             </thead>
-            <tbody id="tblPenjualan"><tr class="empty-row"><td colspan="5">Memuat...</td></tr></tbody>
+            <tbody id="tblPenjualan"><tr class="empty-row"><td colspan="6">Memuat...</td></tr></tbody>
         </table>
     </div>
 </div>
@@ -32,7 +32,7 @@ async function loadPenjualan() {
         document.getElementById('countPenjualan').textContent = res.data.length;
         const tbody = document.getElementById('tblPenjualan');
         if (!res.data.length) {
-            tbody.innerHTML = '<tr class="empty-row"><td colspan="5">Belum ada penjualan tercatat.</td></tr>';
+            tbody.innerHTML = '<tr class="empty-row"><td colspan="6">Belum ada penjualan tercatat.</td></tr>';
             return;
         }
         tbody.innerHTML = res.data.map(p => `
@@ -40,6 +40,7 @@ async function loadPenjualan() {
                 <td>${formatTanggal(p.waktu)}</td>
                 <td>${p.nama_barang}</td>
                 <td class="text-right">${angka(p.qty)}</td>
+                <td class="text-right">${rupiah(p.omset)}</td>
                 <td class="text-right">${rupiah(p.profit)}</td>
                 <td>${p.keterangan || '-'}</td>
             </tr>`).join('');
