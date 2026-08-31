@@ -1,10 +1,10 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Hoki POS - History Login</title>
-        <link rel="icon" href="Assets/2.png">
+    <title>Hoki POS - Cek Lokasi</title>
+    <link rel="icon" href="Assets/2.png">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#d32f2f">
     <meta name="mobile-web-app-capable" content="yes">
@@ -16,112 +16,52 @@
     <link href="https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=DM+Mono:wght@400;500&family=Poppins:wght@700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css?v=20260501">
     <style>
-
-    /* ── CARD ── */
-    .card-history {
-        background: var(--surface);
-        border: 1px solid var(--border);
-        border-radius: var(--r-lg);
-        padding: 20px;
-        box-shadow: var(--sh-sm);
-        overflow-x: auto;
+    .table-wrap {
+        background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg);
+        overflow: hidden; box-shadow: var(--sh-sm); overflow-x: auto;
     }
-
-    /* ── TABLE ── */
-    .log-table {
-        width: 100%;
-        border-collapse: collapse;
-        font-size: 13px;
-        background: transparent;
-        box-shadow: none;
-        border: none;
-        border-radius: 0;
+    .table-wrap table { width: 100%; border-collapse: collapse; }
+    .table-wrap thead th {
+        background: var(--red); color: white; padding: 10px 14px; font-size: 11px;
+        font-weight: 600; text-transform: uppercase; border: none; text-align: left;
     }
-
-    .log-table th {
-        background: var(--red);
-        color: white;
-        padding: 10px 14px;
-        text-align: left;
-        font-size: 11px;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        border: none;
+    .table-wrap tbody td {
+        padding: 10px 14px; border-bottom: 1px solid var(--border); font-size: 13px;
+        color: var(--text); border-top: none; border-left: none; border-right: none; vertical-align: top;
     }
+    .table-wrap tbody tr:last-child td { border-bottom: none; }
+    .table-wrap tbody tr:hover td { background: var(--red-soft); }
 
-    .log-table td {
-        padding: 10px 14px;
-        border-bottom: 1px solid var(--border);
-        color: var(--text);
-        vertical-align: middle;
-        border-top: none;
-        border-left: none;
-        border-right: none;
+    .btn-cek-lokasi {
+        background: var(--red); color: white; border: none; padding: 7px 14px;
+        border-radius: var(--r-sm); font-size: 12.5px; font-weight: 700; cursor: pointer; white-space: nowrap;
     }
+    .btn-cek-lokasi:disabled { opacity: 0.6; cursor: not-allowed; }
+    .btn-cek-lokasi:hover:not(:disabled) { filter: brightness(0.92); }
 
-    .log-table tr:last-child td {
-        border-bottom: none;
+    .lokasi-hasil { min-width: 220px; }
+    .lokasi-empty { color: var(--text-light); font-style: italic; font-size: 12.5px; }
+    .lokasi-pending { color: var(--orange); font-size: 12.5px; font-weight: 600; }
+    .lokasi-waktu { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--text-muted); margin-bottom: 6px; }
+    .lokasi-maps-link {
+        display: inline-block; background: var(--blue-soft); color: var(--blue); border: 1px solid #bcdcf9;
+        padding: 5px 10px; border-radius: var(--r-sm); font-size: 12px; font-weight: 700;
+        text-decoration: none; margin-bottom: 8px;
     }
+    .lokasi-embed { width: 260px; height: 150px; border: 1px solid var(--border); border-radius: var(--r-md); display: block; }
 
-    .log-table tr:hover td {
-        background: var(--red-soft);
+    .pill-role {
+        display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 10.5px; font-weight: 700;
+        background: var(--surface-2); color: var(--text-muted);
     }
-
-    .log-table .waktu-cell {
-        font-family: 'DM Mono', monospace;
-        font-size: 12px;
-        color: var(--text-muted);
-    }
-
-    .status-success {
-        color: var(--green);
-        font-weight: 700;
-        font-size: 12px;
-    }
-
-    /* ── ROLE BADGES ── */
-    .role-badge {
-        padding: 3px 10px;
-        border-radius: 99px;
-        font-size: 11px;
-        font-weight: 700;
-        display: inline-block;
-    }
-
-    .VIP         { background: #fff8e1; color: #f57f17; }
-    .Owner       { background: var(--red-soft); color: var(--red); }
-    .SPV         { background: #e3f2fd; color: #1565c0; }
-    .Staff       { background: #f1f8e9; color: #2e7d32; }
-    .SeniorStaff { background: #f3e5f5; color: #7b1fa2; }
-
-    /* ── BERSIHKAN BUTTON ── */
-    /* ── EMPTY STATE ── */
-    .empty-row td {
-        text-align: center;
-        padding: 40px;
-        color: var(--text-light);
-        font-size: 13px;
-    }
-
-    /* ── MOBILE ── */
-    @media (max-width: 844px) {
-        .header-page-title { font-size: 13px !important; }
-        .card-history { padding: 12px; }
-        .log-table { min-width: 860px; }
-    }
-
     </style>
   <script src="config.js?v=20260829"></script>
 </head>
 <body>
 
-<!-- ── SIDEBAR ── -->
 <aside class="sidebar" id="sidebar">
     <div class="sidebar-brand" onclick="toggleSidebar()">
-        <div class="sidebar-logo">
-            <img src="Assets/3.png" alt="Hoki">
-        </div>
+        <div class="sidebar-logo"><img src="Assets/3.png" alt="Hoki"></div>
         <div class="sidebar-brand-text">
             <div class="sidebar-brand-name">Hoki Dimsum <span class="app-ver">V4.1</span></div>
             <div class="sidebar-brand-sub">POS System <span class="app-ver-lower">v4.1</span></div>
@@ -141,15 +81,12 @@
     </div>
 </aside>
 
-<!-- ── MAIN CONTENT ── -->
 <div class="main-content" id="mainContent">
-
     <header class="top-header">
         <div class="header-left">
-            <div class="header-page-title">🔑 History Login Pengguna</div>
+            <div class="header-page-title">📍 Cek Lokasi</div>
         </div>
         <div class="header-right">
-            <button class="btn-hapus-icon" onclick="hapusSemuaLog()" title="Hapus Data">🗑️</button>
             <div class="clock-pill">
                 <div id="realtimeClock">00:00:00</div>
                 <div id="realtimeDate">...</div>
@@ -158,32 +95,28 @@
     </header>
 
     <div class="page-body">
-        <div class="card-history">
-            <table class="log-table">
+        <p style="font-size:12.5px;color:var(--text-muted);margin-bottom:14px;">
+            Klik "Cek Posisi" untuk minta lokasi GPS terkini dari device staff yang bersangkutan — cuma jalan kalau dia sedang login & aplikasi terbuka, dan device-nya sudah pernah kasih izin lokasi. Bukan pelacakan terus-menerus, hanya dicek saat tombol diklik.
+        </p>
+        <div class="table-wrap">
+            <table>
                 <thead>
                     <tr>
-                        <th>Tanggal</th>
-                        <th>Waktu</th>
                         <th>Username</th>
+                        <th>Nama Lengkap</th>
                         <th>Role</th>
-                        <th>Cabang</th>
-                        <th>IP</th>
-                        <th>Perangkat</th>
-                        <th>Lokasi</th>
-                        <th>Status</th>
+                        <th>Aksi</th>
+                        <th>Hasil</th>
                     </tr>
                 </thead>
-                <tbody id="logTableBody">
-                    <tr class="empty-row">
-                        <td colspan="9">Memuat data...</td>
-                    </tr>
+                <tbody id="tabelLokasi">
+                    <tr><td colspan="5" style="text-align:center;padding:32px;color:var(--text-light);">Memuat data...</td></tr>
                 </tbody>
             </table>
         </div>
     </div>
 </div>
 
-<!-- BOTTOM NAV -->
 <nav class="bottom-nav">
     <button class="bn-item" onclick="location.href='dashboard.html'"><span class="bn-icon">🛒</span><span class="bn-label">Kasir</span></button>
     <button class="bn-item" onclick="location.href='history.html'"><span class="bn-icon">📄</span><span class="bn-label">History</span></button>
@@ -192,7 +125,6 @@
     <button class="bn-item active" onclick="openSheet('moreSheet')"><span class="bn-icon">☰</span><span class="bn-label">Lainnya</span></button>
 </nav>
 
-<!-- MORE SHEET -->
 <div class="sheet-overlay" id="moreSheet" onclick="closeSheetOutside(event,'moreSheet')">
     <div class="bottom-sheet" onclick="event.stopPropagation()">
         <div class="sheet-handle"></div>
@@ -202,10 +134,14 @@
 </div>
 
 <script>
-const currentUser = JSON.parse(localStorage.getItem('currentUser'));
-if (!currentUser) window.location.href = 'index.html';
+const currentUser = JSON.parse(localStorage.getItem('currentUser')) || {user:'Guest', role:'Staff'};
+if (!currentUser.user) window.location.href = 'index.html';
+if (currentUser.role !== 'VIP') window.location.href = 'dashboard.html';
 
-/* ── SIDEBAR ── */
+const sessionToken = localStorage.getItem('sessionToken') || '';
+let allUsersLokasi = [];
+let pollTimers = {};
+
 function toggleSidebar() {
     const sb = document.getElementById('sidebar');
     const mc = document.getElementById('mainContent');
@@ -324,9 +260,6 @@ function toggleNavGroup(id) {
     localStorage.setItem('navGroup_' + id, open ? '0' : '1');
 }
 
-
-
-/* ── CLOCK ── */
 function updateClock() {
     const now = new Date();
     document.getElementById('realtimeClock').innerText = now.toLocaleTimeString('id-ID');
@@ -334,17 +267,16 @@ function updateClock() {
 }
 setInterval(updateClock, 1000);
 
-/* ── MORE MENU ── */
 function buildMoreMenu() {
     const role = currentUser.role;
     const items = [{icon:'🚚',label:'Restock',link:'restock.html'}];
     items.push({icon:'📚',label:'Edukasi & SOP',link:'edukasi.html'});
     items.push({icon:'🏆',label:'Performa',link:'performa.html'});
     if (['Senior Staff','SPV','Owner','VIP'].includes(role)) {
+        items.push({icon:'🍱',label:'Produk',link:'produk.html'});
         items.push({icon:'📈',label:'Rekapan',link:'rekap.html'});
     }
     if (['Owner','VIP'].includes(role)) {
-        items.push({icon:'🍱',label:'Produk',link:'produk.html'});
         items.push({icon:'🏷️',label:'Promo',link:'promo.html'});
         items.push({icon:'🧂',label:'Bahan Baku',link:'bahan_baku.html'});
         items.push({icon:'🗃️',label:'HPP Produk',link:'hpp_produk.html'});
@@ -374,71 +306,89 @@ function buildMoreMenu() {
         </button>`).join('');
 }
 
-
 function openSheet(id) { if(id==='moreSheet') buildMoreMenu(); document.getElementById(id).classList.add('open'); }
 function closeSheetOutside(e,id) { if(e.target===document.getElementById(id)) document.getElementById(id).classList.remove('open'); }
 
-/* ── LOGIKA LOG (TIDAK BERUBAH) ── */
-async function tampilkanLogs() {
+async function muatUsersLokasi() {
     try {
-        const res  = await fetch(`${API_BASE}?action=get_logs`);
-        const logs = await res.json();
-        const tbody = document.getElementById('logTableBody');
-        tbody.innerHTML = '';
-
-        if (logs.length === 0) {
-            tbody.innerHTML = '<tr class="empty-row"><td colspan="9">Belum ada history login di server.</td></tr>';
-            return;
-        }
-
-        logs.forEach(log => {
-            const roleClass  = log.role ? log.role.replace(/\s+/g, '') : 'Staff';
-            const parts      = (log.waktu || '').split(' ');
-            const tglStr     = parts[0] || '—';
-            const jamStr     = parts[1] ? parts[1].substring(0,8) : '—';
-            // Log lama (sebelum fitur IP/device/lokasi ada) tidak punya nilai ini - tampilkan "-".
-            const ipStr       = log.ip       || '-';
-            const deviceStr   = log.device   || '-';
-            // GPS presisi dari browser diprioritaskan (kalau user izinkan saat login) -
-            // fallback ke teks lokasi dari IP-geolocation kalau tidak ada data GPS.
-            const lat = log.gps_lat !== null && log.gps_lat !== undefined && log.gps_lat !== '' ? parseFloat(log.gps_lat) : null;
-            const lng = log.gps_lng !== null && log.gps_lng !== undefined && log.gps_lng !== '' ? parseFloat(log.gps_lng) : null;
-            const locationStr = (lat !== null && lng !== null && !isNaN(lat) && !isNaN(lng))
-                ? `<a href="https://www.google.com/maps?q=${lat},${lng}" target="_blank" rel="noopener">📍 Lihat di Maps</a>`
-                : (log.location || '-');
-            tbody.innerHTML += `
-                <tr>
-                    <td class="waktu-cell">${tglStr}</td>
-                    <td class="waktu-cell">${jamStr}</td>
-                    <td><b>${log.username}</b></td>
-                    <td><span class="role-badge ${roleClass}">${log.role}</span></td>
-                    <td>${log.cabang}</td>
-                    <td class="waktu-cell">${ipStr}</td>
-                    <td>${deviceStr}</td>
-                    <td>${locationStr}</td>
-                    <td><span class="status-success">✓ Success</span></td>
-                </tr>`;
-        });
-    } catch (e) {
-        document.getElementById('logTableBody').innerHTML = '<tr class="empty-row"><td colspan="9">Gagal memuat data dari server.</td></tr>';
-    }
+        const res  = await fetch(`${API_BASE}?action=get_users_basic`);
+        allUsersLokasi = await res.json();
+        renderTabelLokasi();
+    } catch(e) { console.error(e); }
 }
 
-async function hapusSemuaLog() {
-    const ok = await showConfirm('Hapus semua catatan login? Tindakan ini tidak bisa dibatalkan.', 'Ya, Hapus', 'Batal', '🧹');
-    if (!ok) return;
-    try {
-        const res   = await fetch(`${API_BASE}?action=clear_logs`);
-        const hasil = await res.json();
-        if (hasil.status === 'success') {
-            toast.success('Log berhasil dibersihkan!');
-            tampilkanLogs();
-        } else {
-            toast.error('Gagal menghapus log: ' + hasil.message);
-        }
-    } catch (e) {
-        toast.error('Terjadi kesalahan koneksi ke server.');
+function renderTabelLokasi() {
+    const tbody = document.getElementById('tabelLokasi');
+    if (!allUsersLokasi.length) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--text-light);">Belum ada user</td></tr>';
+        return;
     }
+    tbody.innerHTML = allUsersLokasi.map(u => `
+        <tr data-username="${u.username}">
+            <td><b>${u.username}</b></td>
+            <td>${u.fullName || '-'}</td>
+            <td><span class="pill-role">${u.role}</span></td>
+            <td><button class="btn-cek-lokasi" onclick="cekPosisi('${u.username.replace(/'/g,"\\'")}', this)">📍 Cek Posisi</button></td>
+            <td class="lokasi-hasil"><span class="lokasi-empty">Belum dicek</span></td>
+        </tr>`).join('');
+}
+
+function cekPosisi(username, btn) {
+    const row  = btn.closest('tr');
+    const cell = row.querySelector('.lokasi-hasil');
+    btn.disabled = true;
+    cell.innerHTML = '<span class="lokasi-pending">⏳ Menunggu respon...</span>';
+
+    if (pollTimers[username]) clearInterval(pollTimers[username].interval);
+
+    fetch(`${API_BASE}?action=location_request`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user: currentUser.user, token: sessionToken, target: username }),
+    }).then(res => res.json()).then(hasil => {
+        if (!hasil || hasil.status !== 'success') {
+            cell.innerHTML = '<span class="lokasi-empty">Gagal mengirim permintaan</span>';
+            btn.disabled = false;
+            return;
+        }
+        let tries = 0;
+        const maxTries = 10; // 10 x 2 detik = 20 detik timeout
+        const interval = setInterval(() => {
+            tries++;
+            fetch(`${API_BASE}?action=get_location_result&user=${encodeURIComponent(currentUser.user)}&token=${encodeURIComponent(sessionToken)}&target=${encodeURIComponent(username)}`)
+                .then(res => res.json())
+                .then(r => {
+                    if (r && r.status === 'done') {
+                        clearInterval(interval);
+                        btn.disabled = false;
+                        const waktu = r.waktu ? new Date(r.waktu.replace(' ', 'T')).toLocaleString('id-ID', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' }) : '-';
+                        const mapsUrl = `https://www.google.com/maps?q=${r.lat},${r.lng}`;
+                        const embedUrl = `https://www.google.com/maps?q=${r.lat},${r.lng}&z=16&output=embed`;
+                        cell.innerHTML = `
+                            <div class="lokasi-waktu">🕐 ${waktu}${r.accuracy ? ` · ±${Math.round(r.accuracy)}m` : ''}</div>
+                            <a class="lokasi-maps-link" href="${mapsUrl}" target="_blank">📍 Buka di Google Maps</a>
+                            <iframe class="lokasi-embed" src="${embedUrl}" loading="lazy"></iframe>
+                        `;
+                    } else if (tries >= maxTries) {
+                        clearInterval(interval);
+                        btn.disabled = false;
+                        cell.innerHTML = '<span class="lokasi-empty">Tidak ada respon (kemungkinan tidak sedang login / lokasi tidak diizinkan)</span>';
+                    }
+                    // status 'pending' -> lanjut polling
+                })
+                .catch(() => {
+                    if (tries >= maxTries) {
+                        clearInterval(interval);
+                        btn.disabled = false;
+                        cell.innerHTML = '<span class="lokasi-empty">Gagal memuat hasil</span>';
+                    }
+                });
+        }, 2000);
+        pollTimers[username] = { interval };
+    }).catch(() => {
+        cell.innerHTML = '<span class="lokasi-empty">Gagal mengirim permintaan</span>';
+        btn.disabled = false;
+    });
 }
 
 async function logout() {
@@ -450,7 +400,7 @@ async function logout() {
     }
 }
 
-window.onload = () => { buildSidebar(); updateClock(); tampilkanLogs(); };
+window.onload = () => { buildSidebar(); updateClock(); muatUsersLokasi(); };
 </script>
 
 <script src="session.js"></script>

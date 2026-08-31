@@ -1,10 +1,10 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Hoki POS - History Login</title>
-        <link rel="icon" href="Assets/2.png">
+    <title>Hoki POS - Data Pelamar Kerja</title>
+    <link rel="icon" href="Assets/2.png">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#d32f2f">
     <meta name="mobile-web-app-capable" content="yes">
@@ -16,112 +16,95 @@
     <link href="https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=DM+Mono:wght@400;500&family=Poppins:wght@700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css?v=20260501">
     <style>
-
-    /* ── CARD ── */
-    .card-history {
+    .form-card {
         background: var(--surface);
         border: 1px solid var(--border);
         border-radius: var(--r-lg);
         padding: 20px;
+        margin-bottom: 12px;
         box-shadow: var(--sh-sm);
-        overflow-x: auto;
+    }
+    .form-card h3 { margin: 0 0 16px; font-size: 14px; font-weight: 700; color: var(--text); }
+    .grid-form {
+        display: grid;
+        grid-template-columns: 1.5fr 2fr 0.7fr 1.2fr 1.5fr auto;
+        gap: 10px;
+        align-items: end;
+    }
+    .input-group { display: flex; flex-direction: column; }
+    .input-group > * + * { margin-top: 4px; }
+    .input-group label {
+        font-size: 10px; font-weight: 700; color: var(--text-muted);
+        text-transform: uppercase; letter-spacing: 0.8px;
+    }
+    .input-group input {
+        margin: 0; padding: 9px 12px; border: 1.5px solid var(--border);
+        border-radius: var(--r-md); font-size: 13px; font-family: 'Nunito', sans-serif;
+        background: var(--surface); color: var(--text); outline: none; transition: border-color 0.2s;
+    }
+    .input-group input:focus { border-color: var(--red); }
+    .input-group input[type="file"] { padding: 6px 8px; font-size: 12px; }
+
+    .table-wrap {
+        background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg);
+        overflow: hidden; box-shadow: var(--sh-sm); overflow-x: auto;
+    }
+    .table-wrap table { width: 100%; border-collapse: collapse; }
+    .table-wrap thead th {
+        background: var(--red); color: white; padding: 10px 14px; font-size: 11px;
+        font-weight: 600; text-transform: uppercase; border: none; text-align: left;
+    }
+    .table-wrap tbody td {
+        padding: 10px 14px; border-bottom: 1px solid var(--border); font-size: 13px;
+        color: var(--text); border-top: none; border-left: none; border-right: none;
+    }
+    .table-wrap tbody tr:last-child td { border-bottom: none; }
+    .table-wrap tbody tr:hover td { background: var(--red-soft); }
+    .mono { font-family: 'DM Mono', monospace; font-weight: 700; }
+
+    .btn-cv {
+        background: var(--blue-soft); color: var(--blue); border: 1px solid #bcdcf9;
+        padding: 5px 10px; border-radius: var(--r-sm); font-size: 12px; font-weight: 700; cursor: pointer;
+    }
+    .btn-cv:hover { filter: brightness(0.95); }
+    .btn-wa-mini {
+        background: #e8fbe9; color: #1a7d1f; border: 1px solid #b9ecbb;
+        padding: 5px 10px; border-radius: var(--r-sm); font-size: 12px; font-weight: 700;
+        text-decoration: none; display: inline-block;
     }
 
-    /* ── TABLE ── */
-    .log-table {
-        width: 100%;
-        border-collapse: collapse;
-        font-size: 13px;
-        background: transparent;
-        box-shadow: none;
-        border: none;
-        border-radius: 0;
+    /* ── MODAL PREVIEW CV ── */
+    #cvModalOverlay {
+        display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.55);
+        z-index: 9999; align-items: center; justify-content: center; padding: 20px;
     }
-
-    .log-table th {
-        background: var(--red);
-        color: white;
-        padding: 10px 14px;
-        text-align: left;
-        font-size: 11px;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        border: none;
+    #cvModalOverlay.open { display: flex; }
+    .cv-modal-box {
+        background: var(--surface); border-radius: var(--r-lg); width: 100%; max-width: 720px;
+        max-height: 90vh; display: flex; flex-direction: column; box-shadow: var(--sh-lg);
     }
-
-    .log-table td {
-        padding: 10px 14px;
-        border-bottom: 1px solid var(--border);
-        color: var(--text);
-        vertical-align: middle;
-        border-top: none;
-        border-left: none;
-        border-right: none;
+    .cv-modal-head {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 14px 18px; border-bottom: 1px solid var(--border);
     }
+    .cv-modal-head h3 { font-size: 14px; font-weight: 700; margin: 0; }
+    .cv-modal-close { background: none; border: none; font-size: 20px; cursor: pointer; color: var(--text-muted); }
+    .cv-modal-body { padding: 14px; flex: 1; overflow: auto; display: flex; align-items: center; justify-content: center; }
+    .cv-modal-body iframe { width: 100%; height: 70vh; border: none; border-radius: var(--r-md); }
+    .cv-modal-body img { max-width: 100%; max-height: 70vh; border-radius: var(--r-md); }
 
-    .log-table tr:last-child td {
-        border-bottom: none;
-    }
-
-    .log-table tr:hover td {
-        background: var(--red-soft);
-    }
-
-    .log-table .waktu-cell {
-        font-family: 'DM Mono', monospace;
-        font-size: 12px;
-        color: var(--text-muted);
-    }
-
-    .status-success {
-        color: var(--green);
-        font-weight: 700;
-        font-size: 12px;
-    }
-
-    /* ── ROLE BADGES ── */
-    .role-badge {
-        padding: 3px 10px;
-        border-radius: 99px;
-        font-size: 11px;
-        font-weight: 700;
-        display: inline-block;
-    }
-
-    .VIP         { background: #fff8e1; color: #f57f17; }
-    .Owner       { background: var(--red-soft); color: var(--red); }
-    .SPV         { background: #e3f2fd; color: #1565c0; }
-    .Staff       { background: #f1f8e9; color: #2e7d32; }
-    .SeniorStaff { background: #f3e5f5; color: #7b1fa2; }
-
-    /* ── BERSIHKAN BUTTON ── */
-    /* ── EMPTY STATE ── */
-    .empty-row td {
-        text-align: center;
-        padding: 40px;
-        color: var(--text-light);
-        font-size: 13px;
-    }
-
-    /* ── MOBILE ── */
     @media (max-width: 844px) {
-        .header-page-title { font-size: 13px !important; }
-        .card-history { padding: 12px; }
-        .log-table { min-width: 860px; }
+        .grid-form { grid-template-columns: 1fr 1fr; }
+        .grid-form button { grid-column: span 2; }
     }
-
     </style>
   <script src="config.js?v=20260829"></script>
 </head>
 <body>
 
-<!-- ── SIDEBAR ── -->
 <aside class="sidebar" id="sidebar">
     <div class="sidebar-brand" onclick="toggleSidebar()">
-        <div class="sidebar-logo">
-            <img src="Assets/3.png" alt="Hoki">
-        </div>
+        <div class="sidebar-logo"><img src="Assets/3.png" alt="Hoki"></div>
         <div class="sidebar-brand-text">
             <div class="sidebar-brand-name">Hoki Dimsum <span class="app-ver">V4.1</span></div>
             <div class="sidebar-brand-sub">POS System <span class="app-ver-lower">v4.1</span></div>
@@ -141,15 +124,12 @@
     </div>
 </aside>
 
-<!-- ── MAIN CONTENT ── -->
 <div class="main-content" id="mainContent">
-
     <header class="top-header">
         <div class="header-left">
-            <div class="header-page-title">🔑 History Login Pengguna</div>
+            <div class="header-page-title">📋 Data Pelamar Kerja</div>
         </div>
         <div class="header-right">
-            <button class="btn-hapus-icon" onclick="hapusSemuaLog()" title="Hapus Data">🗑️</button>
             <div class="clock-pill">
                 <div id="realtimeClock">00:00:00</div>
                 <div id="realtimeDate">...</div>
@@ -158,32 +138,65 @@
     </header>
 
     <div class="page-body">
-        <div class="card-history">
-            <table class="log-table">
+        <div class="form-card">
+            <h3>➕ Tambah Pelamar</h3>
+            <div class="grid-form">
+                <div class="input-group">
+                    <label>Nama</label>
+                    <input type="text" id="pNama" placeholder="Nama lengkap">
+                </div>
+                <div class="input-group">
+                    <label>Alamat</label>
+                    <input type="text" id="pAlamat" placeholder="Alamat domisili">
+                </div>
+                <div class="input-group">
+                    <label>Umur</label>
+                    <input type="number" id="pUmur" placeholder="25">
+                </div>
+                <div class="input-group">
+                    <label>No WA</label>
+                    <input type="text" id="pNoWa" placeholder="0812xxxxxxx">
+                </div>
+                <div class="input-group">
+                    <label>Dokumen CV (PDF/JPG/PNG, maks 5MB)</label>
+                    <input type="file" id="pCv" accept=".pdf,.jpg,.jpeg,.png">
+                </div>
+                <button class="btn-simpan" onclick="simpanPelamar()">💾 Simpan</button>
+            </div>
+        </div>
+
+        <div class="table-wrap">
+            <table>
                 <thead>
                     <tr>
-                        <th>Tanggal</th>
-                        <th>Waktu</th>
-                        <th>Username</th>
-                        <th>Role</th>
-                        <th>Cabang</th>
-                        <th>IP</th>
-                        <th>Perangkat</th>
-                        <th>Lokasi</th>
-                        <th>Status</th>
+                        <th>Nama</th>
+                        <th>Alamat</th>
+                        <th>Umur</th>
+                        <th>No WA</th>
+                        <th>CV</th>
+                        <th>Tanggal Masuk</th>
+                        <th>Aksi</th>
                     </tr>
                 </thead>
-                <tbody id="logTableBody">
-                    <tr class="empty-row">
-                        <td colspan="9">Memuat data...</td>
-                    </tr>
+                <tbody id="tabelPelamar">
+                    <tr><td colspan="7" style="text-align:center;padding:32px;color:var(--text-light);">Memuat data...</td></tr>
                 </tbody>
             </table>
         </div>
     </div>
 </div>
 
-<!-- BOTTOM NAV -->
+<!-- ── MODAL PREVIEW CV ── -->
+<div id="cvModalOverlay" onclick="if(event.target===this) tutupCvModal()">
+    <div class="cv-modal-box">
+        <div class="cv-modal-head">
+            <h3 id="cvModalTitle">Preview CV</h3>
+            <button class="cv-modal-close" onclick="tutupCvModal()">×</button>
+        </div>
+        <div class="cv-modal-body" id="cvModalBody"></div>
+    </div>
+</div>
+
 <nav class="bottom-nav">
     <button class="bn-item" onclick="location.href='dashboard.html'"><span class="bn-icon">🛒</span><span class="bn-label">Kasir</span></button>
     <button class="bn-item" onclick="location.href='history.html'"><span class="bn-icon">📄</span><span class="bn-label">History</span></button>
@@ -192,7 +205,6 @@
     <button class="bn-item active" onclick="openSheet('moreSheet')"><span class="bn-icon">☰</span><span class="bn-label">Lainnya</span></button>
 </nav>
 
-<!-- MORE SHEET -->
 <div class="sheet-overlay" id="moreSheet" onclick="closeSheetOutside(event,'moreSheet')">
     <div class="bottom-sheet" onclick="event.stopPropagation()">
         <div class="sheet-handle"></div>
@@ -202,10 +214,12 @@
 </div>
 
 <script>
-const currentUser = JSON.parse(localStorage.getItem('currentUser'));
-if (!currentUser) window.location.href = 'index.html';
+const currentUser = JSON.parse(localStorage.getItem('currentUser')) || {user:'Guest', role:'Staff'};
+if (!currentUser.user) window.location.href = 'index.html';
+if (!['Owner','VIP'].includes(currentUser.role)) window.location.href = 'dashboard.html';
 
-/* ── SIDEBAR ── */
+let allPelamar = [];
+
 function toggleSidebar() {
     const sb = document.getElementById('sidebar');
     const mc = document.getElementById('mainContent');
@@ -324,9 +338,6 @@ function toggleNavGroup(id) {
     localStorage.setItem('navGroup_' + id, open ? '0' : '1');
 }
 
-
-
-/* ── CLOCK ── */
 function updateClock() {
     const now = new Date();
     document.getElementById('realtimeClock').innerText = now.toLocaleTimeString('id-ID');
@@ -334,17 +345,16 @@ function updateClock() {
 }
 setInterval(updateClock, 1000);
 
-/* ── MORE MENU ── */
 function buildMoreMenu() {
     const role = currentUser.role;
     const items = [{icon:'🚚',label:'Restock',link:'restock.html'}];
     items.push({icon:'📚',label:'Edukasi & SOP',link:'edukasi.html'});
     items.push({icon:'🏆',label:'Performa',link:'performa.html'});
     if (['Senior Staff','SPV','Owner','VIP'].includes(role)) {
+        items.push({icon:'🍱',label:'Produk',link:'produk.html'});
         items.push({icon:'📈',label:'Rekapan',link:'rekap.html'});
     }
     if (['Owner','VIP'].includes(role)) {
-        items.push({icon:'🍱',label:'Produk',link:'produk.html'});
         items.push({icon:'🏷️',label:'Promo',link:'promo.html'});
         items.push({icon:'🧂',label:'Bahan Baku',link:'bahan_baku.html'});
         items.push({icon:'🗃️',label:'HPP Produk',link:'hpp_produk.html'});
@@ -374,71 +384,116 @@ function buildMoreMenu() {
         </button>`).join('');
 }
 
-
 function openSheet(id) { if(id==='moreSheet') buildMoreMenu(); document.getElementById(id).classList.add('open'); }
 function closeSheetOutside(e,id) { if(e.target===document.getElementById(id)) document.getElementById(id).classList.remove('open'); }
 
-/* ── LOGIKA LOG (TIDAK BERUBAH) ── */
-async function tampilkanLogs() {
-    try {
-        const res  = await fetch(`${API_BASE}?action=get_logs`);
-        const logs = await res.json();
-        const tbody = document.getElementById('logTableBody');
-        tbody.innerHTML = '';
-
-        if (logs.length === 0) {
-            tbody.innerHTML = '<tr class="empty-row"><td colspan="9">Belum ada history login di server.</td></tr>';
-            return;
-        }
-
-        logs.forEach(log => {
-            const roleClass  = log.role ? log.role.replace(/\s+/g, '') : 'Staff';
-            const parts      = (log.waktu || '').split(' ');
-            const tglStr     = parts[0] || '—';
-            const jamStr     = parts[1] ? parts[1].substring(0,8) : '—';
-            // Log lama (sebelum fitur IP/device/lokasi ada) tidak punya nilai ini - tampilkan "-".
-            const ipStr       = log.ip       || '-';
-            const deviceStr   = log.device   || '-';
-            // GPS presisi dari browser diprioritaskan (kalau user izinkan saat login) -
-            // fallback ke teks lokasi dari IP-geolocation kalau tidak ada data GPS.
-            const lat = log.gps_lat !== null && log.gps_lat !== undefined && log.gps_lat !== '' ? parseFloat(log.gps_lat) : null;
-            const lng = log.gps_lng !== null && log.gps_lng !== undefined && log.gps_lng !== '' ? parseFloat(log.gps_lng) : null;
-            const locationStr = (lat !== null && lng !== null && !isNaN(lat) && !isNaN(lng))
-                ? `<a href="https://www.google.com/maps?q=${lat},${lng}" target="_blank" rel="noopener">📍 Lihat di Maps</a>`
-                : (log.location || '-');
-            tbody.innerHTML += `
-                <tr>
-                    <td class="waktu-cell">${tglStr}</td>
-                    <td class="waktu-cell">${jamStr}</td>
-                    <td><b>${log.username}</b></td>
-                    <td><span class="role-badge ${roleClass}">${log.role}</span></td>
-                    <td>${log.cabang}</td>
-                    <td class="waktu-cell">${ipStr}</td>
-                    <td>${deviceStr}</td>
-                    <td>${locationStr}</td>
-                    <td><span class="status-success">✓ Success</span></td>
-                </tr>`;
-        });
-    } catch (e) {
-        document.getElementById('logTableBody').innerHTML = '<tr class="empty-row"><td colspan="9">Gagal memuat data dari server.</td></tr>';
-    }
+function waLinkPelamar(no) {
+    let n = (no || '').replace(/[^0-9]/g, '');
+    if (n.startsWith('0')) n = '62' + n.slice(1);
+    return `https://wa.me/${n}`;
 }
 
-async function hapusSemuaLog() {
-    const ok = await showConfirm('Hapus semua catatan login? Tindakan ini tidak bisa dibatalkan.', 'Ya, Hapus', 'Batal', '🧹');
-    if (!ok) return;
+async function muatPelamar() {
     try {
-        const res   = await fetch(`${API_BASE}?action=clear_logs`);
+        const res   = await fetch('api-pelamar-kerja.php?action=list');
+        const hasil = await res.json();
+        allPelamar  = hasil.data || [];
+        renderTabel();
+    } catch(e) { console.error(e); }
+}
+
+function renderTabel() {
+    const tbody = document.getElementById('tabelPelamar');
+    if (!allPelamar.length) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:32px;color:var(--text-light);">Belum ada data pelamar</td></tr>';
+        return;
+    }
+    tbody.innerHTML = allPelamar.map(p => {
+        const tgl = p.created_at ? new Date(p.created_at.replace(' ', 'T')).toLocaleDateString('id-ID', {day:'2-digit',month:'short',year:'numeric'}) : '-';
+        const cvBtn = p.cv_file
+            ? `<button class="btn-cv" onclick="lihatCv('${p.cv_file}','${(p.nama || '').replace(/'/g, "\\'")}')">👁️ Preview</button>`
+            : `<span style="color:var(--text-light);">-</span>`;
+        const waBtn = p.no_wa
+            ? `<a class="btn-wa-mini" href="${waLinkPelamar(p.no_wa)}" target="_blank">💬 WA</a>`
+            : '';
+        return `<tr>
+            <td><b>${p.nama}</b></td>
+            <td>${p.alamat || '-'}</td>
+            <td class="mono">${p.umur || '-'}</td>
+            <td>${p.no_wa || '-'} ${waBtn}</td>
+            <td>${cvBtn}</td>
+            <td>${tgl}</td>
+            <td><button class="btn-hapus-icon" onclick="hapusPelamar(${p.id})" title="Hapus Data">🗑️</button></td>
+        </tr>`;
+    }).join('');
+}
+
+function lihatCv(filename, nama) {
+    const url = `uploads/pelamar_cv/${filename}`;
+    const ext = filename.split('.').pop().toLowerCase();
+    document.getElementById('cvModalTitle').innerText = `📄 CV - ${nama}`;
+    const body = document.getElementById('cvModalBody');
+    if (ext === 'pdf') {
+        body.innerHTML = `<iframe src="${url}"></iframe>`;
+    } else {
+        body.innerHTML = `<img src="${url}" alt="CV ${nama}">`;
+    }
+    document.getElementById('cvModalOverlay').classList.add('open');
+}
+function tutupCvModal() {
+    document.getElementById('cvModalOverlay').classList.remove('open');
+    document.getElementById('cvModalBody').innerHTML = '';
+}
+
+async function simpanPelamar() {
+    const nama   = document.getElementById('pNama').value.trim();
+    const alamat = document.getElementById('pAlamat').value.trim();
+    const umur   = document.getElementById('pUmur').value.trim();
+    const noWa   = document.getElementById('pNoWa').value.trim();
+    const cvFile = document.getElementById('pCv').files[0];
+
+    if (!nama) return toast.warning('Nama wajib diisi!');
+
+    const fd = new FormData();
+    fd.append('user', currentUser.user);
+    fd.append('token', localStorage.getItem('sessionToken') || '');
+    fd.append('nama', nama);
+    fd.append('alamat', alamat);
+    fd.append('umur', umur);
+    fd.append('no_wa', noWa);
+    if (cvFile) fd.append('cv', cvFile);
+
+    try {
+        const res   = await fetch('api-pelamar-kerja.php?action=save', { method: 'POST', body: fd });
         const hasil = await res.json();
         if (hasil.status === 'success') {
-            toast.success('Log berhasil dibersihkan!');
-            tampilkanLogs();
+            toast.success('Data pelamar berhasil disimpan!');
+            ['pNama','pAlamat','pUmur','pNoWa'].forEach(id => document.getElementById(id).value = '');
+            document.getElementById('pCv').value = '';
+            muatPelamar();
         } else {
-            toast.error('Gagal menghapus log: ' + hasil.message);
+            toast.error(hasil.message || 'Gagal menyimpan!');
         }
-    } catch (e) {
-        toast.error('Terjadi kesalahan koneksi ke server.');
-    }
+    } catch(e) { toast.error('Gagal koneksi server!'); }
+}
+
+async function hapusPelamar(id) {
+    const ok = await showConfirm('Hapus data pelamar ini beserta CV-nya?', 'Ya, Hapus', 'Batal', '🗑️');
+    if (!ok) return;
+    const fd = new FormData();
+    fd.append('user', currentUser.user);
+    fd.append('token', localStorage.getItem('sessionToken') || '');
+    fd.append('id', id);
+    try {
+        const res   = await fetch('api-pelamar-kerja.php?action=delete', { method: 'POST', body: fd });
+        const hasil = await res.json();
+        if (hasil.status === 'success') {
+            toast.success('Data pelamar dihapus!');
+            muatPelamar();
+        } else {
+            toast.error(hasil.message || 'Gagal menghapus!');
+        }
+    } catch(e) { toast.error('Gagal koneksi server!'); }
 }
 
 async function logout() {
@@ -450,7 +505,7 @@ async function logout() {
     }
 }
 
-window.onload = () => { buildSidebar(); updateClock(); tampilkanLogs(); };
+window.onload = () => { buildSidebar(); updateClock(); muatPelamar(); };
 </script>
 
 <script src="session.js"></script>
