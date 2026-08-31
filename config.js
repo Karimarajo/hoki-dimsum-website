@@ -17,7 +17,7 @@ function apiUrl(action) {
 //     contoh: V4.7 -> V4.8
 //   - Perubahan besar (fitur baru, dsb) -> naikkan angka DEPAN titik
 //     contoh: V4.8 -> V5.0
-const APP_VERSION = 'V5.0';
+const APP_VERSION = 'V6.0';
 
 // Terapkan APP_VERSION ke semua elemen bertanda class .app-ver / .app-ver-lower,
 // dan ke <img> yang alt-nya berisi versi (ditandai data-alt-template dengan

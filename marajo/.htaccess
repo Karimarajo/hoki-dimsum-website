@@ -1,0 +1,4 @@
+# Cegah file skema/dokumentasi ter-download langsung lewat browser di production.
+<FilesMatch "\.(sql|md)$">
+    Require all denied
+</FilesMatch>

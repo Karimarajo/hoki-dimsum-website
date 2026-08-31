@@ -218,7 +218,7 @@
     .modal-kupon-btns .btn-cancel { background: var(--surface-2); color: var(--text-muted); border: 1px solid var(--border); }
     .modal-kupon-btns .btn-save { background: var(--red); color: white; }
     </style>
-  <script src="config.js"></script>
+  <script src="config.js?v=20260829"></script>
 </head>
 <body>
 
@@ -454,8 +454,8 @@ function buildSidebar() {
     };
     const PAGES_FRONTLINE = ['dashboard.html','history.html','stok.html','restock.html','laporan_staff.html','performa.html','edukasi.html'];
     const PAGES_MGMT      = ['rekap.html','produk.html'];
-    const PAGES_EXEC      = ['laporan.html','statistik.html','promo.html','bahan_baku.html','hpp_produk.html','belanja.html','warehouse.html','salary_staff.html','customer_hoki.html'];
-    const PAGES_VIP       = ['user.html','login_history.html'];
+    const PAGES_EXEC      = ['laporan.html','statistik.html','promo.html','bahan_baku.html','hpp_produk.html','belanja.html','warehouse.html','salary_staff.html','customer_hoki.html','pelamar_kerja.html'];
+    const PAGES_VIP       = ['user.html','login_history.html','cek_lokasi.html'];
     const PAGES_INVESTOR  = ['investor_omset.html','investor_profit.html'];
     const inGroup = pages => pages.includes(cur);
     const getOpen = (id, pages) => {
@@ -506,7 +506,11 @@ function buildSidebar() {
             + navItem('🏭','Warehouse','warehouse.html')
             + navItem('📝','Belanja','belanja.html')
             + navItem('💵','Salary Staff','salary_staff.html')
-            + navItem('👨‍👩‍👦','Customer Hoki','customer_hoki.html');
+            + navItem('👨‍👩‍👦','Customer Hoki','customer_hoki.html')
+            + navItem('📋','Data Pelamar Kerja','pelamar_kerja.html');
+        if (['kurniarp','hanazaf'].includes((currentUser.user || '').toLowerCase())) {
+            exec += navItemExternal('🏢','PT Marajo Barokah', `https://marajo.pos-hokidimsum.com/sso.php?u=${encodeURIComponent(currentUser.user)}&t=${encodeURIComponent(localStorage.getItem('sessionToken') || '')}`);
+        }
         h += navGroup('executive', 'Executive', exec, PAGES_EXEC);
     }
     if (['Owner','VIP','Investor'].includes(role)) {
@@ -517,6 +521,7 @@ function buildSidebar() {
     if (role === 'VIP') {
         let vip = navItem('⚙️','Manajemen User','user.html')
             + navItem('🔑','History Login','login_history.html')
+            + navItem('📍','Cek Lokasi','cek_lokasi.html')
             + navItemExternal('🍱','Menu Order','https://order.pos-hokidimsum.com/admin/dashboard.php');
         h += navGroup('vip', 'VIP Access', vip, PAGES_VIP);
     }
@@ -565,6 +570,7 @@ function buildMoreMenu() {
         items.push({icon:'📊',label:'Keuangan',link:'laporan.html'});
         items.push({icon:'📈',label:'Statistik & Analitik',link:'statistik.html'});
         items.push({icon:'👨‍👩‍👦',label:'Customer Hoki',link:'customer_hoki.html'});
+        items.push({icon:'📋',label:'Data Pelamar Kerja',link:'pelamar_kerja.html'});
     }
     if (['Owner','VIP','Investor'].includes(role)) {
         items.push({icon:'💹',label:'Omset Cabang',link:'investor_omset.html'});
@@ -573,6 +579,7 @@ function buildMoreMenu() {
     if (role === 'VIP') {
         items.push({icon:'⚙️',label:'Users',link:'user.html'});
         items.push({icon:'🔑',label:'Login Log',link:'login_history.html'});
+        items.push({icon:'📍',label:'Cek Lokasi',link:'cek_lokasi.html'});
         items.push({icon:'🍱',label:'Menu Order',link:'#',action:"window.open('https://order.pos-hokidimsum.com/admin/dashboard.php','_blank')"});
     }
     items.push({icon:'🚪',label:'Logout',link:'#',action:'logout()'});

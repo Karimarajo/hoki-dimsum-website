@@ -1,0 +1,3 @@
+# Blokir akses langsung ke file di folder ini lewat browser — hanya boleh
+# di-include dari PHP lain (api.php, dashboard.php, dst).
+Require all denied
