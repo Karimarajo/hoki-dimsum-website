@@ -122,57 +122,6 @@
 
     setInterval(checkSessionValidity, 10000);
 
-    // ── CEK LOKASI (VIP Access) — respon sisi klien ──
-    // Polling tiap 5 detik: "apakah lokasi saya lagi diminta VIP?" Kalau iya,
-    // ambil GPS device via navigator.geolocation lalu kirim balik ke server.
-    // Cuma jalan kalau memang sedang ada permintaan aktif - tidak melacak
-    // terus-menerus, dan device tetap munculkan izin lokasi browser standar
-    // (tidak bisa diam-diam tanpa izin pengguna).
-    function checkLocationRequest() {
-        const uStr  = localStorage.getItem('currentUser');
-        const token = localStorage.getItem('sessionToken');
-        if (!uStr || !token) return;
-
-        let username;
-        try { username = JSON.parse(uStr).user; } catch (e) { return; }
-        if (!username) return;
-
-        fetch(`${API_BASE}?action=check_location_request&user=${encodeURIComponent(username)}&token=${encodeURIComponent(token)}`)
-            .then(res => res.json())
-            .then(hasil => {
-                if (!hasil || !hasil.pending) return;
-                if (!navigator.geolocation) return;
-
-                if (typeof toast !== 'undefined' && toast.info) {
-                    toast.info('Lokasi Diminta', 'Admin sedang memeriksa posisi Anda saat ini.');
-                }
-
-                navigator.geolocation.getCurrentPosition(
-                    (pos) => {
-                        fetch(`${API_BASE}?action=submit_location`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                user: username,
-                                token: token,
-                                lat: pos.coords.latitude,
-                                lng: pos.coords.longitude,
-                                accuracy: pos.coords.accuracy,
-                            }),
-                        }).catch(() => {});
-                    },
-                    () => {
-                        // User menolak izin lokasi / GPS tidak tersedia - diamkan saja,
-                        // VIP akan lihat hasilnya kosong/tidak ada respon.
-                    },
-                    { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
-                );
-            })
-            .catch(() => {});
-    }
-
-    setInterval(checkLocationRequest, 5000);
-
     // ── GLOBAL NUMBER FORMATTER ──
     function formatRibuan(val) {
         if (val === undefined || val === null || val === '') return '';

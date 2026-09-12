@@ -414,19 +414,6 @@ foreach ($roles_default as $r_def) {
     $conn->query("INSERT IGNORE INTO hoki_salary_config (role_name) VALUES ('$r_def')");
 }
 
-// Cek Lokasi (VIP Access) — satu baris per username, di-update tiap kali
-// ada permintaan cek posisi baru / ada respon GPS dari klien staff tsb.
-$conn->query("CREATE TABLE IF NOT EXISTS user_location (
-    username VARCHAR(100) PRIMARY KEY,
-    status VARCHAR(20) DEFAULT 'idle',
-    requested_by VARCHAR(100) DEFAULT '',
-    requested_at DATETIME NULL,
-    lat DECIMAL(10,7) NULL,
-    lng DECIMAL(10,7) NULL,
-    accuracy FLOAT NULL,
-    responded_at DATETIME NULL
-)");
-
 $conn->query("CREATE TABLE IF NOT EXISTS hoki_staff_hierarchy (
     id INT AUTO_INCREMENT PRIMARY KEY,
     atasan_username VARCHAR(100) NOT NULL,
@@ -789,99 +776,6 @@ switch ($action) {
         }
         break;
 
-    // ── CEK LOKASI (VIP Access) ────────────────────────
-    // Alur: VIP klik "Cek Posisi" -> location_request (tandai username target
-    // "requested") -> tiap klien yang login polling check_location_request tiap
-    // beberapa detik (lihat session.js) -> kalau namanya sendiri yang diminta,
-    // ambil GPS device via navigator.geolocation lalu submit_location -> VIP
-    // polling get_location_result sampai dapat hasil atau timeout (client-side).
-    // Kalau staff-nya tidak sedang login/buka app, tidak ada yang polling jadi
-    // permintaan tidak akan pernah dijawab (dianggap kosong oleh VIP).
-    case 'location_request':
-        $callerUser  = $conn->real_escape_string($input['user']  ?? '');
-        $callerToken = $conn->real_escape_string($input['token'] ?? '');
-        $target      = $conn->real_escape_string($input['target'] ?? '');
-
-        $chkVip = $conn->query("SELECT username, role FROM users WHERE LOWER(username)=LOWER('$callerUser') AND session_token='$callerToken' AND session_token!=''");
-        $actorVip = ($chkVip && $chkVip->num_rows > 0) ? $chkVip->fetch_assoc() : null;
-        if (!$actorVip || $actorVip['role'] !== 'VIP') {
-            http_response_code(403);
-            echo json_encode(["status"=>"error","message"=>"Sesi tidak valid atau tidak punya akses."]);
-            break;
-        }
-        if ($target === '') {
-            echo json_encode(["status"=>"error","message"=>"Username target wajib diisi."]);
-            break;
-        }
-        $conn->query("INSERT INTO user_location (username, status, requested_by, requested_at, lat, lng, accuracy, responded_at)
-                      VALUES ('$target','requested','{$actorVip['username']}',NOW(),NULL,NULL,NULL,NULL)
-                      ON DUPLICATE KEY UPDATE status='requested', requested_by='{$actorVip['username']}', requested_at=NOW(), lat=NULL, lng=NULL, accuracy=NULL, responded_at=NULL");
-        echo json_encode(["status"=>"success"]);
-        break;
-
-    case 'check_location_request':
-        // Dipanggil polling oleh SETIAP klien yang login (lihat session.js) - cek
-        // apakah dirinya sendiri lagi diminta lokasinya oleh VIP.
-        $u     = $conn->real_escape_string($_GET['user']  ?? '');
-        $token = $conn->real_escape_string($_GET['token'] ?? '');
-        if (empty($u) || empty($token)) { echo json_encode(["pending"=>false]); break; }
-
-        $chkSelf = $conn->query("SELECT session_token FROM users WHERE LOWER(username)=LOWER('$u')");
-        $selfRow = ($chkSelf && $chkSelf->num_rows > 0) ? $chkSelf->fetch_assoc() : null;
-        if (!$selfRow || $selfRow['session_token'] !== $token) { echo json_encode(["pending"=>false]); break; }
-
-        $resLoc = $conn->query("SELECT status FROM user_location WHERE LOWER(username)=LOWER('$u')");
-        $locRow = ($resLoc && $resLoc->num_rows > 0) ? $resLoc->fetch_assoc() : null;
-        echo json_encode(["pending" => ($locRow && $locRow['status'] === 'requested')]);
-        break;
-
-    case 'submit_location':
-        // Klien staff melaporkan koordinat GPS device-nya sendiri (self-report,
-        // tidak bisa melaporkan atas nama user lain karena divalidasi via token).
-        $u     = $conn->real_escape_string($input['user']  ?? '');
-        $token = $conn->real_escape_string($input['token'] ?? '');
-        $lat   = (float)($input['lat'] ?? 0);
-        $lng   = (float)($input['lng'] ?? 0);
-        $acc   = (float)($input['accuracy'] ?? 0);
-
-        $chkSelf2 = $conn->query("SELECT session_token FROM users WHERE LOWER(username)=LOWER('$u')");
-        $selfRow2 = ($chkSelf2 && $chkSelf2->num_rows > 0) ? $chkSelf2->fetch_assoc() : null;
-        if (!$selfRow2 || $selfRow2['session_token'] !== $token) {
-            http_response_code(403);
-            echo json_encode(["status"=>"error","message"=>"Sesi tidak valid."]);
-            break;
-        }
-        $conn->query("UPDATE user_location SET status='done', lat=$lat, lng=$lng, accuracy=$acc, responded_at=NOW() WHERE LOWER(username)=LOWER('$u')");
-        echo json_encode(["status"=>"success"]);
-        break;
-
-    case 'get_location_result':
-        $callerUser2  = $conn->real_escape_string($_GET['user']  ?? '');
-        $callerToken2 = $conn->real_escape_string($_GET['token'] ?? '');
-        $target2      = $conn->real_escape_string($_GET['target'] ?? '');
-
-        $chkVip2 = $conn->query("SELECT role FROM users WHERE LOWER(username)=LOWER('$callerUser2') AND session_token='$callerToken2' AND session_token!=''");
-        $actorVip2 = ($chkVip2 && $chkVip2->num_rows > 0) ? $chkVip2->fetch_assoc() : null;
-        if (!$actorVip2 || $actorVip2['role'] !== 'VIP') {
-            http_response_code(403);
-            echo json_encode(["status"=>"empty"]);
-            break;
-        }
-        $resLoc2 = $conn->query("SELECT * FROM user_location WHERE LOWER(username)=LOWER('$target2')");
-        $locRow2 = ($resLoc2 && $resLoc2->num_rows > 0) ? $resLoc2->fetch_assoc() : null;
-        if (!$locRow2 || $locRow2['status'] !== 'done' || $locRow2['lat'] === null) {
-            echo json_encode(["status" => ($locRow2 && $locRow2['status'] === 'requested') ? 'pending' : 'empty']);
-            break;
-        }
-        echo json_encode([
-            "status" => "done",
-            "lat"    => (float)$locRow2['lat'],
-            "lng"    => (float)$locRow2['lng'],
-            "accuracy" => (float)$locRow2['accuracy'],
-            "waktu"  => $locRow2['responded_at'],
-        ]);
-        break;
-
     // ── CABANG ────────────────────────────────────────
     case 'get_cabang':
     case 'get_branches':
@@ -1017,12 +911,6 @@ switch ($action) {
         break;
 
     // ── USERS ─────────────────────────────────────────
-    case 'get_users_basic':
-        // Dipakai halaman Cek Lokasi - cuma kolom yang perlu, tanpa password.
-        $res = $conn->query("SELECT username, fullName, role FROM users ORDER BY fullName ASC");
-        echo json_encode($res ? $res->fetch_all(MYSQLI_ASSOC) : []);
-        break;
-
     case 'get_users':
         $filter = $_GET['filter'] ?? '';
         if ($filter === 'salary') {
@@ -1966,8 +1854,19 @@ switch ($action) {
             $conn->query("INSERT INTO hpp_produk_detail (hpp_id, bahan_id, qty, subtotal) VALUES ($id,$bid,$qty,$sub)");
         }
 
-        // Sync HPP ke tabel produk berdasarkan SKU
-        $conn->query("UPDATE produk SET hpp=$hpp WHERE sku='$sku'");
+        // Hitung ulang harga_pokok dari rincian bahan yang BARU DIINSERT (bukan
+        // percaya $hpp kiriman client - sama seperti pola otomatisasi HPP di
+        // save_bahan_baku). COALESCE ke 0 supaya kalau daftar bahan kosong,
+        // harga_pokok jadi 0 (bukan NULL yang bisa ngerusak produk.hpp).
+        $conn->query("UPDATE hpp_produk SET harga_pokok = (
+            SELECT COALESCE(SUM(subtotal), 0) FROM hpp_produk_detail WHERE hpp_id = $id
+        ) WHERE id = $id");
+
+        // Sync HPP ke tabel produk berdasarkan SKU, pakai nilai yang baru saja
+        // dihitung ulang di atas (bukan $hpp) supaya produk.hpp & hpp_produk.harga_pokok
+        // selalu satu sumber kebenaran yang sama.
+        $conn->query("UPDATE produk p JOIN hpp_produk h ON p.sku = h.sku
+                      SET p.hpp = h.harga_pokok WHERE h.id = $id");
 
         echo json_encode(["status"=>"success"]);
         break;
