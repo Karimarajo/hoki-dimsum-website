@@ -118,8 +118,65 @@
 
     /* Fallback jarak flex (gap tidak didukung Chrome flex < 84) */
     .wh-form-row > * + * { margin-left: 16px; margin-top: 16px; }
+
+    /* ── TAB HALAMAN (Ringkasan Performa / Penilaian Rekan Kerja) ── */
+    .ptabs { display:flex; gap:8px; margin-bottom:20px; border-bottom:1px solid var(--border); }
+    .ptab-btn {
+        background:none; border:none; padding:12px 4px; margin-right:20px; font-size:13.5px; font-weight:700;
+        color:var(--text-muted); cursor:pointer; border-bottom:3px solid transparent; margin-bottom:-1px;
+    }
+    .ptab-btn.active { color:var(--red); border-bottom-color:var(--red); }
+    .ptab-panel { display:none; }
+    .ptab-panel.active { display:block; }
+
+    .peer-card {
+        background:var(--surface); border:1px solid var(--border); border-radius:var(--r-lg);
+        padding:20px; margin-bottom:20px; box-shadow:var(--sh-sm);
+    }
+    .peer-card h3 { margin:0 0 12px; font-size:14px; font-weight:700; color:var(--text); }
+    .skor-besar { font-size:32px; font-weight:800; color:var(--red); font-family:'DM Mono',monospace; }
+    .skor-sub { font-size:12px; color:var(--text-muted); margin-top:4px; }
+    .skor-kosong { color:var(--text-light); font-style:italic; font-size:13px; }
+
+    .peer-table-wrap { overflow-x:auto; border:1px solid var(--border); border-radius:var(--r-md); }
+    table.peer-tbl { width:100%; border-collapse:collapse; }
+    table.peer-tbl th { background:var(--red); color:#fff; padding:9px 12px; font-size:10.5px; text-transform:uppercase; text-align:left; font-weight:700; }
+    table.peer-tbl td { padding:10px 12px; border-bottom:1px solid var(--border); font-size:13px; color:var(--text); }
+    table.peer-tbl tbody tr:hover { background:var(--surface-2); }
+
+    .btn-isi-penilaian { background:var(--red); color:#fff; border:none; padding:7px 14px; border-radius:8px; font-size:12.5px; font-weight:700; cursor:pointer; }
+    .btn-isi-penilaian:hover { filter:brightness(0.92); }
+    .pill-sudah-dinilai { background:var(--green-soft); color:var(--green); border:1px solid #b9ecbb; padding:6px 12px; border-radius:8px; font-size:12.5px; font-weight:700; cursor:pointer; }
+    .pill-belum-lengkap { background:#fffbeb; color:#b45309; padding:3px 10px; border-radius:20px; font-size:11px; font-weight:700; white-space:nowrap; }
+    .text-muted-inline { color:var(--text-muted); font-weight:400; }
+
+    /* ── MODAL FORM PENILAIAN ── */
+    #modalPenilaianOverlay {
+        display:none; position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:9999;
+        align-items:center; justify-content:center; padding:16px;
+    }
+    #modalPenilaianOverlay.open { display:flex; }
+    .modal-penilaian-box {
+        background:var(--surface); border-radius:var(--r-lg); width:100%; max-width:640px;
+        max-height:90vh; display:flex; flex-direction:column; box-shadow:var(--sh-lg);
+    }
+    .modal-penilaian-head { display:flex; align-items:center; justify-content:space-between; padding:16px 20px; border-bottom:1px solid var(--border); }
+    .modal-penilaian-head h3 { font-size:15px; font-weight:800; margin:0; }
+    .modal-penilaian-close { background:none; border:none; font-size:22px; cursor:pointer; color:var(--text-muted); }
+    .modal-penilaian-body { padding:16px 20px; overflow-y:auto; flex:1; }
+    .modal-penilaian-foot { padding:14px 20px; border-top:1px solid var(--border); display:flex; justify-content:flex-end; gap:10px; }
+
+    .kategori-label { font-size:11px; font-weight:800; color:var(--red); text-transform:uppercase; letter-spacing:0.6px; margin:16px 0 8px; }
+    .kategori-label:first-child { margin-top:0; }
+    .soal-row { padding:8px 0; border-bottom:1px solid var(--border); }
+    .soal-row:last-child { border-bottom:none; }
+    .soal-teks { font-size:13px; color:var(--text); margin-bottom:6px; }
+    .star-row { display:flex; gap:4px; }
+    .star-btn { background:none; border:none; font-size:22px; cursor:pointer; opacity:0.3; padding:0; line-height:1; }
+    .star-btn.filled { opacity:1; }
+    .star-row.readonly .star-btn { cursor:default; }
     </style>
-    <script src="config.js?v=20260829"></script>
+    <script src="config.js?v=20260927"></script>
 </head>
 <body>
 
@@ -160,6 +217,22 @@
     </header>
 
     <div class="page-body">
+
+        <div class="ptabs">
+            <button class="ptab-btn active" data-ptab="ringkasan" onclick="setPageTab('ringkasan')">🏆 Ringkasan Performa</button>
+            <button class="ptab-btn" data-ptab="peer" onclick="setPageTab('peer')">🤝 Penilaian Rekan Kerja</button>
+        </div>
+
+        <div class="ptab-panel active" id="ptab-ringkasan">
+
+        <!-- SKOR TOTAL - Absensi 30% + Omset 25% + Peer Review 45%, periode penilaian aktif -->
+        <div class="peer-card" id="skorTotalCard">
+            <h3>🏅 Skor Total Penilaian (Periode Aktif)</h3>
+            <p style="font-size:12px;color:var(--text-muted);margin:-6px 0 12px;">
+                Gabungan Absensi (30%) + Omset (25%) + Peer Review (45%). Skor Total baru muncul kalau ketiga komponen sudah lengkap.
+            </p>
+            <div id="skorTotalBox"><span class="skor-kosong">Memuat...</span></div>
+        </div>
 
         <!-- LEADERBOARD - selalu tampil ke SEMUA role, termasuk Staff -->
         <div class="stat-cards-grid">
@@ -235,8 +308,56 @@
                 </table>
             </div>
         </div>
+
+        </div><!-- /ptab-ringkasan -->
+
+        <!-- ── TAB PENILAIAN REKAN KERJA ── -->
+        <div class="ptab-panel" id="ptab-peer">
+
+            <div class="peer-card">
+                <h3>🎯 Skor Peer Review Anda (Periode Aktif)</h3>
+                <div id="peerSkorAktifBox"><span class="skor-kosong">Memuat...</span></div>
+            </div>
+
+            <div class="peer-card">
+                <h3>📜 History Periode Sebelumnya</h3>
+                <div class="peer-table-wrap">
+                    <table class="peer-tbl">
+                        <thead><tr><th>Periode</th><th>Skor (45%)</th><th>Rata-rata Mentah</th><th>Jumlah Penilai</th></tr></thead>
+                        <tbody id="peerHistoriBody"><tr><td colspan="4" style="text-align:center;color:var(--text-muted);">Memuat...</td></tr></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="peer-card">
+                <h3>✍️ Daftar yang Harus Anda Nilai (Periode Aktif)</h3>
+                <p style="font-size:12px;color:var(--text-muted);margin:-6px 0 12px;">Penilaian bersifat rahasia — hasil yang dilihat pihak dinilai hanya berupa skor gabungan, bukan siapa memberi nilai apa. Sekali dikirim, jawaban tidak bisa diubah lagi.</p>
+                <div class="peer-table-wrap">
+                    <table class="peer-tbl">
+                        <thead><tr><th>Nama</th><th>Role</th><th>Status</th></tr></thead>
+                        <tbody id="peerTargetBody"><tr><td colspan="3" style="text-align:center;color:var(--text-muted);">Memuat...</td></tr></tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div><!-- /ptab-peer -->
+
     </div>
 </main>
+
+<!-- ── MODAL FORM PENILAIAN 20 PERTANYAAN ── -->
+<div id="modalPenilaianOverlay" onclick="if(event.target===this) tutupModalPenilaian()">
+    <div class="modal-penilaian-box">
+        <div class="modal-penilaian-head">
+            <h3 id="modalPenilaianTitle">Isi Penilaian</h3>
+            <button class="modal-penilaian-close" onclick="tutupModalPenilaian()">×</button>
+        </div>
+        <div class="modal-penilaian-body" id="modalPenilaianBody"></div>
+        <div class="modal-penilaian-foot" id="modalPenilaianFoot">
+            <button class="btn-isi-penilaian" onclick="submitPenilaianForm()">💾 Kirim Penilaian</button>
+        </div>
+    </div>
+</div>
 
 <nav class="bottom-nav">
     <button class="bn-item" onclick="location.href='dashboard.html'"><span class="bn-icon">🛒</span><span class="bn-label">Kasir</span></button>
@@ -296,6 +417,7 @@ function buildMoreMenu() {
     if (role === 'VIP') {
         items.push({icon:'⚙️',label:'Users',link:'user.html'});
         items.push({icon:'🔑',label:'Login Log',link:'login_history.html'});
+        items.push({icon:'📝',label:'Manajemen Penilaian',link:'manajemen_penilaian.html'});
         items.push({icon:'🍱',label:'Menu Order',link:'#',action:"window.open('https://order.pos-hokidimsum.com/admin/dashboard.php','_blank')"});
     }
     items.push({icon:'🚪',label:'Logout',link:'#',action:'logout()'});
@@ -333,7 +455,7 @@ function buildSidebar() {
     const PAGES_FRONTLINE = ['dashboard.html','history.html','stok.html','restock.html','laporan_staff.html','performa.html','edukasi.html'];
     const PAGES_MGMT      = ['rekap.html','produk.html'];
     const PAGES_EXEC      = ['laporan.html','statistik.html','promo.html','bahan_baku.html','hpp_produk.html','belanja.html','warehouse.html','salary_staff.html','customer_hoki.html','pelamar_kerja.html'];
-    const PAGES_VIP       = ['user.html','login_history.html'];
+    const PAGES_VIP       = ['user.html','login_history.html','manajemen_penilaian.html'];
     const PAGES_INVESTOR  = ['investor_omset.html','investor_profit.html'];
     const inGroup = pages => pages.includes(cur);
     const getOpen = (id, pages) => {
@@ -399,6 +521,7 @@ function buildSidebar() {
     if (role === 'VIP') {
         let vip = navItem('⚙️','Manajemen User','user.html')
             + navItem('🔑','History Login','login_history.html')
+            + navItem('📝','Manajemen Penilaian','manajemen_penilaian.html')
             + navItemExternal('🍱','Menu Order','https://order.pos-hokidimsum.com/admin/dashboard.php');
         h += navGroup('vip', 'VIP Access', vip, PAGES_VIP);
     }
@@ -634,6 +757,290 @@ async function loadPerforma() {
     }
 }
 
+/* ══════════════════════════════════════════════════════════════════
+   TAB HALAMAN (Ringkasan Performa / Penilaian Rekan Kerja)
+   ══════════════════════════════════════════════════════════════════ */
+let peerTabLoaded = false;
+
+function setPageTab(name) {
+    document.querySelectorAll('.ptab-btn').forEach(b => b.classList.toggle('active', b.dataset.ptab === name));
+    document.getElementById('ptab-ringkasan').classList.toggle('active', name === 'ringkasan');
+    document.getElementById('ptab-peer').classList.toggle('active', name === 'peer');
+    if (name === 'peer') loadPeerTab();
+}
+
+/* ── PEER REVIEW: API HELPER ── */
+const PENILAIAN_API = 'api-penilaian.php';
+function peerAuthQS() {
+    const token = localStorage.getItem('sessionToken') || '';
+    return `user=${encodeURIComponent(currentUser.user)}&token=${encodeURIComponent(token)}`;
+}
+async function peerApiGet(action, extra = '') {
+    const res = await fetch(`${PENILAIAN_API}?action=${action}&${peerAuthQS()}${extra}`);
+    return res.json();
+}
+async function peerApiPost(action, body) {
+    const token = localStorage.getItem('sessionToken') || '';
+    const res = await fetch(`${PENILAIAN_API}?action=${action}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user: currentUser.user, token, ...body }),
+    });
+    return res.json();
+}
+function peerFmtTgl(ymd) {
+    if (!ymd) return '-';
+    return new Date(ymd + 'T00:00:00').toLocaleDateString('id-ID', { day:'2-digit', month:'short', year:'numeric' });
+}
+
+let pertanyaanCache = {}; // { [template_id]: [pertanyaan,...] }
+let targetCacheById = {};
+
+/* ── SKOR TOTAL (Absensi 30% + Omset 25% + Peer 45%) ── */
+async function loadSkorTotal() {
+    const box = document.getElementById('skorTotalBox');
+    try {
+        const res = await peerApiGet('get_skor_total');
+        if (res.status !== 'success') { box.innerHTML = `<span class="skor-kosong">${res.message || 'Gagal memuat skor total.'}</span>`; return; }
+        if (!res.periode_aktif) { box.innerHTML = '<span class="skor-kosong">Tidak ada periode penilaian yang sedang aktif.</span>'; return; }
+
+        const data = res.data || [];
+        box.innerHTML = res.scope === 'self'
+            ? renderSkorTotalSelf(data[0])
+            : renderSkorTotalTabel(data);
+    } catch (e) {
+        console.error('Gagal memuat skor total:', e);
+        box.innerHTML = '<span class="skor-kosong">Gagal terhubung ke server.</span>';
+    }
+}
+
+function skorTotalKomponenRow(d) {
+    return `
+        <div style="display:flex; gap:18px; flex-wrap:wrap; margin-top:10px; font-size:12.5px; color:var(--text);">
+            <span>📅 Absensi (30%): <b>${d.skor_absensi}</b> <span class="text-muted-inline">(${d.hari_kerja_aktual}/${d.hari_kalender_periode} hari)</span></span>
+            <span>💰 Omset (25%): ${d.skor_omset_status === 'ok' ? `<b>${d.skor_omset}</b>` : '<span class="text-muted-inline"><i>Target belum diset</i></span>'}</span>
+            <span>🤝 Peer Review (45%): ${d.skor_peer_status === 'ok' ? `<b>${d.skor_peer}</b> <span class="text-muted-inline">(${d.jumlah_penilai} penilai)</span>` : '<span class="text-muted-inline"><i>Belum ada data</i></span>'}</span>
+        </div>`;
+}
+
+function renderSkorTotalSelf(d) {
+    if (!d) return '<span class="skor-kosong">Belum ada data.</span>';
+    if (d.status === 'lengkap') {
+        return `<div class="skor-besar">${d.skor_total}</div><div class="skor-sub">Skor Total (dari maksimal 100)</div>${skorTotalKomponenRow(d)}`;
+    }
+    return `<span class="skor-kosong">Data belum lengkap — Skor Total belum bisa dihitung.</span>${skorTotalKomponenRow(d)}`;
+}
+
+function renderSkorTotalTabel(data) {
+    if (!data.length) return '<span class="skor-kosong">Belum ada staff.</span>';
+    const rows = data.map((d, idx) => `
+        <tr>
+            <td>${idx + 1}</td>
+            <td><b>${d.fullName}</b></td>
+            <td>${d.role}</td>
+            <td>${d.skor_absensi}</td>
+            <td>${d.skor_omset_status === 'ok' ? d.skor_omset : '<span class="text-muted-inline">Target belum diset</span>'}</td>
+            <td>${d.skor_peer_status === 'ok' ? d.skor_peer : '<span class="text-muted-inline">Belum ada data</span>'}</td>
+            <td>${d.status === 'lengkap' ? `<b style="color:var(--red);">${d.skor_total}</b>` : '<span class="pill-belum-lengkap">⏳ Data belum lengkap</span>'}</td>
+        </tr>`).join('');
+    return `
+        <div class="peer-table-wrap">
+            <table class="peer-tbl">
+                <thead><tr><th>#</th><th>Nama</th><th>Role</th><th>Absensi (30%)</th><th>Omset (25%)</th><th>Peer (45%)</th><th>Skor Total</th></tr></thead>
+                <tbody>${rows}</tbody>
+            </table>
+        </div>`;
+}
+
+async function loadPeerTab() {
+    try {
+        const [resSkor, resTarget] = await Promise.all([
+            peerApiGet('get_skor_saya'),
+            peerApiGet('get_target_penilaian'),
+        ]);
+        renderSkorAktif(resSkor);
+        renderHistoriPeer(resSkor);
+        renderTargetPeer(resTarget);
+        peerTabLoaded = true;
+    } catch (e) {
+        console.error('Gagal memuat tab Penilaian Rekan Kerja:', e);
+        toast.error('Gagal memuat data penilaian rekan kerja.');
+    }
+}
+
+function renderSkorAktif(res) {
+    const box = document.getElementById('peerSkorAktifBox');
+    if (!res.periode_aktif) {
+        box.innerHTML = '<span class="skor-kosong">Tidak ada periode penilaian yang sedang aktif.</span>';
+        return;
+    }
+    const s = res.skor_aktif;
+    if (!s) {
+        box.innerHTML = `<span class="skor-kosong">Belum ada data — belum ada rekan yang menilai Anda di periode ini
+            (${peerFmtTgl(res.periode_aktif.tanggal_mulai)} – ${peerFmtTgl(res.periode_aktif.tanggal_selesai)}).</span>`;
+        return;
+    }
+    box.innerHTML = `
+        <div class="skor-besar">${s.skor_45.toFixed(1)} <span style="font-size:16px;color:var(--text-muted);">/ 45</span></div>
+        <div class="skor-sub">Rata-rata mentah ${s.rata_rata_100.toFixed(1)}/100, dari ${s.jumlah_penilai} penilai — periode ${peerFmtTgl(res.periode_aktif.tanggal_mulai)} – ${peerFmtTgl(res.periode_aktif.tanggal_selesai)}</div>
+    `;
+}
+
+function renderHistoriPeer(res) {
+    const tbody = document.getElementById('peerHistoriBody');
+    const histori = res.histori || [];
+    if (!histori.length) {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text-muted);">Belum ada periode sebelumnya.</td></tr>';
+        return;
+    }
+    tbody.innerHTML = histori.map(h => {
+        const periodeLabel = `${peerFmtTgl(h.periode.tanggal_mulai)} – ${peerFmtTgl(h.periode.tanggal_selesai)}`;
+        if (!h.skor) {
+            return `<tr><td>${periodeLabel}</td><td colspan="3" class="skor-kosong">Belum ada data</td></tr>`;
+        }
+        return `<tr>
+            <td>${periodeLabel}</td>
+            <td style="font-family:'DM Mono',monospace;font-weight:700;">${h.skor.skor_45.toFixed(1)}</td>
+            <td>${h.skor.rata_rata_100.toFixed(1)}/100</td>
+            <td>${h.skor.jumlah_penilai}</td>
+        </tr>`;
+    }).join('');
+}
+
+function renderTargetPeer(res) {
+    const tbody = document.getElementById('peerTargetBody');
+    if (!res.periode_aktif) {
+        tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--text-muted);">Tidak ada periode penilaian yang sedang aktif.</td></tr>';
+        return;
+    }
+    const targets = res.targets || [];
+    if (!targets.length) {
+        tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--text-muted);">Tidak ada staff yang perlu Anda nilai di periode ini.</td></tr>';
+        return;
+    }
+    targetCacheById = {};
+    targets.forEach(t => targetCacheById[t.id] = t);
+
+    tbody.innerHTML = targets.map(t => `
+        <tr>
+            <td><b>${t.fullName}</b></td>
+            <td>${t.role}${t.template ? ` <span class="text-muted" style="font-size:11px;">(Template ${t.template.kode})</span>` : ' <span class="text-muted" style="font-size:11px;">(role belum dipetakan ke template)</span>'}</td>
+            <td>${t.sudah_dinilai
+                ? `<button class="pill-sudah-dinilai" onclick="lihatJawabanSaya(${t.submission_id}, '${t.fullName.replace(/'/g,"\\'")}')">✅ Sudah Dinilai (lihat jawaban saya)</button>`
+                : (t.template
+                    ? `<button class="btn-isi-penilaian" onclick="bukaModalPenilaian(${t.id}, '${t.fullName.replace(/'/g,"\\'")}')">✍️ Isi Penilaian</button>`
+                    : `<span class="skor-kosong">Belum bisa dinilai</span>`)}
+            </td>
+        </tr>`).join('');
+}
+
+/* ── MODAL FORM PENILAIAN ── */
+let modalPenilaianTargetId = null;
+let modalPertanyaanAktif = [];
+let jawabanState = {};
+
+// Cache per template_id (bukan satu cache global) - tiap role/target bisa
+// punya template pertanyaan berbeda (Template A/B/C).
+async function muatPertanyaanUntukTemplate(templateId) {
+    if (pertanyaanCache[templateId]) return pertanyaanCache[templateId];
+    const res = await peerApiGet('get_pertanyaan', `&template_id=${templateId}`);
+    pertanyaanCache[templateId] = res.data || [];
+    return pertanyaanCache[templateId];
+}
+
+function renderSoalForm(pertanyaan, jawabanTerisi, readonly) {
+    const byKategori = {};
+    pertanyaan.forEach(p => {
+        if (!byKategori[p.kategori]) byKategori[p.kategori] = [];
+        byKategori[p.kategori].push(p);
+    });
+    let html = '';
+    Object.keys(byKategori).forEach(kategori => {
+        html += `<div class="kategori-label">${kategori}</div>`;
+        byKategori[kategori].forEach(p => {
+            const nilai = jawabanTerisi ? (jawabanTerisi[p.id] || 0) : 0;
+            html += `<div class="soal-row">
+                <div class="soal-teks">${p.teks}</div>
+                <div class="star-row ${readonly ? 'readonly' : ''}" data-pid="${p.id}">
+                    ${[1,2,3,4,5].map(v => `<button type="button" class="star-btn ${v <= nilai ? 'filled' : ''}" ${readonly ? 'disabled' : ''} onclick="pilihSkor(${p.id}, ${v})">⭐</button>`).join('')}
+                </div>
+            </div>`;
+        });
+    });
+    return html;
+}
+
+async function bukaModalPenilaian(targetId, targetName) {
+    const target = targetCacheById[targetId];
+    if (!target || !target.template) {
+        return toast.error('Role staff ini belum dipetakan ke template pertanyaan. Hubungi VIP.');
+    }
+    modalPenilaianTargetId = targetId;
+    jawabanState = {};
+    document.getElementById('modalPenilaianTitle').innerText = `✍️ Isi Penilaian — ${targetName} (Template ${target.template.kode})`;
+    document.getElementById('modalPenilaianBody').innerHTML = '<p style="text-align:center;color:var(--text-muted);">Memuat pertanyaan...</p>';
+    document.getElementById('modalPenilaianFoot').style.display = '';
+    document.getElementById('modalPenilaianOverlay').classList.add('open');
+
+    modalPertanyaanAktif = await muatPertanyaanUntukTemplate(target.template.id);
+    document.getElementById('modalPenilaianBody').innerHTML = renderSoalForm(modalPertanyaanAktif, null, false);
+}
+
+function pilihSkor(pertanyaanId, val) {
+    jawabanState[pertanyaanId] = val;
+    const row = document.querySelector(`.star-row[data-pid="${pertanyaanId}"]`);
+    if (!row) return;
+    row.querySelectorAll('.star-btn').forEach((btn, idx) => {
+        btn.classList.toggle('filled', (idx + 1) <= val);
+    });
+}
+
+function tutupModalPenilaian() {
+    document.getElementById('modalPenilaianOverlay').classList.remove('open');
+    modalPenilaianTargetId = null;
+    jawabanState = {};
+}
+
+async function submitPenilaianForm() {
+    const pertanyaan = modalPertanyaanAktif || [];
+    const belumDiisi = pertanyaan.filter(p => !jawabanState[p.id]);
+    if (belumDiisi.length) {
+        return toast.warning(`Masih ada ${belumDiisi.length} pertanyaan yang belum diisi bintangnya!`);
+    }
+    const jawaban = pertanyaan.map(p => ({ pertanyaan_id: p.id, skor: jawabanState[p.id] }));
+    try {
+        const res = await peerApiPost('submit_penilaian', { dinilai_user_id: modalPenilaianTargetId, jawaban });
+        if (res.status !== 'success') return toast.error(res.message || 'Gagal mengirim penilaian.');
+        toast.success('Penilaian berhasil dikirim! Terima kasih.');
+        tutupModalPenilaian();
+        loadPeerTab();
+    } catch (e) {
+        toast.error('Gagal terhubung ke server.');
+    }
+}
+
+/* Lihat jawaban SENDIRI (read-only) yang sudah pernah dikirim - server juga
+   memvalidasi ini cuma boleh diakses oleh penilai aslinya / Owner-VIP. */
+async function lihatJawabanSaya(submissionId, targetName) {
+    document.getElementById('modalPenilaianTitle').innerText = `✅ Jawaban Anda — ${targetName}`;
+    document.getElementById('modalPenilaianBody').innerHTML = '<p style="text-align:center;color:var(--text-muted);">Memuat...</p>';
+    document.getElementById('modalPenilaianFoot').style.display = 'none';
+    document.getElementById('modalPenilaianOverlay').classList.add('open');
+
+    try {
+        const res = await peerApiGet('get_submission_detail', `&submission_id=${submissionId}`);
+        if (res.status !== 'success') {
+            document.getElementById('modalPenilaianBody').innerHTML = `<p style="text-align:center;color:var(--text-muted);">${res.message || 'Gagal memuat.'}</p>`;
+            return;
+        }
+        const jawabanTerisi = {};
+        res.detail.forEach(d => jawabanTerisi[d.pertanyaan_id] = d.skor);
+        const pertanyaanForm = res.detail.map(d => ({ id: d.pertanyaan_id, kategori: d.kategori, urutan: d.urutan, teks: d.teks }));
+        document.getElementById('modalPenilaianBody').innerHTML = renderSoalForm(pertanyaanForm, jawabanTerisi, true);
+    } catch (e) {
+        document.getElementById('modalPenilaianBody').innerHTML = '<p style="text-align:center;color:var(--text-muted);">Gagal terhubung ke server.</p>';
+    }
+}
+
 function logout() {
     if (confirm('Logout dari sistem?')) {
         localStorage.removeItem('currentUser');
@@ -661,6 +1068,7 @@ window.onload = async () => {
     document.getElementById('filterTglSelesai').value = fmtYmd(today);
 
     await loadPerforma();
+    loadSkorTotal();
 };
 </script>
 <script src="session.js"></script>

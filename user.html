@@ -239,7 +239,7 @@
     .check-percent-row > * + * { margin-left: 8px; }
 
     </style>
-  <script src="config.js?v=20260829"></script>
+  <script src="config.js?v=20260927"></script>
 </head>
 <body>
 
@@ -289,6 +289,7 @@
             <button class="kmo-tab-btn active" data-tab="database" onclick="switchUserTab('database')">👥 Database Tim</button>
             <button class="kmo-tab-btn" data-tab="cabang-role" onclick="switchUserTab('cabang-role')">🏢 Cabang & Role</button>
             <button class="kmo-tab-btn" data-tab="pendaftaran" onclick="switchUserTab('pendaftaran')">📝 Pendaftaran Akun</button>
+            <button class="kmo-tab-btn" data-tab="pengaturan" onclick="switchUserTab('pengaturan')">⚙️ Pengaturan</button>
         </div>
 
         <!-- DATABASE TIM -->
@@ -388,6 +389,21 @@
                 </div>
 
                 <button class="btn-save" onclick="tambahUser()">💾 Daftarkan Sekarang</button>
+            </div>
+        </div>
+
+        <!-- PENGATURAN SISTEM -->
+        <div class="kmo-panel" id="panel-pengaturan">
+            <div class="box" style="margin-bottom:0;">
+                <h3 class="section-title">⚙️ Pengaturan Laporan Stok</h3>
+                <p style="font-size:12px;color:var(--text-muted);margin:-4px 0 14px;">
+                    Nomor WhatsApp atau link grup tujuan pengiriman "Foto Laporan Lapak" dari halaman Stok Harian. Web Share API tidak bisa auto-pilih kontak tujuan di WhatsApp — nilai ini cuma ditampilkan ke staff sebagai instruksi ke mana harus mengirim.
+                </p>
+                <div class="form-group">
+                    <label for="waTujuanLaporanStok">Nomor/Link Grup WA Tujuan Laporan Stok</label>
+                    <input type="text" id="waTujuanLaporanStok" placeholder="contoh: 6281234567890 atau https://chat.whatsapp.com/xxxxxxxx">
+                </div>
+                <button class="btn-save" onclick="simpanSettingWaStok()">💾 Simpan Pengaturan</button>
             </div>
         </div>
 
@@ -502,7 +518,7 @@ function buildSidebar() {
     const PAGES_FRONTLINE = ['dashboard.html','history.html','stok.html','restock.html','laporan_staff.html','performa.html','edukasi.html'];
     const PAGES_MGMT      = ['rekap.html','produk.html'];
     const PAGES_EXEC      = ['laporan.html','statistik.html','promo.html','bahan_baku.html','hpp_produk.html','belanja.html','warehouse.html','salary_staff.html','customer_hoki.html','pelamar_kerja.html'];
-    const PAGES_VIP       = ['user.html','login_history.html'];
+    const PAGES_VIP       = ['user.html','login_history.html','manajemen_penilaian.html'];
     const PAGES_INVESTOR  = ['investor_omset.html','investor_profit.html'];
     const inGroup = pages => pages.includes(cur);
     const getOpen = (id, pages) => {
@@ -568,6 +584,7 @@ function buildSidebar() {
     if (role === 'VIP') {
         let vip = navItem('⚙️','Manajemen User','user.html')
             + navItem('🔑','History Login','login_history.html')
+            + navItem('📝','Manajemen Penilaian','manajemen_penilaian.html')
             + navItemExternal('🍱','Menu Order','https://order.pos-hokidimsum.com/admin/dashboard.php');
         h += navGroup('vip', 'VIP Access', vip, PAGES_VIP);
     }
@@ -627,6 +644,7 @@ function buildMoreMenu() {
     if (role === 'VIP') {
         items.push({icon:'⚙️',label:'Users',link:'user.html'});
         items.push({icon:'🔑',label:'Login Log',link:'login_history.html'});
+        items.push({icon:'📝',label:'Manajemen Penilaian',link:'manajemen_penilaian.html'});
         items.push({icon:'🍱',label:'Menu Order',link:'#',action:"window.open('https://order.pos-hokidimsum.com/admin/dashboard.php','_blank')"});
     }
     items.push({icon:'🚪',label:'Logout',link:'#',action:'logout()'});
@@ -641,11 +659,46 @@ function buildMoreMenu() {
 function openSheet(id) { if(id==='moreSheet') buildMoreMenu(); document.getElementById(id).classList.add('open'); }
 function closeSheetOutside(e,id) { if(e.target===document.getElementById(id)) document.getElementById(id).classList.remove('open'); }
 
-/* ── TAB HALAMAN (Database Tim / Cabang & Role / Pendaftaran Akun) ── */
+/* ── TAB HALAMAN (Database Tim / Cabang & Role / Pendaftaran Akun / Pengaturan) ── */
 function switchUserTab(tab) {
     document.querySelectorAll('.kmo-tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
     document.querySelectorAll('.kmo-panel').forEach(p => p.classList.remove('active'));
     document.getElementById('panel-' + tab).classList.add('active');
+}
+
+/* ── PENGATURAN: WA Tujuan Laporan Stok ── */
+const LAPORAN_FOTO_API = 'api-laporan-stok-foto.php';
+function fotoStokAuthQS() {
+    const token = localStorage.getItem('sessionToken') || '';
+    return `user=${encodeURIComponent(currentUser.user)}&token=${encodeURIComponent(token)}`;
+}
+
+async function loadSettingWaStok() {
+    try {
+        const res = await fetch(`${LAPORAN_FOTO_API}?action=get_setting_wa_stok&${fotoStokAuthQS()}`);
+        const hasil = await res.json();
+        if (hasil.status === 'success') {
+            document.getElementById('waTujuanLaporanStok').value = hasil.nilai || '';
+        }
+    } catch (e) {
+        console.error('Gagal memuat setting WA tujuan laporan stok:', e);
+    }
+}
+
+async function simpanSettingWaStok() {
+    const nilai = document.getElementById('waTujuanLaporanStok').value.trim();
+    try {
+        const res = await fetch(`${LAPORAN_FOTO_API}?action=save_setting_wa_stok&${fotoStokAuthQS()}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ nilai }),
+        });
+        const hasil = await res.json();
+        if (hasil.status !== 'success') return toast.error(hasil.message || 'Gagal menyimpan pengaturan.');
+        toast.success('Pengaturan WA tujuan laporan stok disimpan!');
+    } catch (e) {
+        toast.error('Gagal terhubung ke server.');
+    }
 }
 
 /* ── CUSTOM DROPDOWN ROLE ── */
@@ -1060,6 +1113,7 @@ window.onload = () => {
     renderCabang();
     renderRole();
     renderUser();
+    loadSettingWaStok();
 };
 </script>
 

@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Hoki POS - Manajemen Penilaian</title>
+    <link rel="icon" href="Assets/2.png">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#d32f2f">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Hoki POS">
+    <link rel="apple-touch-icon" href="Assets/2.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=DM+Mono:wght@400;500&family=Poppins:wght@700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css?v=20260501">
+    <style>
+    .section-card {
+        background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg);
+        padding: 20px; margin-bottom: 20px; box-shadow: var(--sh-sm);
+    }
+    .section-card h3 { margin: 0 0 14px; font-size: 14px; font-weight: 700; color: var(--text); display:flex; align-items:center; gap:8px; }
+    .pill-status { display:inline-block; padding:2px 10px; border-radius:20px; font-size:11px; font-weight:700; }
+    .pill-status.aktif { background: var(--green-soft); color: var(--green); }
+    .pill-status.tutup { background: var(--surface-2); color: var(--text-muted); }
+
+    .periode-form-row { display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap; margin-bottom:14px; }
+    .periode-form-row .fc { display:flex; flex-direction:column; }
+    .periode-form-row .fc label { font-size:11px; font-weight:700; color:var(--text-muted); margin-bottom:4px; }
+    .periode-form-row .fc input, .periode-form-row .fc select {
+        padding:8px 10px; border:1px solid var(--border); border-radius:8px; font-size:13px;
+        font-family:'Nunito',sans-serif; background:var(--surface); color:var(--text);
+    }
+    .btn-mini { padding:8px 16px; border-radius:8px; border:none; font-weight:700; font-size:13px; cursor:pointer; }
+    .btn-mini.red { background:var(--red); color:#fff; }
+    .btn-mini.gray { background:var(--surface-2); color:var(--text); border:1px solid var(--border); }
+    .btn-mini:hover { filter:brightness(0.93); }
+
+    .table-wrap { overflow-x:auto; border:1px solid var(--border); border-radius:var(--r-md); }
+    table.tbl { width:100%; border-collapse:collapse; }
+    table.tbl th { background:var(--red); color:#fff; padding:9px 12px; font-size:10.5px; text-transform:uppercase; text-align:left; font-weight:700; }
+    table.tbl td { padding:9px 12px; border-bottom:1px solid var(--border); font-size:13px; color:var(--text); }
+    table.tbl tbody tr:hover { background:var(--surface-2); }
+    .text-right { text-align:right; } .text-center { text-align:center; }
+    .text-muted { color:var(--text-muted); }
+
+    .assign-grid { display:grid; grid-template-columns: 260px 1fr; gap:20px; align-items:start; }
+    @media (max-width: 800px) { .assign-grid { grid-template-columns: 1fr; } }
+    .penilai-select { width:100%; padding:9px 10px; border:1px solid var(--border); border-radius:8px; font-size:13px; margin-bottom:12px; }
+    .target-checklist { display:flex; flex-direction:column; gap:6px; max-height:340px; overflow-y:auto; border:1px solid var(--border); border-radius:8px; padding:10px; }
+    .target-checklist label { display:flex; align-items:center; gap:8px; font-size:13px; padding:4px 6px; border-radius:6px; cursor:pointer; }
+    .target-checklist label:hover { background:var(--surface-2); }
+
+    .pill-belum { background:#fffbeb; color:#b45309; padding:2px 8px; border-radius:20px; font-size:10.5px; font-weight:700; }
+    .pill-sudah { background:var(--green-soft); color:var(--green); padding:2px 8px; border-radius:20px; font-size:10.5px; font-weight:700; }
+    .penilai-tag { display:inline-block; background:var(--surface-2); border:1px solid var(--border); border-radius:14px; padding:1px 8px; font-size:11px; margin:2px 3px 2px 0; }
+    </style>
+    <script src="config.js?v=20260927"></script>
+</head>
+<body>
+
+<aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand" onclick="toggleSidebar()">
+        <div class="sidebar-logo"><img src="Assets/3.png" alt="Hoki"></div>
+        <div class="sidebar-brand-text">
+            <div class="sidebar-brand-name">Hoki Dimsum <span class="app-ver">V4.1</span></div>
+            <div class="sidebar-brand-sub">POS System <span class="app-ver-lower">v4.1</span></div>
+        </div>
+    </div>
+    <button class="sidebar-toggle" onclick="toggleSidebar()">‹</button>
+    <nav class="sidebar-nav" id="sidebarNav"></nav>
+    <div class="sidebar-user">
+        <div class="user-card">
+            <div class="user-avatar" id="userAvatarInitial">?</div>
+            <div class="user-info">
+                <div class="user-name" id="sidebarUserName">Loading...</div>
+                <div class="user-role" id="sidebarUserRole">—</div>
+            </div>
+            <button class="btn-logout-icon" onclick="logout()" title="Logout">🚪</button>
+        </div>
+    </div>
+</aside>
+
+<div class="main-content" id="mainContent">
+    <header class="top-header">
+        <div class="header-left">
+            <div class="header-page-title">📝 Manajemen Penilaian</div>
+        </div>
+        <div class="header-right">
+            <div class="clock-pill">
+                <div id="realtimeClock">00:00:00</div>
+                <div id="realtimeDate">...</div>
+            </div>
+        </div>
+    </header>
+
+    <div class="page-body">
+
+        <!-- ── PERIODE ── -->
+        <div class="section-card">
+            <h3>📅 Periode Penilaian</h3>
+            <div id="periodeAktifBox" style="margin-bottom:14px;"></div>
+
+            <div class="periode-form-row" id="formPeriodeBaru">
+                <div class="fc"><label>Tanggal Mulai</label><input type="date" id="pMulai"></div>
+                <div class="fc"><label>Tanggal Selesai</label><input type="date" id="pSelesai"></div>
+                <button class="btn-mini red" onclick="buatPeriode()">➕ Buat Periode Baru</button>
+            </div>
+
+            <div class="table-wrap">
+                <table class="tbl">
+                    <thead><tr><th>Periode</th><th>Status</th><th>Dibuat Oleh</th><th>Dibuat Pada</th></tr></thead>
+                    <tbody id="tabelPeriode"><tr><td colspan="4" class="text-center text-muted">Memuat...</td></tr></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ── MAPPING ROLE -> TEMPLATE ── -->
+        <div class="section-card">
+            <h3>🗂️ Mapping Role → Template Pertanyaan</h3>
+            <p class="text-muted" style="font-size:12px;margin-bottom:14px;">
+                Template pertanyaan ditentukan dari role TARGET yang dinilai (bukan role penilai) — siapa pun yang menilai Senior Staff akan dapat pertanyaan Template B yang sama. Ubah mapping di sini tanpa perlu ubah kode.
+            </p>
+            <div class="table-wrap">
+                <table class="tbl">
+                    <thead><tr><th>Role (Target)</th><th>Template Saat Ini</th><th>Ubah ke</th></tr></thead>
+                    <tbody id="tabelMapping"><tr><td colspan="3" class="text-center text-muted">Memuat...</td></tr></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ── ASSIGNMENT ── -->
+        <div class="section-card">
+            <h3>🔗 Assignment Penilai ↔ Target</h3>
+            <p class="text-muted" style="font-size:12px;margin-bottom:14px;">
+                Pilih 1 staff sebagai penilai, lalu centang siapa saja yang jadi target penilaiannya. Assignment ini berlaku terus lintas periode (tidak perlu diatur ulang tiap bulan). Owner & VIP otomatis jadi penilai untuk semua staff, tidak perlu di-assign di sini.
+            </p>
+            <div class="assign-grid">
+                <div>
+                    <label style="font-size:11px;font-weight:700;color:var(--text-muted);">Penilai</label>
+                    <select class="penilai-select" id="selectPenilai" onchange="onPilihPenilai()">
+                        <option value="">-- Pilih staff --</option>
+                    </select>
+                    <button class="btn-mini red" style="width:100%;" onclick="simpanAssignment()">💾 Simpan Assignment</button>
+                </div>
+                <div>
+                    <label style="font-size:11px;font-weight:700;color:var(--text-muted);">Target Penilaian (centang siapa saja)</label>
+                    <div class="target-checklist" id="targetChecklist">
+                        <span class="text-muted" style="font-size:12px;">Pilih penilai dulu di sebelah kiri.</span>
+                    </div>
+                </div>
+            </div>
+
+            <h3 style="margin-top:20px;">📋 Assignment Aktif Saat Ini</h3>
+            <div class="table-wrap">
+                <table class="tbl">
+                    <thead><tr><th>Penilai</th><th>Menilai</th></tr></thead>
+                    <tbody id="tabelAssignment"><tr><td colspan="2" class="text-center text-muted">Memuat...</td></tr></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ── TARGET OMSET ── -->
+        <div class="section-card">
+            <h3>🎯 Target Omset (Periode Aktif)</h3>
+            <p class="text-muted" style="font-size:12px;margin-bottom:14px;">
+                Set target omset per staff untuk periode penilaian yang sedang aktif. Skor Omset di halaman Performa dihitung dari (Omset Aktual ÷ Target) × 25, maksimal 25. Staff yang belum diset targetnya akan tampil sebagai "Target belum diset" di Skor Total.
+            </p>
+            <div class="table-wrap">
+                <table class="tbl">
+                    <thead><tr><th>Staff</th><th>Role</th><th style="width:220px;">Target Omset (Rp)</th><th style="width:90px;"></th></tr></thead>
+                    <tbody id="tabelTargetOmset"><tr><td colspan="4" class="text-center text-muted">Memuat...</td></tr></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ── MONITORING ── -->
+        <div class="section-card">
+            <h3>📊 Monitoring Submission (Periode Aktif)</h3>
+            <div class="table-wrap">
+                <table class="tbl">
+                    <thead><tr><th>Staff</th><th>Role</th><th class="text-center">Jumlah Penilai</th><th>Status</th><th>Dinilai Oleh</th></tr></thead>
+                    <tbody id="tabelMonitoring"><tr><td colspan="5" class="text-center text-muted">Memuat...</td></tr></tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+const currentUser = JSON.parse(localStorage.getItem('currentUser')) || {user:'Guest', role:'Staff'};
+if (!currentUser.user) window.location.href = 'index.html';
+if (currentUser.role !== 'VIP') window.location.href = 'dashboard.html';
+
+const sessionToken = localStorage.getItem('sessionToken') || '';
+let staffList = [];
+let assignmentList = [];
+
+function toggleSidebar() {
+    const sb = document.getElementById('sidebar');
+    const mc = document.getElementById('mainContent');
+    sb.classList.toggle('collapsed');
+    mc.classList.toggle('expanded');
+    localStorage.setItem('sidebarState', sb.classList.contains('collapsed') ? 'small' : 'large');
+}
+
+function buildSidebar() {
+    if (localStorage.getItem('sidebarState') === 'small') {
+        document.getElementById('sidebar').classList.add('collapsed');
+        document.getElementById('mainContent').classList.add('expanded');
+    }
+    const role = currentUser.role;
+    const cur  = window.location.pathname.split('/').pop() || 'dashboard.html';
+    const navItem = (icon, label, link) => {
+        const active = cur === link ? 'active' : '';
+        return `<button class="nav-item ${active}" onclick="location.href='${link}'">
+            <span class="nav-icon">${icon}</span>
+            <span class="nav-label">${label}</span>
+        </button>`;
+    };
+    const navItemExternal = (icon, label, url) => {
+        return `<button class="nav-item" onclick="window.open('${url}', '_blank')">
+            <span class="nav-icon">${icon}</span>
+            <span class="nav-label">${label}</span>
+        </button>`;
+    };
+    const PAGES_FRONTLINE = ['dashboard.html','history.html','stok.html','restock.html','laporan_staff.html','performa.html','edukasi.html'];
+    const PAGES_MGMT      = ['rekap.html','produk.html'];
+    const PAGES_EXEC      = ['laporan.html','statistik.html','promo.html','bahan_baku.html','hpp_produk.html','belanja.html','warehouse.html','salary_staff.html','customer_hoki.html','pelamar_kerja.html'];
+    const PAGES_VIP       = ['user.html','login_history.html','manajemen_penilaian.html'];
+    const PAGES_INVESTOR  = ['investor_omset.html','investor_profit.html'];
+    const inGroup = pages => pages.includes(cur);
+    const getOpen = (id, pages) => {
+        const s = localStorage.getItem('navGroup_' + id);
+        return s !== null ? s === '1' : true;
+    };
+    const GROUP_ICONS = { frontline:'🛒', management:'📊', executive:'📋', vip:'👑', investor:'🤝' };
+    const navGroup = (id, label, items, pages) => {
+        const open      = getOpen(id, pages);
+        const hasActive = inGroup(pages);
+        const icon      = GROUP_ICONS[id] || '📁';
+        return `<div class="nav-group-wrap">
+            <button class="nav-group-label${hasActive ? ' has-active' : ''}" onclick="toggleNavGroup('${id}')">
+                <span class="nav-group-icon">${icon}</span>
+                <span class="nav-group-text">${label}</span>
+                <span class="nav-group-ti">${open ? '−' : '+'}</span>
+            </button>
+            <div class="nav-group-items" id="navg-${id}"${open ? '' : ' style="display:none"'}>
+                ${items}
+            </div>
+        </div>`;
+    };
+
+    let frontline = navItem('🛒','Kasir','dashboard.html')
+        + navItem('📄','History Transaksi','history.html')
+        + navItem('📦','Stok Harian','stok.html')
+        + navItem('🚚','Restock Barang','restock.html')
+        + navItem('🚀','Laporan Penjualan','laporan_staff.html')
+        + navItem('🏆','Performa','performa.html');
+    let edukasiItem = navItem('📚','Edukasi & SOP','edukasi.html');
+    frontline += edukasiItem;
+    let h = '';
+    if (role !== 'Investor') {
+        h += navGroup('frontline', 'Frontline', frontline, PAGES_FRONTLINE);
+    }
+
+    if (['Senior Staff','SPV','Owner','VIP'].includes(role)) {
+        let mgmt = navItem('🗓️','Rekapan Penjualan','rekap.html')
+            + navItem('🍱','Master Produk','produk.html');
+        h += navGroup('management', 'Management', mgmt, PAGES_MGMT);
+    }
+    if (['Owner','VIP'].includes(role)) {
+        let exec = navItem('📊','Keuangan Global','laporan.html')
+            + navItem('📈','Statistik & Analitik','statistik.html')
+            + navItem('🏷️','Promo','promo.html')
+            + navItem('🧂','Bahan Baku','bahan_baku.html')
+            + navItem('🗃️','HPP Produk','hpp_produk.html')
+            + navItem('🏭','Warehouse','warehouse.html')
+            + navItem('📝','Belanja','belanja.html')
+            + navItem('💵','Salary Staff','salary_staff.html')
+            + navItem('👨‍👩‍👦','Customer Hoki','customer_hoki.html')
+            + navItem('📋','Data Pelamar Kerja','pelamar_kerja.html');
+        if (['kurniarp','hanazaf'].includes((currentUser.user || '').toLowerCase())) {
+            exec += navItemExternal('🏢','PT Marajo Barokah', `https://marajo.pos-hokidimsum.com/sso.php?u=${encodeURIComponent(currentUser.user)}&t=${encodeURIComponent(localStorage.getItem('sessionToken') || '')}`);
+        }
+        h += navGroup('executive', 'Executive', exec, PAGES_EXEC);
+    }
+    if (['Owner','VIP','Investor'].includes(role)) {
+        let inv = navItem('💹','Omset Cabang','investor_omset.html')
+            + navItem('💰','Profit Sharing','investor_profit.html');
+        h += navGroup('investor', 'Area Investor', inv, PAGES_INVESTOR);
+    }
+    if (role === 'VIP') {
+        let vip = navItem('⚙️','Manajemen User','user.html')
+            + navItem('🔑','History Login','login_history.html')
+            + navItem('📝','Manajemen Penilaian','manajemen_penilaian.html')
+            + navItemExternal('🍱','Menu Order','https://order.pos-hokidimsum.com/admin/dashboard.php');
+        h += navGroup('vip', 'VIP Access', vip, PAGES_VIP);
+    }
+    document.getElementById('sidebarNav').innerHTML = h;
+    const name = currentUser.user || '?';
+    document.getElementById('userAvatarInitial').innerText = name.charAt(0).toUpperCase();
+    document.getElementById('sidebarUserName').innerText   = currentUser.fullName || name;
+    document.getElementById('sidebarUserRole').innerText   = role;
+}
+
+function toggleNavGroup(id) {
+    const items = document.getElementById('navg-' + id);
+    const btn   = items.previousElementSibling;
+    const ti    = btn.querySelector('.nav-group-ti');
+    const open  = items.style.display !== 'none';
+    items.style.display = open ? 'none' : '';
+    if (ti) ti.textContent = open ? '+' : '−';
+    localStorage.setItem('navGroup_' + id, open ? '0' : '1');
+}
+
+function updateClock() {
+    const now = new Date();
+    document.getElementById('realtimeClock').innerText = now.toLocaleTimeString('id-ID');
+    document.getElementById('realtimeDate').innerText  = now.toLocaleDateString('id-ID',{weekday:'short',year:'numeric',month:'short',day:'numeric'});
+}
+setInterval(updateClock, 1000);
+
+const PENILAIAN_API = 'api-penilaian.php';
+function authQS() { return `user=${encodeURIComponent(currentUser.user)}&token=${encodeURIComponent(sessionToken)}`; }
+
+async function apiGetP(action, extra = '') {
+    const res = await fetch(`${PENILAIAN_API}?action=${action}&${authQS()}${extra}`);
+    return res.json();
+}
+async function apiPostP(action, body) {
+    const res = await fetch(`${PENILAIAN_API}?action=${action}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user: currentUser.user, token: sessionToken, ...body }),
+    });
+    return res.json();
+}
+
+function fmtTgl(ymd) {
+    if (!ymd) return '-';
+    return new Date(ymd + 'T00:00:00').toLocaleDateString('id-ID', { day:'2-digit', month:'short', year:'numeric' });
+}
+function fmtDateTime(dt) {
+    if (!dt) return '-';
+    return new Date(dt.replace(' ', 'T')).toLocaleString('id-ID', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
+}
+
+/* ── PERIODE ── */
+async function loadPeriode() {
+    const res = await apiGetP('admin_get_periode_list');
+    const list = res.data || [];
+    const aktif = list.find(p => p.status === 'aktif');
+
+    document.getElementById('periodeAktifBox').innerHTML = aktif
+        ? `<div class="pill-status aktif">🟢 Periode Aktif: ${fmtTgl(aktif.tanggal_mulai)} – ${fmtTgl(aktif.tanggal_selesai)}</div>
+           <button class="btn-mini gray" style="margin-left:10px;" onclick="tutupPeriode(${aktif.id})">🔒 Tutup Periode Ini</button>`
+        : `<span class="text-muted">Tidak ada periode aktif saat ini.</span>`;
+    document.getElementById('formPeriodeBaru').style.display = aktif ? 'none' : 'flex';
+
+    document.getElementById('tabelPeriode').innerHTML = list.length ? list.map(p => `
+        <tr>
+            <td>${fmtTgl(p.tanggal_mulai)} – ${fmtTgl(p.tanggal_selesai)}</td>
+            <td><span class="pill-status ${p.status}">${p.status === 'aktif' ? '🟢 Aktif' : '🔒 Tutup'}</span></td>
+            <td>${p.dibuat_oleh}</td>
+            <td>${fmtDateTime(p.created_at)}</td>
+        </tr>`).join('') : '<tr><td colspan="4" class="text-center text-muted">Belum ada periode.</td></tr>';
+
+    loadMonitoring(aktif ? aktif.id : null);
+    loadTargetOmset();
+}
+
+async function buatPeriode() {
+    const mulai = document.getElementById('pMulai').value;
+    const selesai = document.getElementById('pSelesai').value;
+    if (!mulai || !selesai) return toast.warning('Isi tanggal mulai & selesai dulu!');
+    try {
+        const res = await apiPostP('admin_create_periode', { tanggal_mulai: mulai, tanggal_selesai: selesai });
+        if (res.status !== 'success') return toast.error(res.message || 'Gagal membuat periode.');
+        toast.success('Periode baru dibuat!');
+        loadPeriode();
+    } catch (e) { toast.error('Gagal terhubung ke server.'); }
+}
+
+async function tutupPeriode(id) {
+    const ok = confirm('Tutup periode ini? Staff tidak bisa lagi mengisi penilaian setelah ditutup.');
+    if (!ok) return;
+    const res = await apiPostP('admin_close_periode', { id });
+    if (res.status !== 'success') return toast.error(res.message || 'Gagal menutup periode.');
+    toast.success('Periode ditutup.');
+    loadPeriode();
+}
+
+/* ── MAPPING ROLE -> TEMPLATE ── */
+let templateList = [];
+
+async function loadMapping() {
+    const [resTemplate, resMap] = await Promise.all([
+        apiGetP('get_template_list'),
+        apiGetP('admin_get_role_template_map'),
+    ]);
+    templateList = resTemplate.data || [];
+    const mapByRole = {};
+    (resMap.data || []).forEach(m => mapByRole[m.role] = m);
+
+    const TARGET_ROLES = ['Staff', 'Senior Staff', 'SPV'];
+    document.getElementById('tabelMapping').innerHTML = TARGET_ROLES.map(role => {
+        const current = mapByRole[role];
+        const opsi = templateList.map(t => `<option value="${t.id}" ${current && String(current.template_id) === String(t.id) ? 'selected' : ''}>${t.kode} - ${t.nama}</option>`).join('');
+        return `<tr>
+            <td><b>${role}</b></td>
+            <td>${current ? `<span class="pill-status aktif">${current.kode} - ${current.nama}</span>` : '<span class="text-muted">Belum dipetakan</span>'}</td>
+            <td><select class="penilai-select" style="margin:0;" onchange="ubahMapping('${role}', this.value)">${opsi}</select></td>
+        </tr>`;
+    }).join('');
+}
+
+async function ubahMapping(role, templateId) {
+    try {
+        const res = await apiPostP('admin_save_role_template_map', { role, template_id: parseInt(templateId) });
+        if (res.status !== 'success') return toast.error(res.message || 'Gagal menyimpan mapping.');
+        toast.success(`Mapping ${role} disimpan!`);
+        loadMapping();
+    } catch (e) { toast.error('Gagal terhubung ke server.'); }
+}
+
+/* ── ASSIGNMENT ── */
+async function loadStaffDanAssignment() {
+    const [resStaff, resAssign] = await Promise.all([
+        apiGetP('admin_get_staff'),
+        apiGetP('admin_get_assignment'),
+    ]);
+    staffList = resStaff.data || [];
+    assignmentList = resAssign.data || [];
+
+    document.getElementById('selectPenilai').innerHTML = '<option value="">-- Pilih staff --</option>' +
+        staffList.map(s => `<option value="${s.id}">${s.fullName} (${s.role})</option>`).join('');
+
+    renderAssignmentTable();
+}
+
+function onPilihPenilai() {
+    const penilaiId = document.getElementById('selectPenilai').value;
+    const box = document.getElementById('targetChecklist');
+    if (!penilaiId) { box.innerHTML = '<span class="text-muted" style="font-size:12px;">Pilih penilai dulu di sebelah kiri.</span>'; return; }
+
+    const currentTargets = new Set(assignmentList.filter(a => String(a.penilai_user_id) === String(penilaiId)).map(a => String(a.dinilai_user_id)));
+    const opsi = staffList.filter(s => String(s.id) !== String(penilaiId));
+    box.innerHTML = opsi.map(s => `
+        <label><input type="checkbox" value="${s.id}" ${currentTargets.has(String(s.id)) ? 'checked' : ''}> ${s.fullName} <span class="text-muted">(${s.role})</span></label>
+    `).join('');
+}
+
+async function simpanAssignment() {
+    const penilaiId = document.getElementById('selectPenilai').value;
+    if (!penilaiId) return toast.warning('Pilih penilai dulu!');
+    const targetIds = [...document.querySelectorAll('#targetChecklist input:checked')].map(el => parseInt(el.value));
+    try {
+        const res = await apiPostP('admin_save_assignment', { penilai_user_id: parseInt(penilaiId), dinilai_user_ids: targetIds });
+        if (res.status !== 'success') return toast.error(res.message || 'Gagal menyimpan.');
+        toast.success('Assignment disimpan!');
+        await loadStaffDanAssignment();
+        document.getElementById('selectPenilai').value = penilaiId;
+        onPilihPenilai();
+    } catch (e) { toast.error('Gagal terhubung ke server.'); }
+}
+
+function renderAssignmentTable() {
+    const grouped = {};
+    assignmentList.forEach(a => {
+        const key = a.penilai_user_id;
+        if (!grouped[key]) grouped[key] = { nama: a.penilai_nama, role: a.penilai_role, targets: [] };
+        grouped[key].targets.push(a.dinilai_nama);
+    });
+    const rows = Object.values(grouped);
+    document.getElementById('tabelAssignment').innerHTML = rows.length ? rows.map(g => `
+        <tr>
+            <td><b>${g.nama}</b> <span class="text-muted" style="font-size:11px;">(${g.role})</span></td>
+            <td>${g.targets.map(t => `<span class="penilai-tag">${t}</span>`).join('')}</td>
+        </tr>`).join('') : '<tr><td colspan="2" class="text-center text-muted">Belum ada assignment.</td></tr>';
+}
+
+/* ── TARGET OMSET ── */
+let targetOmsetPeriodeId = null;
+
+async function loadTargetOmset() {
+    const tbody = document.getElementById('tabelTargetOmset');
+    const res = await apiGetP('admin_get_target_omset');
+    targetOmsetPeriodeId = res.periode_id;
+    if (!targetOmsetPeriodeId) {
+        tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">Tidak ada periode aktif.</td></tr>';
+        return;
+    }
+    const rows = res.data || [];
+    tbody.innerHTML = rows.length ? rows.map(r => `
+        <tr>
+            <td><b>${r.fullName}</b></td>
+            <td>${r.role}</td>
+            <td><input type="number" min="1" step="1" class="penilai-select" style="margin:0;" id="targetInput_${r.user_id}" value="${r.target_nominal > 0 ? r.target_nominal : ''}" placeholder="Belum diset"></td>
+            <td><button class="btn-mini red" style="padding:8px 12px;" onclick="simpanTargetOmset(${r.user_id})">💾</button></td>
+        </tr>`).join('') : '<tr><td colspan="4" class="text-center text-muted">Belum ada staff.</td></tr>';
+}
+
+async function simpanTargetOmset(staffId) {
+    const input = document.getElementById(`targetInput_${staffId}`);
+    const nominal = parseFloat(input.value);
+    if (!nominal || nominal <= 0) return toast.warning('Isi target nominal lebih dari 0!');
+    try {
+        const res = await apiPostP('admin_save_target_omset', { staff_id: staffId, periode_id: targetOmsetPeriodeId, target_nominal: nominal });
+        if (res.status !== 'success') return toast.error(res.message || 'Gagal menyimpan target.');
+        toast.success('Target omset disimpan!');
+    } catch (e) { toast.error('Gagal terhubung ke server.'); }
+}
+
+/* ── MONITORING ── */
+async function loadMonitoring(periodeId) {
+    const tbody = document.getElementById('tabelMonitoring');
+    if (!periodeId) {
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Tidak ada periode aktif.</td></tr>';
+        return;
+    }
+    const res = await apiGetP('admin_get_monitoring', `&periode_id=${periodeId}`);
+    const rows = res.data || [];
+    tbody.innerHTML = rows.length ? rows.map(r => `
+        <tr>
+            <td><b>${r.fullName}</b></td>
+            <td>${r.role}</td>
+            <td class="text-center">${r.jumlah_penilai}</td>
+            <td>${r.belum_dinilai ? '<span class="pill-belum">⏳ Belum Ada</span>' : '<span class="pill-sudah">✅ Sudah Dinilai</span>'}</td>
+            <td>${r.penilai.map(p => `<span class="penilai-tag">${p.nama} (${p.skor})</span>`).join('') || '-'}</td>
+        </tr>`).join('') : '<tr><td colspan="5" class="text-center text-muted">Belum ada staff.</td></tr>';
+}
+
+function logout() {
+    if (confirm('Logout dari sistem?')) {
+        localStorage.removeItem('currentUser');
+        localStorage.removeItem('cabangHoki');
+        window.location.href = 'index.html';
+    }
+}
+
+window.onload = async () => {
+    buildSidebar();
+    updateClock();
+    const today = new Date();
+    document.getElementById('pMulai').value = today.toISOString().slice(0,10);
+    await loadMapping();
+    await loadPeriode();
+    await loadStaffDanAssignment();
+};
+</script>
+<script src="session.js"></script>
+<script src="toast.js"></script>
+</body>
+</html>

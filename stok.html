@@ -480,8 +480,61 @@
         .info-bar-simple > * + * { margin-left: 16px; }
         .ib-item { padding: 0; }
     }
+
+    /* ── FOTO LAPORAN LAPAK (sesi kamera in-browser setelah simpan stok) ── */
+    #fotoLapakOverlay {
+        position: fixed; inset: 0; background: rgba(0,0,0,0.65);
+        z-index: 3000; display: none; align-items: center; justify-content: center;
+        padding: 16px; box-sizing: border-box;
+    }
+    .fl-box {
+        background: var(--surface); border-radius: var(--r-xl); box-shadow: var(--sh-lg);
+        border: 1px solid var(--border); width: 100%; max-width: 480px;
+        max-height: 92vh; overflow-y: auto; padding: 20px; box-sizing: border-box;
+    }
+    .fl-box h3 { margin: 0 0 6px; font-size: 15px; font-weight: 800; color: var(--text); }
+    .fl-sub { font-size: 12px; color: var(--text-muted); margin: 0 0 14px; }
+    .fl-step-count { font-size: 12px; font-weight: 700; color: var(--red); margin-bottom: 4px; }
+    .fl-geo-status { font-size: 11.5px; color: var(--text-muted); margin-bottom: 10px; }
+    .fl-video-wrap {
+        position: relative; width: 100%; background: #000; border-radius: var(--r-md);
+        overflow: hidden; margin-bottom: 12px; aspect-ratio: 3/4;
+    }
+    .fl-video-wrap video, .fl-video-wrap canvas { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .fl-btn-row { display: flex; gap: 10px; margin-top: 4px; flex-wrap: wrap; }
+    .fl-btn-row > * { flex: 1; }
+    .btn-fl-primary {
+        background: var(--red); color: #fff; border: none; padding: 12px 16px;
+        border-radius: var(--r-md); font-weight: 700; font-size: 14px; cursor: pointer;
+    }
+    .btn-fl-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-fl-secondary {
+        background: var(--surface-2); color: var(--text); border: 1px solid var(--border);
+        padding: 12px 16px; border-radius: var(--r-md); font-weight: 700; font-size: 14px; cursor: pointer;
+    }
+    .btn-fl-primary:hover, .btn-fl-secondary:hover { filter: brightness(0.94); }
+    .fl-thumbs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 14px; }
+    .fl-thumb { position: relative; border-radius: var(--r-md); overflow: hidden; border: 2px solid var(--border); aspect-ratio: 3/4; }
+    .fl-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .fl-thumb input[type="checkbox"] {
+        position: absolute; top: 6px; right: 6px; width: 20px; height: 20px; accent-color: var(--red);
+    }
+    .fl-note {
+        background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--r-md);
+        padding: 10px 12px; font-size: 12px; color: var(--text); margin-bottom: 12px; line-height: 1.5;
+    }
+    .fl-note b { color: var(--red); }
+    .fl-fallback-msg {
+        background: #fffbeb; border: 1px solid #fbe4a1; color: #92610a; border-radius: var(--r-md);
+        padding: 10px 12px; font-size: 12.5px; margin-bottom: 12px; line-height: 1.5;
+    }
+    .fl-close-x {
+        position: absolute; top: 10px; right: 14px; background: none; border: none;
+        font-size: 20px; cursor: pointer; color: var(--text-muted);
+    }
+    .fl-box { position: relative; }
     </style>
-  <script src="config.js?v=20260829"></script>
+  <script src="config.js?v=20260927"></script>
 </head>
 <body>
 
@@ -573,6 +626,7 @@
                 </div>
 
                 <button class="btn-save-stok" onclick="simpanLaporanFinal()">💾 Simpan & Update Stok</button>
+                <button class="btn-save-stok" style="background:var(--red-soft);color:var(--red);border:1.5px solid var(--red-border);margin-top:10px;" onclick="mulaiSesiFotoLapak()">📸 Foto Laporan Lapak</button>
             </div>
         </div>
 
@@ -668,6 +722,51 @@
     </div>
 </div>
 
+<!-- ── SESI FOTO LAPORAN LAPAK (kamera in-browser, tampil setelah simpan stok) ── -->
+<div id="fotoLapakOverlay">
+    <div class="fl-box">
+        <button class="fl-close-x" onclick="tutupSesiFotoLapak()" title="Tutup">✕</button>
+
+        <!-- STEP KAMERA -->
+        <div id="flStepKamera">
+            <h3>📸 Foto Laporan Lapak</h3>
+            <p class="fl-sub">Ambil 3 foto terpisah sebagai bukti sampai lapak. Tiap foto otomatis diberi watermark tanggal, jam, nama cabang, dan koordinat GPS.</p>
+            <div class="fl-step-count">Foto <span id="flFotoKe">1</span> dari 3</div>
+            <div class="fl-geo-status" id="flGeoStatus">📍 Menyiapkan lokasi...</div>
+
+            <div class="fl-video-wrap">
+                <video id="flVideo" autoplay playsinline muted></video>
+                <canvas id="flCanvas" style="display:none;"></canvas>
+            </div>
+
+            <div id="flCameraError" class="fl-fallback-msg" style="display:none;"></div>
+
+            <!-- Fallback utk device/browser yang tidak dukung getUserMedia -->
+            <input type="file" id="flFileInput" accept="image/*" capture="environment" style="display:none;">
+
+            <div class="fl-btn-row">
+                <button class="btn-fl-primary" id="flBtnJepret" onclick="jepretFotoLapak()">📷 Jepret</button>
+            </div>
+        </div>
+
+        <!-- STEP PREVIEW & KIRIM -->
+        <div id="flStepPreview" style="display:none;">
+            <h3>🖼️ Preview Foto Laporan</h3>
+            <p class="fl-sub">Pilih foto mana saja yang mau dikirim ke WhatsApp. Semua foto yang diambil sudah tersimpan &amp; tercatat di sistem, terlepas dari yang dipilih di sini.</p>
+
+            <div class="fl-thumbs" id="flThumbs"></div>
+
+            <div class="fl-note" id="flWaTargetNote">Memuat tujuan pengiriman...</div>
+            <div id="flFallbackMsg" class="fl-fallback-msg" style="display:none;"></div>
+
+            <div class="fl-btn-row">
+                <button class="btn-fl-secondary" onclick="tutupSesiFotoLapak()">Nanti Saja</button>
+                <button class="btn-fl-primary" onclick="kirimFotoLapakKeWA()">📲 Kirim ke WhatsApp</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 const currentUser       = JSON.parse(localStorage.getItem('currentUser'));
 if (!currentUser) window.location.href = 'index.html';
@@ -710,7 +809,7 @@ function buildSidebar() {
     const PAGES_FRONTLINE = ['dashboard.html','history.html','stok.html','restock.html','laporan_staff.html','performa.html','edukasi.html'];
     const PAGES_MGMT      = ['rekap.html','produk.html'];
     const PAGES_EXEC      = ['laporan.html','statistik.html','promo.html','bahan_baku.html','hpp_produk.html','belanja.html','warehouse.html','salary_staff.html','customer_hoki.html','pelamar_kerja.html'];
-    const PAGES_VIP       = ['user.html','login_history.html'];
+    const PAGES_VIP       = ['user.html','login_history.html','manajemen_penilaian.html'];
     const PAGES_INVESTOR  = ['investor_omset.html','investor_profit.html'];
     const inGroup = pages => pages.includes(cur);
     const getOpen = (id, pages) => {
@@ -776,6 +875,7 @@ function buildSidebar() {
     if (role === 'VIP') {
         let vip = navItem('⚙️','Manajemen User','user.html')
             + navItem('🔑','History Login','login_history.html')
+            + navItem('📝','Manajemen Penilaian','manajemen_penilaian.html')
             + navItemExternal('🍱','Menu Order','https://order.pos-hokidimsum.com/admin/dashboard.php');
         h += navGroup('vip', 'VIP Access', vip, PAGES_VIP);
     }
@@ -831,6 +931,7 @@ function buildMoreMenu() {
     if (role === 'VIP') {
         items.push({icon:'⚙️',label:'Users',link:'user.html'});
         items.push({icon:'🔑',label:'Login Log',link:'login_history.html'});
+        items.push({icon:'📝',label:'Manajemen Penilaian',link:'manajemen_penilaian.html'});
         items.push({icon:'🍱',label:'Menu Order',link:'#',action:"window.open('https://order.pos-hokidimsum.com/admin/dashboard.php','_blank')"});
     }
     items.push({icon:'🚪',label:'Logout',link:'#',action:'logout()'});
@@ -1011,6 +1112,297 @@ async function simpanLaporanFinal() {
     } catch (e) {
         toast.error('Koneksi ke server terputus!');
     }
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   FOTO LAPORAN LAPAK — sesi kamera in-browser, dibuka lewat tombol
+   terpisah "📸 Foto Laporan Lapak" (tidak digabung/otomatis dari tombol
+   Simpan). Fitur ini murni TAMBAHAN, tidak pernah mengubah logic
+   penyimpanan stok di simpanLaporanFinal() di atas.
+   ══════════════════════════════════════════════════════════════════════ */
+const LAPORAN_FOTO_API = 'api-laporan-stok-foto.php';
+const FL_TOTAL_FOTO    = 3;
+let flStream           = null;
+let flPhotos           = []; // [{ blob, url, filename }]
+let flGeoCoord         = null; // "lat,lng" (angka asli, presisi penuh) atau null kalau tidak tersedia
+let flGeoStatus        = 'idle'; // 'loading' | 'ready' | 'unavailable'
+let flWaTarget         = '';
+let flUsingFileFallback = false;
+
+function flAuthQS() {
+    const token = localStorage.getItem('sessionToken') || '';
+    return `user=${encodeURIComponent(currentUser.user)}&token=${encodeURIComponent(token)}`;
+}
+function flPad2(n) { return String(n).padStart(2, '0'); }
+
+async function mulaiSesiFotoLapak() {
+    flPhotos = [];
+    flGeoCoord = null;
+    flUsingFileFallback = false;
+    document.getElementById('flStepKamera').style.display  = 'block';
+    document.getElementById('flStepPreview').style.display = 'none';
+    document.getElementById('flFotoKe').innerText = '1';
+    document.getElementById('flCameraError').style.display = 'none';
+    document.getElementById('fotoLapakOverlay').style.display = 'flex';
+
+    mintaLokasiGPS();
+    await bukaKameraLapak();
+}
+
+/**
+ * Ambil koordinat GPS asli (bukan cuma nama cabang) sekali di awal sesi,
+ * dipakai sebagai watermark "tanda maps" di semua foto sesi ini. Tombol
+ * "Jepret" sengaja DIKUNCI selagi masih mencari lokasi supaya watermark
+ * tidak "telat" - begitu lokasi didapat/gagal, tombol langsung dibuka lagi
+ * (kalau gagal/izin ditolak, staff tetap bisa lanjut foto tanpa koordinat).
+ */
+function mintaLokasiGPS() {
+    const statusEl = document.getElementById('flGeoStatus');
+    const btn      = document.getElementById('flBtnJepret');
+
+    if (!navigator.geolocation) {
+        flGeoStatus = 'unavailable';
+        statusEl.innerText = '📍 GPS tidak didukung browser ini — watermark cuma pakai nama cabang.';
+        btn.disabled = false;
+        return;
+    }
+
+    flGeoStatus = 'loading';
+    statusEl.innerText = '📍 Mencari lokasi GPS...';
+    btn.disabled = true;
+
+    navigator.geolocation.getCurrentPosition(
+        pos => {
+            flGeoCoord  = `${pos.coords.latitude},${pos.coords.longitude}`;
+            flGeoStatus = 'ready';
+            statusEl.innerText = `📍 Lokasi didapat: ${pos.coords.latitude.toFixed(6)}, ${pos.coords.longitude.toFixed(6)}`;
+            btn.disabled = false;
+        },
+        () => {
+            flGeoCoord  = null;
+            flGeoStatus = 'unavailable';
+            statusEl.innerText = '📍 Lokasi tidak tersedia (izin ditolak/timeout) — watermark cuma pakai nama cabang.';
+            btn.disabled = false;
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 }
+    );
+}
+
+async function bukaKameraLapak() {
+    const video     = document.getElementById('flVideo');
+    const errBox    = document.getElementById('flCameraError');
+    const fileInput = document.getElementById('flFileInput');
+
+    // CATATAN: getUserMedia butuh koneksi HTTPS (kecuali localhost). Kalau gagal
+    // (browser tidak dukung / permission ditolak / bukan koneksi aman), fallback
+    // ke <input type=file capture=environment> yang membuka app kamera OS.
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        try {
+            flStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
+            video.srcObject = flStream;
+            video.style.display = 'block';
+            fileInput.style.display = 'none';
+            flUsingFileFallback = false;
+            errBox.style.display = 'none';
+            return;
+        } catch (e) {
+            console.warn('getUserMedia gagal, pakai fallback input file:', e.message);
+        }
+    }
+
+    flUsingFileFallback = true;
+    video.style.display = 'none';
+    errBox.style.display = 'block';
+    errBox.innerText = 'Kamera browser tidak tersedia di device/browser ini (butuh koneksi HTTPS atau izin kamera). Tombol "Jepret" akan membuka aplikasi kamera bawaan device.';
+}
+
+function jepretFotoLapak() {
+    if (flUsingFileFallback) {
+        const input = document.getElementById('flFileInput');
+        input.onchange = onFileFallbackDipilih;
+        input.click();
+        return;
+    }
+    const video = document.getElementById('flVideo');
+    if (!video.videoWidth) return toast.warning('Kamera belum siap, coba lagi sebentar.');
+    prosesGambarKeWatermark(video);
+}
+
+function onFileFallbackDipilih(e) {
+    const file = e.target.files[0];
+    e.target.value = ''; // reset supaya file yang sama bisa dipilih lagi utk foto berikutnya
+    if (!file) return;
+    const img = new Image();
+    img.onload = () => {
+        prosesGambarKeWatermark(img);
+        URL.revokeObjectURL(img.src);
+    };
+    img.src = URL.createObjectURL(file);
+}
+
+/**
+ * Gambar ulang foto ke <canvas> + overlay watermark tanggal/jam, nama cabang,
+ * dan koordinat GPS asli (kalau tersedia) - DIBAKAR ke pixel gambar (bukan
+ * EXIF), karena metadata EXIF hilang saat foto dikirim lewat WhatsApp,
+ * sedangkan teks yang sudah digambar ke pixel selalu ikut.
+ */
+function prosesGambarKeWatermark(sourceEl) {
+    const canvas = document.getElementById('flCanvas');
+    const w = sourceEl.videoWidth  || sourceEl.naturalWidth;
+    const h = sourceEl.videoHeight || sourceEl.naturalHeight;
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(sourceEl, 0, 0, w, h);
+
+    const now = new Date();
+    const tgl = now.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+    const jam = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+    // Urutan tampil dari ATAS ke BAWAH: tanggal/jam, nama cabang, lalu koordinat
+    // GPS "tanda maps" (mis. -6.396725, 106.893896) - baris koordinat cuma
+    // ditambahkan kalau lokasi berhasil didapat (lihat mintaLokasiGPS()).
+    const baris = [`${tgl}  ${jam}`, `📍 ${cabangAktif}`];
+    if (flGeoCoord) {
+        const [lat, lng] = flGeoCoord.split(',').map(Number);
+        baris.push(`🌐 ${lat.toFixed(6)}, ${lng.toFixed(6)}`);
+    }
+
+    const fontSize = Math.max(16, Math.round(w * 0.032));
+    const padding  = Math.round(fontSize * 0.6);
+    const lineGap  = Math.round(fontSize * 1.35);
+    ctx.font = `700 ${fontSize}px 'Nunito', sans-serif`;
+    ctx.textBaseline = 'bottom';
+
+    const drawLine = (text, yFromBottom) => {
+        const textWidth = ctx.measureText(text).width;
+        const x = padding;
+        const y = h - yFromBottom;
+        ctx.fillStyle = 'rgba(0,0,0,0.55)';
+        ctx.fillRect(x - padding / 2, y - fontSize - padding / 4, textWidth + padding, fontSize + padding / 2);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText(text, x, y);
+    };
+    // Digambar dari baris PALING BAWAH duluan, supaya urutan visual top->bottom
+    // di layar sama persis dengan urutan array `baris` (baris[0] paling atas).
+    [...baris].reverse().forEach((text, i) => drawLine(text, padding + i * lineGap));
+
+    canvas.toBlob(blob => simpanFotoHasilWatermark(blob, now), 'image/jpeg', 0.88);
+}
+
+async function simpanFotoHasilWatermark(blob, timestampDate) {
+    const idx = flPhotos.length + 1;
+    const stamp = `${timestampDate.getFullYear()}${flPad2(timestampDate.getMonth()+1)}${flPad2(timestampDate.getDate())}-${flPad2(timestampDate.getHours())}${flPad2(timestampDate.getMinutes())}${flPad2(timestampDate.getSeconds())}`;
+    const filename = `laporan-stok_${cabangAktif.replace(/\s+/g,'-')}_${stamp}_${idx}.jpg`;
+    const url = URL.createObjectURL(blob);
+    flPhotos.push({ blob, url, filename });
+
+    // Step "simpan ke galeri device": trigger download lewat elemen <a download>.
+    // CATATAN: perilaku "otomatis masuk galeri" tergantung device/browser - di
+    // Android biasanya masuk folder Downloads atau Pictures tergantung setelan
+    // sistem, BUKAN selalu langsung ke app Galeri/Photos bawaan. Ini best effort,
+    // bukan garansi seragam di semua device - bukan sesuatu yang perlu "diperbaiki"
+    // kalau device tertentu berperilaku beda.
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+
+    // Catat SETIAP foto yang diambil ke server (bukan cuma yang akhirnya dikirim),
+    // supaya ada jejak riwayat di sistem walau fotonya cuma dikirim manual lewat WA.
+    uploadFotoLapakKeServer(blob, filename, timestampDate).catch(e => console.error('Gagal mencatat foto ke server:', e));
+
+    if (flPhotos.length < FL_TOTAL_FOTO) {
+        document.getElementById('flFotoKe').innerText = String(flPhotos.length + 1);
+        toast.success(`Foto ${flPhotos.length} tersimpan! Lanjut ambil foto berikutnya.`);
+    } else {
+        tutupKameraLapak();
+        tampilkanPreviewFotoLapak();
+    }
+}
+
+async function uploadFotoLapakKeServer(blob, filename, timestampDate) {
+    const waktuAmbil = `${timestampDate.getFullYear()}-${flPad2(timestampDate.getMonth()+1)}-${flPad2(timestampDate.getDate())} ${flPad2(timestampDate.getHours())}:${flPad2(timestampDate.getMinutes())}:${flPad2(timestampDate.getSeconds())}`;
+    const fd = new FormData();
+    fd.append('user', currentUser.user);
+    fd.append('token', localStorage.getItem('sessionToken') || '');
+    fd.append('cabang', cabangAktif);
+    fd.append('waktu_ambil', waktuAmbil);
+    if (flGeoCoord) fd.append('lokasi_koordinat', flGeoCoord);
+    fd.append('foto', blob, filename);
+
+    const res = await fetch(`${LAPORAN_FOTO_API}?action=upload_foto`, { method: 'POST', body: fd });
+    const hasil = await res.json();
+    if (hasil.status !== 'success') console.error('Gagal mencatat foto ke server:', hasil.message);
+}
+
+function tutupKameraLapak() {
+    if (flStream) {
+        flStream.getTracks().forEach(t => t.stop());
+        flStream = null;
+    }
+}
+
+async function tampilkanPreviewFotoLapak() {
+    document.getElementById('flStepKamera').style.display  = 'none';
+    document.getElementById('flStepPreview').style.display = 'block';
+
+    const thumbs = document.getElementById('flThumbs');
+    thumbs.innerHTML = flPhotos.map((p, i) => `
+        <label class="fl-thumb">
+            <img src="${p.url}" alt="Foto ${i+1}">
+            <input type="checkbox" data-idx="${i}" checked>
+        </label>`).join('');
+
+    document.getElementById('flFallbackMsg').style.display = 'none';
+
+    try {
+        const res = await fetch(`${LAPORAN_FOTO_API}?action=get_setting_wa_stok&${flAuthQS()}`);
+        const hasil = await res.json();
+        flWaTarget = (hasil.status === 'success') ? (hasil.nilai || '') : '';
+    } catch (e) {
+        flWaTarget = '';
+    }
+    document.getElementById('flWaTargetNote').innerHTML = flWaTarget
+        ? `📌 Kirim ke: <b>${flWaTarget}</b>`
+        : `📌 Tujuan pengiriman belum diatur VIP. Tanyakan ke Owner/VIP nomor/link grup WA-nya.`;
+}
+
+async function kirimFotoLapakKeWA() {
+    const checked = [...document.querySelectorAll('#flThumbs input[type="checkbox"]:checked')].map(el => parseInt(el.dataset.idx));
+    if (!checked.length) return toast.warning('Pilih minimal 1 foto dulu!');
+
+    const files = checked.map(i => new File([flPhotos[i].blob], flPhotos[i].filename, { type: 'image/jpeg' }));
+    const shareText = flWaTarget ? `Laporan stok - ${cabangAktif}. Kirim ke: ${flWaTarget}` : `Laporan stok - ${cabangAktif}`;
+    const fallbackMsg = document.getElementById('flFallbackMsg');
+    fallbackMsg.style.display = 'none';
+
+    // Web Share API TIDAK BISA auto-pilih kontak/grup tujuan di WhatsApp - share
+    // sheet cuma melampirkan file, staff sendiri yang pilih WhatsApp lalu kontaknya.
+    if (navigator.canShare && navigator.canShare({ files })) {
+        try {
+            await navigator.share({ files, text: shareText });
+            toast.success('Foto berhasil dibagikan!');
+        } catch (e) {
+            if (e.name !== 'AbortError') { // AbortError = staff sendiri yang batal di share sheet
+                fallbackMsg.style.display = 'block';
+                fallbackMsg.innerText = 'Gagal membuka menu share. Foto tetap sudah tersimpan di galeri/Downloads device kamu - silakan kirim manual lewat WhatsApp.';
+            }
+        }
+    } else {
+        fallbackMsg.style.display = 'block';
+        fallbackMsg.innerHTML = 'Browser/device ini tidak mendukung fitur share foto langsung. Foto yang dipilih sudah tersimpan ke galeri/Downloads device kamu (lihat notifikasi download tadi) - silakan buka WhatsApp secara manual dan kirim dari sana'
+            + (flWaTarget ? ` ke: <b>${flWaTarget}</b>.` : '.');
+    }
+}
+
+function tutupSesiFotoLapak() {
+    tutupKameraLapak();
+    flPhotos.forEach(p => URL.revokeObjectURL(p.url));
+    flPhotos = [];
+    document.getElementById('fotoLapakOverlay').style.display = 'none';
 }
 
 /* ── HISTORY STOK ── */
