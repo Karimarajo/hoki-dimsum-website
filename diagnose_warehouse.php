@@ -58,11 +58,18 @@ foreach ($tables as $t) {
                            WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = '$tEsc'");
     $infoRow = $info ? $info->fetch_assoc() : null;
 
-    // Sample baris terakhir (by id DESC) biar kelihatan isinya masih ada / tidak
+    // Sample baris terakhir (by id DESC) biar kelihatan isinya masih ada / tidak.
+    // Khusus warehouse_ledger, dump SEMUA baris (cuma 16, aman) buat lacak persis
+    // kapan insiden kehilangan data terjadi dari gap id & tanggal yang bertahan.
     $sample = null;
     if (in_array('id', $colList, true)) {
-        $sampleRes = $conn->query("SELECT * FROM `$tEsc` ORDER BY id DESC LIMIT 5");
+        $limit = ($t === 'warehouse_ledger') ? 'ORDER BY id ASC' : 'ORDER BY id DESC LIMIT 5';
+        $sampleRes = $conn->query("SELECT * FROM `$tEsc` $limit");
         $sample = $sampleRes ? $sampleRes->fetch_all(MYSQLI_ASSOC) : [];
+    }
+    if ($t === 'warehouse_ledger') {
+        $minMax = $conn->query("SELECT MIN(id) min_id, MAX(id) max_id, MIN(tgl) min_tgl, MAX(tgl) max_tgl, MIN(created_at) min_created, MAX(created_at) max_created FROM `$tEsc`");
+        $out['warehouse_ledger_minmax'] = $minMax ? $minMax->fetch_assoc() : null;
     }
 
     $out['tables'][$t] = [
