@@ -1731,27 +1731,47 @@ switch ($action) {
         break;
 
     case 'save_laporan':
-        $rid     = $conn->real_escape_string($input['report_id'] ?? '');
+        $ridRaw  = trim($input['report_id'] ?? '');
+        $rid     = $conn->real_escape_string($ridRaw);
         $petugas = $conn->real_escape_string($input['petugas'] ?? '');
         $cb      = $conn->real_escape_string($input['cabang'] ?? '');
         $mt      = $conn->real_escape_string(json_encode($input['metode'] ?? []));
-        $au_data = $input['audit'] ?? []; 
+        $au_data = $input['audit'] ?? [];
         $au      = $conn->real_escape_string(json_encode($au_data));
         $ex      = $conn->real_escape_string(json_encode($input['expens'] ?? []));
         $tt      = (int)($input['total'] ?? 0);
-        
+
         // AMBIL WAKTU: Jika dari JS ada, pakai itu. Jika tidak ada, baru pakai jam sekarang.
         $wkt     = $conn->real_escape_string($input['waktu'] ?? date('Y-m-d H:i:s'));
-        
-        // Konversi ke format YYYY-MM-DD untuk tabel ledger
-        $tglOnly = date('Y-m-d', strtotime($wkt)); 
 
-        $sql = "INSERT INTO laporan_settlement (report_id, waktu, petugas, cabang, metode_json, audit_json, pengeluaran_json, grand_total) 
-                VALUES ('$rid','$wkt','$petugas','$cb','$mt','$au','$ex',$tt) 
+        // Konversi ke format YYYY-MM-DD untuk tabel ledger
+        $tglOnly = date('Y-m-d', strtotime($wkt));
+
+        // GUARD WAJIB: report_id dipakai di bawah untuk "DELETE ... WHERE catatan LIKE
+        // '%$rid%'" (hapus entri ledger lama punya laporan INI sebelum insert ulang,
+        // supaya edit/resubmit laporan tidak dobel). Kalau report_id kosong/rusak
+        // (mis. elemen #reportID belum sempat terisi karena fetchLaporanData() gagal),
+        // LIKE '%%' itu cocok ke SEMUA baris dan MENGHAPUS SELURUH warehouse_ledger -
+        // ini penyebab kejadian hilangnya riwayat stok gudang 2026-09-30. Tolak di sini
+        // sebelum sempat menyentuh DB sama sekali.
+        if ($ridRaw === '' || strlen($ridRaw) < 5) {
+            echo json_encode(["status" => "error", "message" => "ID laporan tidak valid/kosong. Muat ulang halaman lalu coba simpan lagi."]);
+            break;
+        }
+
+        $sql = "INSERT INTO laporan_settlement (report_id, waktu, petugas, cabang, metode_json, audit_json, pengeluaran_json, grand_total)
+                VALUES ('$rid','$wkt','$petugas','$cb','$mt','$au','$ex',$tt)
                 ON DUPLICATE KEY UPDATE waktu='$wkt', petugas='$petugas', cabang='$cb', metode_json='$mt', audit_json='$au', pengeluaran_json='$ex', grand_total=$tt";
-        
+
         if ($conn->query($sql)) {
-            $conn->query("DELETE FROM warehouse_ledger WHERE catatan LIKE '%$rid%'");
+            // Lapis pertahanan kedua: selain report_id sudah divalidasi non-kosong di
+            // atas, hapus ledger lama laporan ini di-scope juga ke cabang yang sama DAN
+            // ke pola persis "(report_id)" seperti saat di-insert - supaya walau rid
+            // suatu saat kebetulan generik, blast radius-nya maksimal cuma 1 cabang,
+            // bukan seluruh tabel.
+            $stmtDelLedger = $conn->prepare("DELETE FROM warehouse_ledger WHERE cabang = ? AND catatan LIKE CONCAT('%(', ?, ')%')");
+            $stmtDelLedger->bind_param('ss', $cb, $rid);
+            $stmtDelLedger->execute();
 
             foreach ($au_data as $item) {
                 $laku = (float)($item['laku'] ?? 0);
