@@ -385,7 +385,27 @@ $conn->query("CREATE TABLE IF NOT EXISTS warehouse_ledger (
     tgl DATE NOT NULL,
     sku VARCHAR(50) NOT NULL,
     masuk FLOAT DEFAULT 0,
+    keluar FLOAT DEFAULT 0,
+    cabang VARCHAR(100) DEFAULT '',
     catatan VARCHAR(255) DEFAULT '',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+)");
+
+// Tambahkan kolom keluar & cabang jika belum ada (untuk database yang sudah ada sebelumnya)
+$checkKeluar = $conn->query("SHOW COLUMNS FROM warehouse_ledger LIKE 'keluar'");
+if ($checkKeluar && $checkKeluar->num_rows === 0) {
+    $conn->query("ALTER TABLE warehouse_ledger ADD COLUMN keluar FLOAT DEFAULT 0 AFTER masuk");
+}
+$checkCabang = $conn->query("SHOW COLUMNS FROM warehouse_ledger LIKE 'cabang'");
+if ($checkCabang && $checkCabang->num_rows === 0) {
+    $conn->query("ALTER TABLE warehouse_ledger ADD COLUMN cabang VARCHAR(100) DEFAULT '' AFTER keluar");
+}
+
+// Buat tabel inventory jika belum ada (untuk Stok Gudang / Logistik)
+$conn->query("CREATE TABLE IF NOT EXISTS inventory (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nama_barang VARCHAR(100) NOT NULL,
+    satuan VARCHAR(50) DEFAULT 'pcs',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 )");
 

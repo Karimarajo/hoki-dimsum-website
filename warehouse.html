@@ -919,7 +919,8 @@ async function hapusLogistik(e, id, nama) {
             if (selectedSKU === nama) {
                 selectedSKU = null;
                 document.getElementById('formCard').style.display = 'none';
-                document.getElementById('ledgerTableBody').innerHTML = '<tr><td colspan="4" style="text-align:center;">Pilih barang di atas</td></tr>';
+                document.getElementById('tableCard').style.display = 'none';
+                document.getElementById('ledgerTbody').innerHTML = '<tr><td colspan="6" style="text-align:center;">Pilih barang di atas</td></tr>';
             }
             loadLogistikList();
         } else {
