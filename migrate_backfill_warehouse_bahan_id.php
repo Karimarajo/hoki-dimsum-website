@@ -1,8 +1,18 @@
 <?php
 /**
  * Script migrasi SATU KALI PAKAI - backfill warehouse_ledger.bahan_id pada baris lama
- * yang masih NULL, dengan mencocokkan teks sku (suffix "(satuan)" dibuang, trim, lowercase)
- * ke bahan_baku.nama yang dinormalisasi sama persis.
+ * yang masih NULL, dengan mencocokkan teks sku ke bahan_baku.nama+satuan.
+ *
+ * Aturan matching (lihat insiden: ledger "Plastik Frozen (Roll)" milik barang Stok Gudang/
+ * inventory sempat ke-backfill salah ke bahan_baku "Plastik Frozen" / satuan "cm", krn versi
+ * lama script ini asal strip APA PUN di dalam kurung lalu match by nama doang):
+ *   1. Kalau sku (APA ADANYA, kurung-nya pun ikut) persis terdaftar di tabel `inventory`,
+ *      JANGAN PERNAH dicocokkan ke bahan_baku manapun - itu barang Stok Gudang, bukan bahan
+ *      baku resep, meski kebetulan nama/kurungnya mirip (mis. "Sticker Bulat" ada identik
+ *      persis di bahan_baku DAN inventory sbg dua barang yg beda konteks).
+ *   2. sku dianggap cocok ke sebuah bahan_baku kalau PERSIS sama persis (tanpa kurung), ATAU
+ *      berformat "Nama (Satuan)" dgn Nama & Satuan-nya SAMA-SAMA cocok ke bahan_baku yg
+ *      sama (bukan cuma nama-nya doang, kurungnya pun harus benar2 satuan bahan itu).
  *
  * HANYA jalan lewat CLI, dan HANYA menyentuh DB dev lokal secara default:
  *   php migrate_backfill_warehouse_bahan_id.php            -> dry-run, preview saja (dev)
@@ -44,24 +54,27 @@ if (!$check || $check->num_rows === 0) {
     die("Kolom bahan_id belum ada di warehouse_ledger. Buka/hit api.php dulu (migration otomatis jalan di awal request) sebelum menjalankan script ini.\n");
 }
 
-function normalisasi_nama_bahan_migrasi(string $s): string {
-    $s = trim($s);
-    $s = preg_replace('/\s*\([^)]*\)\s*$/', '', $s);
-    return strtolower(trim($s));
-}
-
-// Peta nama bahan_baku ternormalisasi -> id. Nama yang ternormalisasi sama tapi beda id
-// (tabrakan) ditandai ambigu dan DILEWATI sepenuhnya demi keamanan (tidak pernah ditebak).
-$bahanMap  = [];
+// Peta nama bahan_baku ternormalisasi -> ['id'=>, 'satuan'=>] (nama & satuan lowercase+trim).
+// Nama yang ternormalisasi sama tapi beda id (tabrakan) ditandai ambigu dan DILEWATI
+// sepenuhnya demi keamanan (tidak pernah ditebak).
+$bahanInfo = [];
 $ambiguous = [];
-$resBahan = $conn->query("SELECT id, nama FROM bahan_baku");
+$resBahan = $conn->query("SELECT id, nama, satuan FROM bahan_baku");
 while ($row = $resBahan->fetch_assoc()) {
-    $norm = normalisasi_nama_bahan_migrasi($row['nama']);
+    $norm = strtolower(trim($row['nama']));
     if ($norm === '') continue;
-    if (isset($bahanMap[$norm]) && $bahanMap[$norm] !== (int)$row['id']) {
+    if (isset($bahanInfo[$norm]) && $bahanInfo[$norm]['id'] !== (int)$row['id']) {
         $ambiguous[$norm] = true;
     }
-    $bahanMap[$norm] = (int)$row['id'];
+    $bahanInfo[$norm] = ['id' => (int)$row['id'], 'satuan' => strtolower(trim($row['satuan'] ?? ''))];
+}
+
+// Set nama barang inventory (Stok Gudang/Logistik manual) - exact match ke ini SELALU
+// mengalahkan kecocokan ke bahan_baku apa pun.
+$inventoryNameSet = [];
+$resInv = $conn->query("SELECT DISTINCT nama_barang FROM inventory");
+while ($row = $resInv->fetch_assoc()) {
+    $inventoryNameSet[strtolower(trim($row['nama_barang']))] = true;
 }
 
 $resLedger = $conn->query("SELECT id, tgl, sku FROM warehouse_ledger WHERE bahan_id IS NULL ORDER BY id ASC");
@@ -69,9 +82,26 @@ $resLedger = $conn->query("SELECT id, tgl, sku FROM warehouse_ledger WHERE bahan
 $matched   = [];
 $unmatched = [];
 while ($row = $resLedger->fetch_assoc()) {
-    $norm = normalisasi_nama_bahan_migrasi($row['sku']);
-    if ($norm !== '' && isset($bahanMap[$norm]) && !isset($ambiguous[$norm])) {
-        $matched[] = ['id' => $row['id'], 'tgl' => $row['tgl'], 'sku' => $row['sku'], 'bahan_id' => $bahanMap[$norm]];
+    $sku      = trim($row['sku']);
+    $skuLower = strtolower($sku);
+    $bahanId  = null;
+
+    if ($skuLower !== '' && !isset($inventoryNameSet[$skuLower])) {
+        if (isset($bahanInfo[$skuLower]) && !isset($ambiguous[$skuLower])) {
+            // Cocok persis tanpa kurung.
+            $bahanId = $bahanInfo[$skuLower]['id'];
+        } elseif (preg_match('/^(.*?)\s*\(([^)]*)\)\s*$/', $sku, $m)) {
+            $before    = strtolower(trim($m[1]));
+            $isiKurung = strtolower(trim($m[2]));
+            if (isset($bahanInfo[$before]) && !isset($ambiguous[$before]) && $bahanInfo[$before]['satuan'] === $isiKurung) {
+                // Format "Nama (Satuan)" dan satuannya benar2 cocok ke bahan_baku ini.
+                $bahanId = $bahanInfo[$before]['id'];
+            }
+        }
+    }
+
+    if ($bahanId !== null) {
+        $matched[] = ['id' => $row['id'], 'tgl' => $row['tgl'], 'sku' => $row['sku'], 'bahan_id' => $bahanId];
     } else {
         $unmatched[] = ['id' => $row['id'], 'tgl' => $row['tgl'], 'sku' => $row['sku']];
     }

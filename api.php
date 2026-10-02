@@ -703,13 +703,60 @@ function validasi_kupon_internal(mysqli $conn, string $kode, string $cabang, arr
 }
 
 // ── Helper warehouse_ledger: normalisasi teks sku lama (tanpa bahan_id) jadi key
-// grouping yang stabil - trim, lowercase, buang suffix "(satuan)" di akhir. Dipakai
-// sbg fallback grouping utk baris lama yang bahan_id-nya masih NULL (lihat
-// get_warehouse_stok_semua & get_audit_items_master). ──
-function normalisasi_nama_bahan(string $s): string {
+// grouping yang stabil - trim, lowercase, buang suffix "(satuan)" di akhir - TAPI HANYA
+// kalau suffix itu memang terbukti satuan tempelan sistem (format "Nama (Satuan)" dari
+// save_laporan), bukan bagian dari nama asli barang.
+//
+// Dua pengaman wajib (lihat insiden: ledger "Plastik Frozen (Roll)" milik barang Stok
+// Gudang/inventory ke-backfill salah ke bahan_baku "Plastik Frozen" / satuan "cm", krn versi
+// lama fungsi ini asal strip APA PUN di dalam kurung):
+//   1. Kalau nama (APA ADANYA, kurung-nya pun ikut) persis terdaftar di tabel `inventory`,
+//      JANGAN PERNAH dianggap match ke bahan_baku manapun - itu barang Stok Gudang, bukan
+//      bahan baku resep, meski kebetulan nama/kurungnya mirip (mis. "Sticker Bulat" ada
+//      identik persis di bahan_baku DAN inventory).
+//   2. Kurung di akhir cuma boleh dibuang kalau isinya (lowercase+trim) memang cocok ke
+//      salah satu nilai `satuan` yang benar2 dipakai di bahan_baku - kalau tidak ketemu,
+//      kurung itu bagian dari nama asli barang, JANGAN di-strip.
+// $bahanSatuanSet & $inventoryNameSet: lihat ambil_konteks_normalisasi_bahan(). ──
+function normalisasi_nama_bahan(string $s, array $bahanSatuanSet = [], array $inventoryNameSet = []): string {
     $s = trim($s);
-    $s = preg_replace('/\s*\([^)]*\)\s*$/', '', $s);
+    $lower = strtolower($s);
+
+    if (isset($inventoryNameSet[$lower])) {
+        return $lower;
+    }
+
+    if (preg_match('/^(.*?)\s*\(([^)]*)\)\s*$/', $s, $m)) {
+        $isiKurung = strtolower(trim($m[2]));
+        if (isset($bahanSatuanSet[$isiKurung])) {
+            $s = trim($m[1]);
+        }
+    }
+
     return strtolower(trim($s));
+}
+
+// Siapkan konteks utk normalisasi_nama_bahan(): daftar satuan resmi dari bahan_baku, dan
+// daftar nama barang di inventory (Stok Gudang/Logistik manual) - keduanya lowercase+trim
+// supaya lookup O(1) case-insensitive.
+function ambil_konteks_normalisasi_bahan(mysqli $conn): array {
+    $bahanSatuanSet = [];
+    $res = $conn->query("SELECT DISTINCT satuan FROM bahan_baku WHERE satuan IS NOT NULL AND TRIM(satuan) <> ''");
+    if ($res) {
+        while ($r = $res->fetch_assoc()) {
+            $bahanSatuanSet[strtolower(trim($r['satuan']))] = true;
+        }
+    }
+
+    $inventoryNameSet = [];
+    $res2 = $conn->query("SELECT DISTINCT nama_barang FROM inventory");
+    if ($res2) {
+        while ($r = $res2->fetch_assoc()) {
+            $inventoryNameSet[strtolower(trim($r['nama_barang']))] = true;
+        }
+    }
+
+    return [$bahanSatuanSet, $inventoryNameSet];
 }
 
 // ── Helper log login: IP, device, lokasi (dipakai action add_log) ──
@@ -2037,13 +2084,14 @@ switch ($action) {
         $res = $conn->query("SELECT bahan_id, sku, COALESCE(SUM(masuk),0) - COALESCE(SUM(keluar),0) AS sisa
                              FROM warehouse_ledger
                              GROUP BY bahan_id, sku");
+        [$bahanSatuanSet, $inventoryNameSet] = ambil_konteks_normalisasi_bahan($conn);
         $stokMap = [];
         if ($res) {
             while ($row = $res->fetch_assoc()) {
                 if (!empty($row['bahan_id'])) {
                     $key = 'bid:' . (int)$row['bahan_id'];
                 } else {
-                    $key = 'sku:' . normalisasi_nama_bahan($row['sku']);
+                    $key = 'sku:' . normalisasi_nama_bahan($row['sku'], $bahanSatuanSet, $inventoryNameSet);
                 }
                 $stokMap[$key] = ($stokMap[$key] ?? 0) + (float)$row['sisa'];
             }
@@ -3000,6 +3048,7 @@ switch ($action) {
         // nilai sisa stok ke item yang benar.
         $seenKeys = [];
         $output   = [];
+        [$bahanSatuanSet, $inventoryNameSet] = ambil_konteks_normalisasi_bahan($conn);
 
         // 1. Master item "Audit Stok Harian" dari bahan_baku - sumber kebenaran skrg (live,
         //    bukan hardcode). Nama & satuan selalu versi terkini, bukan snapshot ledger lama.
@@ -3038,7 +3087,7 @@ switch ($action) {
                 } else {
                     $sku = trim($r['sku']);
                     if ($sku === '') continue;
-                    $key = 'sku:' . normalisasi_nama_bahan($sku);
+                    $key = 'sku:' . normalisasi_nama_bahan($sku, $bahanSatuanSet, $inventoryNameSet);
                     if (isset($seenKeys[$key])) continue;
                     $seenKeys[$key] = true;
                     $output[] = ["key" => $key, "bahan_id" => null, "nama" => $sku, "satuan" => ""];
