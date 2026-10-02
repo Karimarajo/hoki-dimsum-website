@@ -400,6 +400,16 @@ $checkCabang = $conn->query("SHOW COLUMNS FROM warehouse_ledger LIKE 'cabang'");
 if ($checkCabang && $checkCabang->num_rows === 0) {
     $conn->query("ALTER TABLE warehouse_ledger ADD COLUMN cabang VARCHAR(100) DEFAULT '' AFTER keluar");
 }
+// bahan_id: identity key baru ke bahan_baku.id (nullable, tanpa FK constraint - project ini
+// belum pakai FK di tabel lain). Kolom 'sku' tetap dipertahankan sbg snapshot teks display/
+// histori saja, TIDAK lagi dipakai utk matching/grouping antar baris ke depannya - supaya
+// histori satu bahan baku tidak lagi terpecah hanya gara2 variasi casing teks sku (mis.
+// "Pcs" vs "pcs"), seperti yg menyebabkan duplikat card di warehouse.html.
+$checkBahanId = $conn->query("SHOW COLUMNS FROM warehouse_ledger LIKE 'bahan_id'");
+if ($checkBahanId && $checkBahanId->num_rows === 0) {
+    $conn->query("ALTER TABLE warehouse_ledger ADD COLUMN bahan_id INT NULL AFTER sku");
+    $conn->query("ALTER TABLE warehouse_ledger ADD INDEX idx_bahan_id (bahan_id)");
+}
 
 // Buat tabel inventory jika belum ada (untuk Stok Gudang / Logistik)
 $conn->query("CREATE TABLE IF NOT EXISTS inventory (
@@ -690,6 +700,16 @@ function validasi_kupon_internal(mysqli $conn, string $kode, string $cabang, arr
         'kode'     => $kupon['kode'],
         'diskon'   => $diskon,
     ];
+}
+
+// ── Helper warehouse_ledger: normalisasi teks sku lama (tanpa bahan_id) jadi key
+// grouping yang stabil - trim, lowercase, buang suffix "(satuan)" di akhir. Dipakai
+// sbg fallback grouping utk baris lama yang bahan_id-nya masih NULL (lihat
+// get_warehouse_stok_semua & get_audit_items_master). ──
+function normalisasi_nama_bahan(string $s): string {
+    $s = trim($s);
+    $s = preg_replace('/\s*\([^)]*\)\s*$/', '', $s);
+    return strtolower(trim($s));
 }
 
 // ── Helper log login: IP, device, lokasi (dipakai action add_log) ──
@@ -1776,12 +1796,25 @@ switch ($action) {
             foreach ($au_data as $item) {
                 $laku = (float)($item['laku'] ?? 0);
                 if ($laku > 0) {
-                    $namaItem = $conn->real_escape_string($item['nama']);
+                    // Item default dari master bahan_baku bawa bahanId (presisi, imun ke rename/
+                    // casing). Item custom (ditambah manual via auditNamaBaru) tidak punya
+                    // bahanId - tetap fallback ke sku teks seperti sebelumnya.
+                    $bahanIdItem = (int)($item['bahanId'] ?? 0);
+                    $namaRaw     = trim($item['nama'] ?? '');
+                    $satuanRaw   = trim($item['satuan'] ?? '');
+                    // sku tetap kolom display/snapshot histori - utk item master format
+                    // "Nama (Satuan)" dipertahankan spy histori lama & baru konsisten, item
+                    // custom apa adanya (tidak pernah punya satuan terpisah).
+                    $skuDisplay = ($bahanIdItem > 0 && $satuanRaw !== '')
+                        ? "$namaRaw ($satuanRaw)"
+                        : $namaRaw;
+                    $namaItem = $conn->real_escape_string($skuDisplay);
                     $ket = "Laporan $cb ($rid)";
-                    
+                    $bahanIdSql = $bahanIdItem > 0 ? $bahanIdItem : 'NULL';
+
                     // PERBAIKAN: Gunakan '$tglOnly', bukan CURDATE()
-                    $conn->query("INSERT INTO warehouse_ledger (tgl, sku, masuk, keluar, cabang, catatan) 
-                                  VALUES ('$tglOnly', '$namaItem', 0, $laku, '$cb', '$ket')");
+                    $conn->query("INSERT INTO warehouse_ledger (tgl, sku, bahan_id, masuk, keluar, cabang, catatan)
+                                  VALUES ('$tglOnly', '$namaItem', $bahanIdSql, 0, $laku, '$cb', '$ket')");
                 }
             }
             echo json_encode(["status" => "success"]);
@@ -1801,13 +1834,26 @@ switch ($action) {
         break;
 
     case 'save_bahan_baku':
-        $id   = (int)($input['id'] ?? 0);
-        $nama = $conn->real_escape_string($input['nama'] ?? '');
+        $id      = (int)($input['id'] ?? 0);
+        $namaRaw = trim($input['nama'] ?? '');
+        $nama = $conn->real_escape_string($namaRaw);
         $hrg  = (float)($input['harga'] ?? 0);
         $byk  = (float)($input['banyak'] ?? 0);
         $sat  = $conn->real_escape_string($input['satuan'] ?? '');
         $hs   = $byk > 0 ? $hrg / $byk : 0;
         $stokHarian = !empty($input['is_stok_harian']) ? 1 : 0;
+
+        // Cegah nama bahan baku duplikat (case-insensitive) - dulu nama jadi identity key
+        // string di warehouse_ledger.sku, dua bahan dgn nama sama (beda casing) bikin histori
+        // kebagi/duplikat. Dicek sebelum insert MAUPUN rename lewat edit (exclude diri sendiri).
+        $dupStmt = $conn->prepare("SELECT id FROM bahan_baku WHERE LOWER(TRIM(nama)) = LOWER(?) AND id != ?");
+        $namaLower = strtolower($namaRaw);
+        $dupStmt->bind_param('si', $namaLower, $id);
+        $dupStmt->execute();
+        if ($dupStmt->get_result()->fetch_assoc()) {
+            echo json_encode(["status" => "error", "message" => "Nama bahan baku \"$namaRaw\" sudah terdaftar. Gunakan nama lain atau edit data yang sudah ada."]);
+            break;
+        }
 
         if ($id > 0) {
             $sql = "UPDATE bahan_baku SET nama='$nama', harga=$hrg, banyak=$byk, satuan='$sat', harga_satuan=$hs, is_stok_harian=$stokHarian WHERE id=$id";
@@ -1984,13 +2030,22 @@ switch ($action) {
     // dengan hasil loop kumulatif di atas krn penjumlahan bersifat asosiatif/
     // komutatif - urutan baris tidak mempengaruhi TOTAL akhirnya.
     case 'get_warehouse_stok_semua':
-        $res = $conn->query("SELECT sku, COALESCE(SUM(masuk),0) - COALESCE(SUM(keluar),0) AS sisa
+        // Grouping sekarang per (bahan_id, sku) dulu di SQL, baru digabung ulang di PHP per
+        // bahan_id (kalau ada) atau per sku ternormalisasi (fallback baris lama bahan_id NULL).
+        // Tidak bisa langsung GROUP BY bahan_id di SQL krn baris NULL tidak boleh digabung jadi
+        // satu bucket (NULL != NULL secara identitas disini) - harus di-split lagi per sku.
+        $res = $conn->query("SELECT bahan_id, sku, COALESCE(SUM(masuk),0) - COALESCE(SUM(keluar),0) AS sisa
                              FROM warehouse_ledger
-                             GROUP BY sku");
+                             GROUP BY bahan_id, sku");
         $stokMap = [];
         if ($res) {
             while ($row = $res->fetch_assoc()) {
-                $stokMap[$row['sku']] = (float)$row['sisa'];
+                if (!empty($row['bahan_id'])) {
+                    $key = 'bid:' . (int)$row['bahan_id'];
+                } else {
+                    $key = 'sku:' . normalisasi_nama_bahan($row['sku']);
+                }
+                $stokMap[$key] = ($stokMap[$key] ?? 0) + (float)$row['sisa'];
             }
         }
         echo json_encode($stokMap);
@@ -2938,29 +2993,62 @@ switch ($action) {
         break;
         
         
-    // ── AUDIT ITEM ──────────────────────────────    
+    // ── AUDIT ITEM ──────────────────────────────
     case 'get_audit_items_master':
-        // 1. Daftar Item Audit Default (Samakan dengan laporan_staff.html)
-        $items = ['Dimsum Shaomai (Pcs)', 'Alu Tray AX-350 (Pcs)'];
+        // Dipakai grid "Bahan Baku (Otomatis)" di warehouse.html. Key dibentuk sama persis
+        // dgn get_warehouse_stok_semua ('bid:<id>' / 'sku:<normalized>') spy FE bisa join
+        // nilai sisa stok ke item yang benar.
+        $seenKeys = [];
+        $output   = [];
 
-        // 3. Ambil dari Ledger (Guna menangkap custom item yang mungkin pernah diketik staff)
-        $res2 = $conn->query("SELECT DISTINCT sku FROM warehouse_ledger");
-        if ($res2) {
-            while($r = $res2->fetch_assoc()) {
-                $items[] = $r['sku'];
+        // 1. Master item "Audit Stok Harian" dari bahan_baku - sumber kebenaran skrg (live,
+        //    bukan hardcode). Nama & satuan selalu versi terkini, bukan snapshot ledger lama.
+        $resMaster = $conn->query("SELECT id, nama, satuan FROM bahan_baku WHERE is_stok_harian = 1 ORDER BY nama ASC");
+        if ($resMaster) {
+            while ($r = $resMaster->fetch_assoc()) {
+                $key = 'bid:' . $r['id'];
+                $seenKeys[$key] = true;
+                $output[] = ["key" => $key, "bahan_id" => (int)$r['id'], "nama" => $r['nama'], "satuan" => $r['satuan']];
             }
         }
 
-        // Hilangkan duplikasi nama dan urutkan
-        $finalList = array_unique($items);
-        sort($finalList);
-
-        $output = [];
-        foreach ($finalList as $name) {
-            if (!empty($name)) $output[] = ["nama" => $name];
+        // 2. Item lain yang PERNAH tercatat di ledger - termasuk bahan_id yang sudah
+        //    di-backfill tapi flag is_stok_harian-nya kebetulan sedang off, maupun item
+        //    custom lama tanpa bahan_id sama sekali (diketik manual via auditNamaBaru) -
+        //    supaya histori lama tidak hilang begitu saja dari grid.
+        $resLedgerItems = $conn->query("
+            SELECT wl.bahan_id, wl.sku, b.nama AS bnama, b.satuan AS bsatuan
+            FROM warehouse_ledger wl
+            LEFT JOIN bahan_baku b ON b.id = wl.bahan_id
+            GROUP BY wl.bahan_id, wl.sku
+        ");
+        if ($resLedgerItems) {
+            while ($r = $resLedgerItems->fetch_assoc()) {
+                if (!empty($r['bahan_id'])) {
+                    $key = 'bid:' . (int)$r['bahan_id'];
+                    if (isset($seenKeys[$key])) continue;
+                    $seenKeys[$key] = true;
+                    // Kalau row bahan_baku-nya sudah dihapus, fallback ke teks sku historis.
+                    $output[] = [
+                        "key" => $key,
+                        "bahan_id" => (int)$r['bahan_id'],
+                        "nama" => $r['bnama'] !== null ? $r['bnama'] : $r['sku'],
+                        "satuan" => $r['bsatuan'] !== null ? $r['bsatuan'] : ""
+                    ];
+                } else {
+                    $sku = trim($r['sku']);
+                    if ($sku === '') continue;
+                    $key = 'sku:' . normalisasi_nama_bahan($sku);
+                    if (isset($seenKeys[$key])) continue;
+                    $seenKeys[$key] = true;
+                    $output[] = ["key" => $key, "bahan_id" => null, "nama" => $sku, "satuan" => ""];
+                }
+            }
         }
-        echo json_encode($output);
-        break;    
+
+        usort($output, function($a, $b) { return strcasecmp($a['nama'], $b['nama']); });
+        echo json_encode(array_values($output));
+        break;
 }
 
 $conn->close();

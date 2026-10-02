@@ -640,6 +640,12 @@ function sisaClassLogistik(sisa) {
 // Menyimpan cache item list gudang
 let warehouseItems = [];
 
+// Samakan dgn normalisasi_nama_bahan() di api.php - dipakai utk cocokkan item Logistik
+// Manual (selalu bahan_id NULL) ke key stokMap baru ('sku:<normalized>').
+function normalizeSkuKey(sku) {
+    return 'sku:' + String(sku || '').trim().toLowerCase().replace(/\s*\([^)]*\)\s*$/, '');
+}
+
 async function loadProdukList() {
     const gridContainer = document.getElementById('whGridContainer');
     try {
@@ -670,18 +676,23 @@ async function loadProdukList() {
         gridContainer.innerHTML = '';
 
         const cards = list.map((p) => {
-            const sisaStok = parseFloat(stokMap[p.nama]) || 0;
+            // stokMap sekarang di-key pakai 'bid:<bahan_id>' / 'sku:<normalized>' (lihat
+            // get_warehouse_stok_semua) - p.key dari get_audit_items_master sudah pakai format sama.
+            const sisaStok = parseFloat(stokMap[p.key]) || 0;
 
             // Tentukan kelas warna sisa stok
             const cSisa = sisaClass(sisaStok);
 
-            // Format satuan (jika mengandung 'Pcs' pakai Pcs, jika tidak, tampilkan angka default atau 'satuan' jika relevan)
-            const unit = p.nama.toLowerCase().includes('pcs') ? ' Pcs' : '';
+            // sku teks dipakai utk panggil endpoint lama (get_warehouse_ledger/save_warehouse_masuk)
+            // yg masih identify barang via teks, bukan bahan_id - samakan formatnya dgn yg dipakai
+            // save_laporan saat insert ("Nama (Satuan)") spy riwayat ledger nyambung.
+            const skuText = p.satuan ? `${p.nama} (${p.satuan})` : p.nama;
+            const unit = p.satuan ? ' ' + p.satuan : '';
 
             const card = document.createElement('div');
-            card.className = `wh-item-card ${selectedSKU === p.nama ? 'active' : ''}`;
-            card.id = `card-${p.nama.replace(/\s+/g, '-')}`;
-            card.onclick = () => onProdukChange(p.nama);
+            card.className = `wh-item-card ${selectedSKU === skuText ? 'active' : ''}`;
+            card.id = `card-${skuText.replace(/\s+/g, '-')}`;
+            card.onclick = () => onProdukChange(skuText);
 
             card.innerHTML = `
                 <h4 class="wh-item-card-name">${p.nama}</h4>
@@ -859,7 +870,9 @@ async function loadLogistikList() {
 
         // Urutan kartu tetap sesuai daftar array (A-Z)
         const cards = list.map((p) => {
-            const sisaStok = parseFloat(stokMap[p.nama_barang]) || 0;
+            // Barang logistik manual selalu bahan_id NULL di ledger, jadi stokMap-nya
+            // di-key pakai fallback 'sku:<normalized>' (lihat get_warehouse_stok_semua).
+            const sisaStok = parseFloat(stokMap[normalizeSkuKey(p.nama_barang)]) || 0;
 
             const cSisa = sisaClassLogistik(sisaStok);
             const unit = ' ' + p.satuan;

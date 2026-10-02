@@ -463,7 +463,7 @@
                 <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
                 <table id="tableAudit">
                     <thead>
-                        <tr><th>Item</th><th>Awal</th><th>Laku</th><th>Sisa</th><th></th></tr>
+                        <tr><th>Nama</th><th>Satuan</th><th>Awal</th><th>Laku</th><th>Sisa</th><th></th></tr>
                     </thead>
                     <tbody id="auditBody">
                         <!-- Data akan diisi oleh JavaScript -->
@@ -618,7 +618,7 @@ async function loadDefaultAudit() {
         const allBahan = await res.json();
         const defaultAudit = allBahan
             .filter(b => parseInt(b.is_stok_harian) === 1)
-            .map(b => ({ id: b.nama, bahanId: parseInt(b.id), matchNama: b.nama, nama: `${b.nama} (${b.satuan})`, awal: 0, laku: 0, sisa: 0, isDefault: true }));
+            .map(b => ({ id: b.nama, bahanId: parseInt(b.id), matchNama: b.nama, nama: b.nama, satuan: b.satuan, awal: 0, laku: 0, sisa: 0, isDefault: true }));
         auditItems = [...defaultAudit, ...savedCustomItems];
     } catch (e) {
         console.error('Gagal memuat daftar audit stok harian dari bahan_baku', e);
@@ -1172,7 +1172,10 @@ function bukaDetail(rid) {
     // Render Tabel Audit
     let htmlA = '<thead><tr><th>Item</th><th>Laku</th><th>Sisa</th></tr></thead><tbody>';
     audit.forEach(it => {
-        htmlA += `<tr><td>${it.nama}</td><td>${it.laku}</td><td><b>${it.sisa}</b></td></tr>`;
+        // Kompatibel data lama (it.nama sudah gabungan "Nama (Satuan)", tanpa field satuan)
+        // maupun data baru (it.nama polos + it.satuan terpisah).
+        const namaTampil = it.satuan ? `${it.nama} (${it.satuan})` : it.nama;
+        htmlA += `<tr><td>${namaTampil}</td><td>${it.laku}</td><td><b>${it.sisa}</b></td></tr>`;
     });
     document.getElementById('detTabelAudit').innerHTML = htmlA + '</tbody>';
 
@@ -1346,8 +1349,9 @@ function renderAuditTable() {
     tbody.innerHTML = auditItems.map((it, idx) => `
         <tr>
             <td>${it.nama}</td>
+            <td>${it.satuan || ''}</td>
             <td>
-                <input type="number" value="${it.awal}" 
+                <input type="number" value="${it.awal}"
                     oninput="updateAuditAwal(${idx}, this.value)" 
                     style="width:70px; padding:5px; margin:0; font-size:12px; border:1px solid var(--border); border-radius:4px;">
             </td>
