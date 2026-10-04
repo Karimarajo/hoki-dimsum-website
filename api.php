@@ -759,6 +759,62 @@ function ambil_konteks_normalisasi_bahan(mysqli $conn): array {
     return [$bahanSatuanSet, $inventoryNameSet];
 }
 
+// Ambil seluruh bahan_baku jadi 2 peta: by-id (nama/satuan canonical utk tampilan) dan
+// by-nama-ternormalisasi (utk live-resolve baris warehouse_ledger lama yg bahan_id-nya
+// masih NULL - legacy dari sblm kolom ini ada, atau sisa dari bug save_warehouse_masuk yg
+// dulu tidak pernah mengisi bahan_id). Tanpa live-resolve ini, baris begitu nongol sbg
+// "kartu hantu" terpisah dgn nama mentah "Nama (Satuan)" di get_audit_items_master, DAN
+// sisa stoknya ke-split dari total yang seharusnya di get_warehouse_stok_semua (lihat bug:
+// "Dimsum Shaomai (pcs)" muncul sbg kartu ganda padahal "Dimsum Shaomai" sudah ada).
+// Nama ternormalisasi yg nabrak (≥2 bahan_baku beda id) ditandai $ambiguous & TIDAK PERNAH
+// ditebak - prinsip sama persis dgn migrate_backfill_warehouse_bahan_id.php.
+function ambil_bahan_baku_lookup(mysqli $conn): array {
+    $byId = [];
+    $byNama = [];
+    $ambiguous = [];
+    $res = $conn->query("SELECT id, nama, satuan FROM bahan_baku");
+    if ($res) {
+        while ($row = $res->fetch_assoc()) {
+            $id = (int)$row['id'];
+            $byId[$id] = ['nama' => $row['nama'], 'satuan' => $row['satuan']];
+
+            $norm = strtolower(trim($row['nama']));
+            if ($norm === '') continue;
+            if (isset($byNama[$norm]) && $byNama[$norm]['id'] !== $id) {
+                $ambiguous[$norm] = true;
+            }
+            $byNama[$norm] = ['id' => $id, 'satuan' => strtolower(trim($row['satuan'] ?? ''))];
+        }
+    }
+    return [$byId, $byNama, $ambiguous];
+}
+
+// Resolve 1 baris warehouse_ledger (bahan_id boleh NULL) ke bahan_id definitif. Kalau
+// kolomnya sudah terisi, pakai itu apa adanya. Kalau NULL, coba cocokkan teks sku ke
+// bahan_baku: exact match nama ke `inventory` SELALU menang (brarti barang Stok Gudang/
+// Logistik, bukan resep - lihat insiden "Plastik Frozen (Roll)"), baru exact nama atau pola
+// "Nama (Satuan)" ke bahan_baku - nama ambigu tidak pernah ditebak, balik null (fallback
+// sku-text spt biasa).
+function resolve_bahan_id_ledger(?int $bahanId, string $sku, array $byNama, array $ambiguous, array $inventoryNameSet): ?int {
+    if (!empty($bahanId)) return $bahanId;
+
+    $sku = trim($sku);
+    $lower = strtolower($sku);
+    if ($sku === '' || isset($inventoryNameSet[$lower])) return null;
+
+    if (isset($byNama[$lower]) && !isset($ambiguous[$lower])) {
+        return $byNama[$lower]['id'];
+    }
+    if (preg_match('/^(.*?)\s*\(([^)]*)\)\s*$/', $sku, $m)) {
+        $before    = strtolower(trim($m[1]));
+        $isiKurung = strtolower(trim($m[2]));
+        if (isset($byNama[$before]) && !isset($ambiguous[$before]) && $byNama[$before]['satuan'] === $isiKurung) {
+            return $byNama[$before]['id'];
+        }
+    }
+    return null;
+}
+
 // ── Helper log login: IP, device, lokasi (dipakai action add_log) ──
 function get_client_ip(): string {
     if (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
@@ -2078,21 +2134,24 @@ switch ($action) {
     // komutatif - urutan baris tidak mempengaruhi TOTAL akhirnya.
     case 'get_warehouse_stok_semua':
         // Grouping sekarang per (bahan_id, sku) dulu di SQL, baru digabung ulang di PHP per
-        // bahan_id (kalau ada) atau per sku ternormalisasi (fallback baris lama bahan_id NULL).
-        // Tidak bisa langsung GROUP BY bahan_id di SQL krn baris NULL tidak boleh digabung jadi
-        // satu bucket (NULL != NULL secara identitas disini) - harus di-split lagi per sku.
+        // bahan_id (kalau ada ATAU berhasil di-resolve live dari sku legacy - lihat
+        // resolve_bahan_id_ledger) atau per sku ternormalisasi (fallback kalau tetap tidak
+        // ketemu pasangannya). Tidak bisa langsung GROUP BY bahan_id di SQL krn baris NULL
+        // tidak boleh digabung jadi satu bucket (NULL != NULL secara identitas disini) -
+        // harus di-split lagi per sku.
         $res = $conn->query("SELECT bahan_id, sku, COALESCE(SUM(masuk),0) - COALESCE(SUM(keluar),0) AS sisa
                              FROM warehouse_ledger
                              GROUP BY bahan_id, sku");
         [$bahanSatuanSet, $inventoryNameSet] = ambil_konteks_normalisasi_bahan($conn);
+        [, $bahanByNama, $ambiguous] = ambil_bahan_baku_lookup($conn);
         $stokMap = [];
         if ($res) {
             while ($row = $res->fetch_assoc()) {
-                if (!empty($row['bahan_id'])) {
-                    $key = 'bid:' . (int)$row['bahan_id'];
-                } else {
-                    $key = 'sku:' . normalisasi_nama_bahan($row['sku'], $bahanSatuanSet, $inventoryNameSet);
-                }
+                $rawBahanId = !empty($row['bahan_id']) ? (int)$row['bahan_id'] : null;
+                $resolvedId = resolve_bahan_id_ledger($rawBahanId, (string)$row['sku'], $bahanByNama, $ambiguous, $inventoryNameSet);
+                $key = $resolvedId !== null
+                    ? 'bid:' . $resolvedId
+                    : 'sku:' . normalisasi_nama_bahan($row['sku'], $bahanSatuanSet, $inventoryNameSet);
                 $stokMap[$key] = ($stokMap[$key] ?? 0) + (float)$row['sisa'];
             }
         }
@@ -3055,6 +3114,7 @@ switch ($action) {
         $seenKeys = [];
         $output   = [];
         [$bahanSatuanSet, $inventoryNameSet] = ambil_konteks_normalisasi_bahan($conn);
+        [$bahanById, $bahanByNama, $ambiguous] = ambil_bahan_baku_lookup($conn);
 
         // 1. Master item "Audit Stok Harian" dari bahan_baku - sumber kebenaran skrg (live,
         //    bukan hardcode). Nama & satuan selalu versi terkini, bukan snapshot ledger lama.
@@ -3070,28 +3130,36 @@ switch ($action) {
         // 2. Item lain yang PERNAH tercatat di ledger - termasuk bahan_id yang sudah
         //    di-backfill tapi flag is_stok_harian-nya kebetulan sedang off, maupun item
         //    custom lama tanpa bahan_id sama sekali (diketik manual via auditNamaBaru) -
-        //    supaya histori lama tidak hilang begitu saja dari grid.
+        //    supaya histori lama tidak hilang begitu saja dari grid. bahan_id NULL di-resolve
+        //    live dulu via resolve_bahan_id_ledger() sebelum dicek - kalau tidak, baris lama
+        //    (co. sisa dari sebelum save_warehouse_masuk mengisi bahan_id) nongol sbg "kartu
+        //    hantu" terpisah dgn nama mentah "Nama (Satuan)" walau item aslinya sudah ada di
+        //    langkah 1 (bug: "Dimsum Shaomai (pcs)" duplikat dari "Dimsum Shaomai").
         $resLedgerItems = $conn->query("
-            SELECT wl.bahan_id, wl.sku, b.nama AS bnama, b.satuan AS bsatuan
+            SELECT wl.bahan_id, wl.sku
             FROM warehouse_ledger wl
-            LEFT JOIN bahan_baku b ON b.id = wl.bahan_id
             GROUP BY wl.bahan_id, wl.sku
         ");
         if ($resLedgerItems) {
             while ($r = $resLedgerItems->fetch_assoc()) {
-                if (!empty($r['bahan_id'])) {
-                    $key = 'bid:' . (int)$r['bahan_id'];
+                $sku = trim($r['sku']);
+                $rawBahanId = !empty($r['bahan_id']) ? (int)$r['bahan_id'] : null;
+                $resolvedId = resolve_bahan_id_ledger($rawBahanId, $sku, $bahanByNama, $ambiguous, $inventoryNameSet);
+
+                if ($resolvedId !== null) {
+                    $key = 'bid:' . $resolvedId;
                     if (isset($seenKeys[$key])) continue;
                     $seenKeys[$key] = true;
-                    // Kalau row bahan_baku-nya sudah dihapus, fallback ke teks sku historis.
+                    // Kalau row bahan_baku-nya sudah dihapus (bisa terjadi utk bahan_id yg
+                    // asli tersimpan di kolom, bukan hasil resolve), fallback ke sku historis.
+                    $info = $bahanById[$resolvedId] ?? null;
                     $output[] = [
                         "key" => $key,
-                        "bahan_id" => (int)$r['bahan_id'],
-                        "nama" => $r['bnama'] !== null ? $r['bnama'] : $r['sku'],
-                        "satuan" => $r['bsatuan'] !== null ? $r['bsatuan'] : ""
+                        "bahan_id" => $resolvedId,
+                        "nama" => $info['nama'] ?? $sku,
+                        "satuan" => $info['satuan'] ?? ""
                     ];
                 } else {
-                    $sku = trim($r['sku']);
                     if ($sku === '') continue;
                     $key = 'sku:' . normalisasi_nama_bahan($sku, $bahanSatuanSet, $inventoryNameSet);
                     if (isset($seenKeys[$key])) continue;
