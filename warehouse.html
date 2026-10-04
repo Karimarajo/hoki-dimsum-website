@@ -622,6 +622,10 @@ function switchTab(tab) {
 }
 
 let selectedSKU = null;
+// bahan_id item yang sedang dipilih (null utk barang Logistik manual - selalu NULL di ledger).
+// Dikirim balik ke save_warehouse_masuk supaya baris baru konsisten dgn key 'bid:<id>' yang
+// dipakai kartu grid (lihat get_warehouse_stok_semua) - tanpa ini kartu & histori bisa beda.
+let selectedBahanId = null;
 
 /* ── GRID CARD SELECTION ── */
 function sisaClass(sisa) {
@@ -641,9 +645,14 @@ function sisaClassLogistik(sisa) {
 let warehouseItems = [];
 
 // Samakan dgn normalisasi_nama_bahan() di api.php - dipakai utk cocokkan item Logistik
-// Manual (selalu bahan_id NULL) ke key stokMap baru ('sku:<normalized>').
+// Manual (selalu bahan_id NULL) ke key stokMap baru ('sku:<normalized>'). nama_barang di
+// sini SELALU persis nama yang terdaftar di tabel `inventory` (lihat kutipan guard #1 di
+// normalisasi_nama_bahan()), jadi JANGAN pernah buang "(...)" di akhirnya - kurung itu
+// bagian dari nama asli barang (mis. "Plastik Frozen (Roll)"), bukan suffix satuan. Versi
+// lama fungsi ini asal strip kurung tanpa cek itu, bikin kartu Logistik nyasar ke key yang
+// salah utk barang bernama demikian (lihat insiden di komentar normalisasi_nama_bahan()).
 function normalizeSkuKey(sku) {
-    return 'sku:' + String(sku || '').trim().toLowerCase().replace(/\s*\([^)]*\)\s*$/, '');
+    return 'sku:' + String(sku || '').trim().toLowerCase();
 }
 
 async function loadProdukList() {
@@ -692,7 +701,7 @@ async function loadProdukList() {
             const card = document.createElement('div');
             card.className = `wh-item-card ${selectedSKU === skuText ? 'active' : ''}`;
             card.id = `card-${skuText.replace(/\s+/g, '-')}`;
-            card.onclick = () => onProdukChange(skuText);
+            card.onclick = () => onProdukChange(skuText, p.bahan_id || null);
 
             card.innerHTML = `
                 <h4 class="wh-item-card-name">${p.nama}</h4>
@@ -709,16 +718,18 @@ async function loadProdukList() {
     }
 }
 
-function onProdukChange(id) {
+function onProdukChange(id, bahanId = null) {
     if (!id) {
         selectedSKU = null;
+        selectedBahanId = null;
         document.getElementById('formCard').style.display  = 'none';
         document.getElementById('tableCard').style.display = 'none';
         return;
     }
 
     selectedSKU = id;
-    
+    selectedBahanId = bahanId || null;
+
     // Perbarui status aktif pada deretan kartu (baik Bahan Baku maupun Logistik)
     document.querySelectorAll('.wh-item-card').forEach(card => {
         card.classList.remove('active');
@@ -818,6 +829,7 @@ async function tambahMasuk() {
     try {
         const payload = {
             sku: selectedSKU,
+            bahan_id: selectedBahanId,
             tgl: tgl,
             masuk: mode === 'masuk' ? qty : 0,
             keluar: mode === 'keluar' ? qty : 0,

@@ -2129,12 +2129,18 @@ switch ($action) {
 
     case 'save_warehouse_masuk':
         $sku     = $conn->real_escape_string($input['sku']     ?? '');
+        $bahanId = (int)($input['bahan_id'] ?? 0);
         $masuk   = (float)($input['masuk']   ?? 0);
         $keluar  = (float)($input['keluar']  ?? 0);
         $catatan = $conn->real_escape_string($input['catatan'] ?? '');
         $tgl     = $conn->real_escape_string($input['tgl']     ?? date('Y-m-d'));
         if (!$sku || ($masuk <= 0 && $keluar <= 0)) { echo json_encode(['status'=>'error','message'=>'Data tidak valid']); break; }
-        $ok = $conn->query("INSERT INTO warehouse_ledger (tgl, sku, masuk, keluar, catatan) VALUES ('$tgl','$sku',$masuk,$keluar,'$catatan')");
+        // WAJIB ikut isi bahan_id kalau item-nya punya (lihat save_laporan) - kalau tidak,
+        // baris ini jatuh ke grouping sku-text di get_warehouse_stok_semua sementara kartu
+        // grid mencari via key 'bid:<id>', bikin kartu nunjukin 0 padahal histori ada isinya
+        // (bug: Cup Saus/Saus Hot Lava sisa > 0 di histori tapi 0 di kartu).
+        $bahanIdSql = $bahanId > 0 ? $bahanId : 'NULL';
+        $ok = $conn->query("INSERT INTO warehouse_ledger (tgl, sku, bahan_id, masuk, keluar, catatan) VALUES ('$tgl','$sku',$bahanIdSql,$masuk,$keluar,'$catatan')");
         echo json_encode($ok ? ['status'=>'success'] : ['status'=>'error','message'=>$conn->error]);
         break;
 
