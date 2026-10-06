@@ -673,8 +673,9 @@
                 <p id="sumProfitHPP" style="color:#1565c0;">Rp 0</p>
             </div>
             <div class="stat-card" style="background:#e8f4fd; border-color:#c0d6f0;">
-                <h3>Total QR (QRIS + QR Online)</h3>
-                <p id="sumQrGabungan" style="color:#1565c0;">Rp 0</p>
+                <h3>Profit Bersih</h3>
+                <p id="sumProfitBersih" style="color:var(--green);">Rp 0</p>
+                <small id="sumProfitBersihDetail" style="color:#666;"></small>
             </div>
         </div>
 
@@ -1102,6 +1103,11 @@ async function loadCabangDropdown() {
 
 let currentRekapData = null;
 
+// Whitelist kategori "jenis" (hoki_kas_data) yang dihitung sebagai Biaya Operasional
+// untuk Profit Bersih. Pembelian stok (BO - Dimsum/Bahan Baku/Packaging) sengaja tidak
+// dimasukkan karena sudah terhitung di HPP, dan BM/IN sengaja tidak dihitung sama sekali.
+const BIAYA_OPERASIONAL_WHITELIST = ['BO - Gaji', 'BO - Sewa', 'BO - Lainnya'];
+
 async function hitungLaporan() {
     const startStr     = document.getElementById('startDate').value;
     const endStr       = document.getElementById('endDate').value;
@@ -1125,6 +1131,7 @@ async function hitungLaporan() {
 
         let totals = { omset:0, belanja:0, cash:0, qr:0, qrOnline:0, gb:0, gf:0, sf:0, pg:0, rm:0 };
         let profitHPP = 0;
+        let biayaOperasional = 0;
         let rekapCabang = {};
         let rowsBelanja = [];
         let setKeterangan = new Set();
@@ -1179,6 +1186,17 @@ async function hitungLaporan() {
                 totals.belanja += nominal;
                 rowsBelanja.push({ waktu: k.waktu, cabang: k.cabang, nama: k.nama, qty: k.qty || 1, harga: nominal, keterangan: k.ket || "-" });
             }
+
+            // Biaya Operasional (untuk Profit Bersih): pakai filter cabang & tanggal yang
+            // sama dengan totals.belanja, tapi TIDAK ikut filter "Jenis Biaya" (filterKeterangan),
+            // supaya Profit Bersih tidak berubah-ubah saat filter itu dipakai.
+            if (mCab && mDate) {
+                const jenisBiaya = (k.jenis || "").trim().toLowerCase();
+                const isWhitelisted = BIAYA_OPERASIONAL_WHITELIST.some(w => w.trim().toLowerCase() === jenisBiaya);
+                if (isWhitelisted) {
+                    biayaOperasional += parseInt(k.nominal || 0);
+                }
+            }
         });
 
         // 3. ANALISA PROFIT BY HPP (Berdasarkan Item Terjual)
@@ -1227,8 +1245,10 @@ async function hitungLaporan() {
             }
         });
 
+        const profitBersih = profitHPP - biayaOperasional;
+
         updateKeteranganOptions(Array.from(setKeterangan));
-        renderUI(totals, rekapCabang, rowsBelanja, profitHPP);
+        renderUI(totals, rekapCabang, rowsBelanja, profitHPP, biayaOperasional, profitBersih);
         document.getElementById('pdfTglCetak').innerText = new Date().toLocaleString('id-ID');
         const periodeTxt = (startStr && endStr) 
             ? `Periode: ${startStr} s/d ${endStr}` 
@@ -1261,13 +1281,18 @@ function updateKeteranganOptions(list) {
     });
 }
 
-function renderUI(totals, rekapCabang, rowsBelanja, profitHPP) {
+function renderUI(totals, rekapCabang, rowsBelanja, profitHPP, biayaOperasional, profitBersih) {
     // Render Stats Cards
     document.getElementById('sumOmset').innerText    = `Rp ${totals.omset.toLocaleString('id-ID')}`;
     document.getElementById('sumBelanja').innerText   = `Rp ${totals.belanja.toLocaleString('id-ID')}`;
     document.getElementById('sumLaba').innerText      = `Rp ${(totals.omset - totals.belanja).toLocaleString('id-ID')}`;
     document.getElementById('sumProfitHPP').innerText = `Rp ${profitHPP.toLocaleString('id-ID')}`;
-    document.getElementById('sumQrGabungan').innerText = `Rp ${(totals.qr + totals.qrOnline).toLocaleString('id-ID')}`;
+
+    const sumProfitBersihEl = document.getElementById('sumProfitBersih');
+    sumProfitBersihEl.innerText = `Rp ${profitBersih.toLocaleString('id-ID')}`;
+    sumProfitBersihEl.style.color = profitBersih < 0 ? 'var(--red)' : 'var(--green)';
+    document.getElementById('sumProfitBersihDetail').innerText =
+        `HPP Rp ${profitHPP.toLocaleString('id-ID')} − Biaya Operasional Rp ${biayaOperasional.toLocaleString('id-ID')}`;
 
     // Render Tabel Pemasukan
     let htmlP = "";
