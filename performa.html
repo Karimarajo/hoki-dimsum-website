@@ -162,7 +162,6 @@
     }
     .modal-penilaian-head { display:flex; align-items:center; justify-content:space-between; padding:16px 20px; border-bottom:1px solid var(--border); }
     .modal-penilaian-head h3 { font-size:15px; font-weight:800; margin:0; }
-    .modal-penilaian-close { background:none; border:none; font-size:22px; cursor:pointer; color:var(--text-muted); }
     .modal-penilaian-body { padding:16px 20px; overflow-y:auto; flex:1; }
     .modal-penilaian-foot { padding:14px 20px; border-top:1px solid var(--border); display:flex; justify-content:flex-end; gap:10px; }
 
@@ -350,7 +349,7 @@
     <div class="modal-penilaian-box">
         <div class="modal-penilaian-head">
             <h3 id="modalPenilaianTitle">Isi Penilaian</h3>
-            <button class="modal-penilaian-close" onclick="tutupModalPenilaian()">×</button>
+            <button class="btn-close-x" onclick="tutupModalPenilaian()" title="Tutup">&times;</button>
         </div>
         <div class="modal-penilaian-body" id="modalPenilaianBody"></div>
         <div class="modal-penilaian-foot" id="modalPenilaianFoot">
@@ -419,6 +418,9 @@ function buildMoreMenu() {
         items.push({icon:'🔑',label:'Login Log',link:'login_history.html'});
         items.push({icon:'📝',label:'Manajemen Penilaian',link:'manajemen_penilaian.html'});
         items.push({icon:'🍱',label:'Menu Order',link:'#',action:"window.open('https://order.pos-hokidimsum.com/admin/dashboard.php','_blank')"});
+    }
+    if (['kurniarp','hanazaf'].includes((currentUser.user || '').toLowerCase())) {
+        items.push({icon:'🏢',label:'PT Marajo Barokah',link:'#',action:'bukaMarajo()'});
     }
     items.push({icon:'🚪',label:'Logout',link:'#',action:'logout()'});
     document.getElementById('moreGrid').innerHTML = items.map(i =>

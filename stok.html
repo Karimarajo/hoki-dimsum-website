@@ -687,7 +687,7 @@
 <!-- DETAIL OVERLAY -->
 <div id="detailOverlay">
     <div class="detail-container">
-        <button class="btn-detail-icon" onclick="tutupDetail()" title="Detail Data">👁️</button>
+        <button class="btn-close-x" onclick="tutupDetail()" title="Tutup">&times;</button>
 
         <h2 id="detID" style="margin:0 0 12px;color:var(--red);font-size:16px;font-family:'Nunito',sans-serif;"></h2>
 
@@ -725,7 +725,7 @@
 <!-- ── SESI FOTO LAPORAN LAPAK (kamera in-browser, tampil setelah simpan stok) ── -->
 <div id="fotoLapakOverlay">
     <div class="fl-box">
-        <button class="fl-close-x" onclick="tutupSesiFotoLapak()" title="Tutup">✕</button>
+        <button class="fl-close-x btn-close-x" onclick="tutupSesiFotoLapak()" title="Tutup">&times;</button>
 
         <!-- STEP KAMERA -->
         <div id="flStepKamera">
@@ -933,6 +933,9 @@ function buildMoreMenu() {
         items.push({icon:'🔑',label:'Login Log',link:'login_history.html'});
         items.push({icon:'📝',label:'Manajemen Penilaian',link:'manajemen_penilaian.html'});
         items.push({icon:'🍱',label:'Menu Order',link:'#',action:"window.open('https://order.pos-hokidimsum.com/admin/dashboard.php','_blank')"});
+    }
+    if (['kurniarp','hanazaf'].includes((currentUser.user || '').toLowerCase())) {
+        items.push({icon:'🏢',label:'PT Marajo Barokah',link:'#',action:'bukaMarajo()'});
     }
     items.push({icon:'🚪',label:'Logout',link:'#',action:'logout()'});
     document.getElementById('moreGrid').innerHTML = items.map(i =>

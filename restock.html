@@ -564,7 +564,7 @@
 <div id="detailOverlay" onclick="tutupDetailOutside(event)">
     <div class="detail-container">
         <div class="detail-actions" style="margin-bottom: 20px;">
-            <button class="btn-detail-icon" onclick="tutupDetail()" title="Detail Data">👁️</button>
+            <button class="btn-close-x" onclick="tutupDetail()" title="Tutup">&times;</button>
             <button class="btn-wa" id="btnKirimWA" style="background:var(--surface); border:1px solid var(--border); color:var(--text); font-weight:600;">📲 Kirim WA</button>
         </div>
 
@@ -760,6 +760,9 @@ function buildMoreMenu() {
         items.push({icon:'🔑',label:'Login Log',link:'login_history.html'});
         items.push({icon:'📝',label:'Manajemen Penilaian',link:'manajemen_penilaian.html'});
         items.push({icon:'🍱',label:'Menu Order',link:'#',action:"window.open('https://order.pos-hokidimsum.com/admin/dashboard.php','_blank')"});
+    }
+    if (['kurniarp','hanazaf'].includes((currentUser.user || '').toLowerCase())) {
+        items.push({icon:'🏢',label:'PT Marajo Barokah',link:'#',action:'bukaMarajo()'});
     }
     items.push({icon:'🚪',label:'Logout',link:'#',action:'logout()'});
     document.getElementById('moreGrid').innerHTML = items.map(i =>

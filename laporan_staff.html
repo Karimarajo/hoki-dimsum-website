@@ -555,7 +555,7 @@
 <div id="detailOverlay">
     <div class="detail-container">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-            <button class="btn-detail-icon" onclick="tutupDetail()" title="Detail Data">👁️</button>
+            <button class="btn-close-x" onclick="tutupDetail()" title="Tutup">&times;</button>
             <h2 id="detID" style="margin:0; color:var(--red); font-size:16px; font-family:'DM Mono', monospace;"></h2>
         </div>
 
@@ -783,6 +783,9 @@ function buildMoreMenu() {
         items.push({icon:'🔑',label:'Login Log',link:'login_history.html'});
         items.push({icon:'📝',label:'Manajemen Penilaian',link:'manajemen_penilaian.html'});
         items.push({icon:'🍱',label:'Menu Order',link:'#',action:"window.open('https://order.pos-hokidimsum.com/admin/dashboard.php','_blank')"});
+    }
+    if (['kurniarp','hanazaf'].includes((currentUser.user || '').toLowerCase())) {
+        items.push({icon:'🏢',label:'PT Marajo Barokah',link:'#',action:'bukaMarajo()'});
     }
     items.push({icon:'🚪',label:'Logout',link:'#',action:'logout()'});
     document.getElementById('moreGrid').innerHTML = items.map(i =>

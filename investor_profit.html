@@ -305,6 +305,9 @@ function buildMoreMenu() {
         items.push({icon:'📝',label:'Manajemen Penilaian',link:'manajemen_penilaian.html'});
         items.push({icon:'🍱',label:'Menu Order',link:'#',action:"window.open('https://order.pos-hokidimsum.com/admin/dashboard.php','_blank')"});
     }
+    if (['kurniarp','hanazaf'].includes((currentUser.user || '').toLowerCase())) {
+        items.push({icon:'🏢',label:'PT Marajo Barokah',link:'#',action:'bukaMarajo()'});
+    }
     items.push({icon:'🚪',label:'Logout',link:'#',action:'logout()'});
     document.getElementById('moreGrid').innerHTML = items.map(i =>
         `<button class="more-btn" onclick="${i.action||`location.href='${i.link}'`}">

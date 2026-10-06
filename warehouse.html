@@ -345,7 +345,7 @@
             <div class="wh-card" style="width:90%; max-width:400px; margin:0; padding:24px; position:relative; display:flex; flex-direction:column; box-shadow: var(--sh-lg);" onclick="event.stopPropagation()">
                 <div style="display:flex; justify-content:space-between; align-items:center;">
                     <h3 style="margin:0; font-size:15px; font-weight:700; color:var(--red);">📦 Daftarkan Barang Gudang</h3>
-                    <span onclick="tutupDaftarBarangModal()" style="font-size:24px; font-weight:bold; color:var(--text-light); cursor:pointer; line-height:1;">&times;</span>
+                    <button class="btn-close-x" onclick="tutupDaftarBarangModal()" title="Tutup">&times;</button>
                 </div>
                 <div class="wh-form-group">
                     <label for="daftarInputBarang">Nama Barang</label>
@@ -593,6 +593,9 @@ function buildMoreMenu() {
         items.push({icon:'🔑',label:'Login Log',link:'login_history.html'});
         items.push({icon:'📝',label:'Manajemen Penilaian',link:'manajemen_penilaian.html'});
         items.push({icon:'🍱',label:'Menu Order',link:'#',action:"window.open('https://order.pos-hokidimsum.com/admin/dashboard.php','_blank')"});
+    }
+    if (['kurniarp','hanazaf'].includes((currentUser.user || '').toLowerCase())) {
+        items.push({icon:'🏢',label:'PT Marajo Barokah',link:'#',action:'bukaMarajo()'});
     }
     items.push({icon:'🚪',label:'Logout',link:'#',action:'logout()'});
     document.getElementById('moreGrid').innerHTML = items.map(i =>

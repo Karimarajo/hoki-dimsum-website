@@ -2360,3 +2360,30 @@ td:last-child {
 
 .btn-hapus-icon, .btn-del, .btn-hapus { background-color: rgba(211, 47, 47, 0.1) !important; color: #D32F2F !important; }
 .btn-hapus-icon:hover, .btn-del:hover, .btn-hapus:hover { background-color: #D32F2F !important; color: white !important; }
+
+/* Tombol tutup (silang) seragam untuk seluruh modal/overlay di app ini.
+   Dipakai khusus untuk aksi MENUTUP - jangan dipakai untuk tombol "lihat
+   detail" (itu tetap pakai .btn-detail-icon / 👁️). Area sentuh min 36x36px
+   supaya enak dipencet di mobile. */
+.btn-close-x {
+    width: 36px !important;
+    height: 36px !important;
+    min-width: 36px !important;
+    min-height: 36px !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 50% !important;
+    font-size: 22px !important;
+    line-height: 1 !important;
+    font-weight: 700 !important;
+    border: none !important;
+    cursor: pointer !important;
+    box-sizing: border-box !important;
+    background-color: rgba(100, 116, 139, 0.1) !important;
+    color: #475569 !important;
+    transition: all 0.2s ease !important;
+}
+.btn-close-x:hover { background-color: #475569 !important; color: #ffffff !important; }

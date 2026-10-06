@@ -1067,7 +1067,6 @@
         margin-bottom: 16px;
     }
     .modal-detail-head h3 { margin: 0; font-size: 16px; font-weight: 800; color: var(--text); }
-    .modal-detail-close { border: none; background: none; font-size: 20px; cursor: pointer; color: var(--text-muted); line-height: 1; }
 
     .detail-item-row {
         display: flex;
@@ -1459,7 +1458,7 @@
     <div class="modal-detail">
         <div class="modal-detail-head">
             <h3 id="detailOrderTitle">Detail Order</h3>
-            <button class="modal-detail-close" onclick="tutupDetailOrder()">&times;</button>
+            <button class="btn-close-x" onclick="tutupDetailOrder()" title="Tutup">&times;</button>
         </div>
         <div id="detailOrderBody"></div>
         <div class="modal-detail-btns">
@@ -2386,6 +2385,9 @@ function buildMoreMenu() {
         items.push({icon:'🔑',label:'Login Log',link:'login_history.html'});
         items.push({icon:'📝',label:'Manajemen Penilaian',link:'manajemen_penilaian.html'});
         items.push({icon:'🍱',label:'Menu Order',link:'#',action:"window.open('https://order.pos-hokidimsum.com/admin/dashboard.php','_blank')"});
+    }
+    if (['kurniarp','hanazaf'].includes((currentUser.user || '').toLowerCase())) {
+        items.push({icon:'🏢',label:'PT Marajo Barokah',link:'#',action:'bukaMarajo()'});
     }
     items.push({icon:'🚪',label:'Logout',link:'#',action:'logout()'});
     document.getElementById('moreGrid').innerHTML = items.map(i =>

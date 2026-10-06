@@ -224,6 +224,32 @@
        "> * + *" tidak match (teks bukan elemen) -> margin ditaruh di span. */
     .btn-wa-slip span, .btn-pdf-slip span { margin-right: 8px; }
 
+    /* Kartu modal slip gaji: batasi tinggi supaya tombol tutup & tombol WA
+       tidak terdorong keluar viewport di layar kecil - konten di dalamnya
+       discroll, bukan seluruh halaman. */
+    .slip-modal-card {
+        max-height: 90vh;
+        max-height: 90dvh;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .slip-modal-close-row {
+        position: sticky;
+        top: 0;
+        background: #ffffff;
+        z-index: 5;
+    }
+
+    .slip-table-wrap {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .slip-table-wrap .slip-table {
+        min-width: 480px;
+    }
+
     .wh-card {
         background: #ffffff !important;
         border: 1px solid #e2e8f0 !important;
@@ -533,11 +559,11 @@
 </div>
 
 <div id="slipModal" class="sheet-overlay" style="display:none; justify-content:center; align-items:center; z-index:1100;" onclick="closeSlipModalOutside(event)">
-    <div class="wh-card" style="width:95%; max-width:550px; margin:0; padding:12px; position:relative; background:#ffffff; box-shadow: var(--sh-lg);" onclick="event.stopPropagation()">
-        <div style="display:flex; justify-content:flex-end; padding:4px;">
-            <span onclick="tutupSlipModal()" style="font-size:28px; font-weight:bold; color:#d32f2f; cursor:pointer; line-height:1;">&times;</span>
+    <div class="wh-card slip-modal-card" style="width:95%; max-width:550px; margin:0; padding:12px; position:relative; background:#ffffff; box-shadow: var(--sh-lg);" onclick="event.stopPropagation()">
+        <div class="slip-modal-close-row" style="display:flex; justify-content:flex-end; padding:4px;">
+            <button class="btn-close-x" onclick="tutupSlipModal()" title="Tutup">&times;</button>
         </div>
-        
+
         <div id="slipPrintArea" class="slip-container">
             <div class="slip-header">
                 <h2>HOKI DIMSUM</h2>
@@ -557,6 +583,7 @@
                 </div>
             </div>
 
+            <div class="slip-table-wrap">
             <table class="slip-table">
                 <thead>
                     <tr>
@@ -574,6 +601,7 @@
                     </tr>
                 </tfoot>
             </table>
+            </div>
 
             <div style="display:flex; justify-content:space-between; font-size:12px; margin-top:30px; padding:0 12px;">
                 <div style="text-align:center; width:150px;">
@@ -686,6 +714,9 @@ function buildMoreMenu() {
         items.push({icon:'🔑',label:'Login Log',link:'login_history.html'});
         items.push({icon:'📝',label:'Manajemen Penilaian',link:'manajemen_penilaian.html'});
         items.push({icon:'🍱',label:'Menu Order',link:'#',action:"window.open('https://order.pos-hokidimsum.com/admin/dashboard.php','_blank')"});
+    }
+    if (['kurniarp','hanazaf'].includes((currentUser.user || '').toLowerCase())) {
+        items.push({icon:'🏢',label:'PT Marajo Barokah',link:'#',action:'bukaMarajo()'});
     }
     items.push({icon:'🚪',label:'Logout',link:'#',action:'logout()'});
     document.getElementById('moreGrid').innerHTML = items.map(i =>

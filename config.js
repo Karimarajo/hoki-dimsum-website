@@ -17,7 +17,7 @@ function apiUrl(action) {
 //     contoh: V4.7 -> V4.8
 //   - Perubahan besar (fitur baru, dsb) -> naikkan angka DEPAN titik
 //     contoh: V4.8 -> V5.0
-const APP_VERSION = 'V7.0';
+const APP_VERSION = 'V7.1';
 
 // Terapkan APP_VERSION ke semua elemen bertanda class .app-ver / .app-ver-lower,
 // dan ke <img> yang alt-nya berisi versi (ditandai data-alt-template dengan
@@ -54,4 +54,11 @@ function bukaLinkWA(url) {
     } else {
         window.open(url, '_blank');
     }
+}
+
+// ── Buka SSO PT Marajo Barokah (dipakai sidebar & menu "Lainnya") ─────
+function bukaMarajo() {
+    const u = encodeURIComponent((currentUser && currentUser.user) || '');
+    const t = encodeURIComponent(localStorage.getItem('sessionToken') || '');
+    window.open(`https://marajo.pos-hokidimsum.com/sso.php?u=${u}&t=${t}`, '_blank');
 }

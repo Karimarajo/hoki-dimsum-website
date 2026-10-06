@@ -189,6 +189,23 @@
     </div>
 </div>
 
+<nav class="bottom-nav">
+    <button class="bn-item" onclick="location.href='dashboard.html'"><span class="bn-icon">🛒</span><span class="bn-label">Kasir</span></button>
+    <button class="bn-item" onclick="location.href='history.html'"><span class="bn-icon">📄</span><span class="bn-label">History</span></button>
+    <button class="bn-item" onclick="location.href='stok.html'"><span class="bn-icon">📦</span><span class="bn-label">Stok</span></button>
+    <button class="bn-item" onclick="location.href='laporan_staff.html'"><span class="bn-icon">🚀</span><span class="bn-label">Laporan</span></button>
+    <button class="bn-item active" onclick="openSheet('moreSheet')"><span class="bn-icon">☰</span><span class="bn-label">Lainnya</span></button>
+</nav>
+
+<!-- MORE SHEET -->
+<div class="sheet-overlay" id="moreSheet" onclick="closeSheetOutside(event,'moreSheet')">
+    <div class="bottom-sheet" onclick="event.stopPropagation()">
+        <div class="sheet-handle"></div>
+        <p style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:14px;">Menu Lainnya</p>
+        <div class="more-grid" id="moreGrid"></div>
+    </div>
+</div>
+
 <script>
 const currentUser = JSON.parse(localStorage.getItem('currentUser')) || {user:'Guest', role:'Staff'};
 if (!currentUser.user) window.location.href = 'index.html';
@@ -305,6 +322,51 @@ function buildSidebar() {
     document.getElementById('sidebarUserName').innerText   = currentUser.fullName || name;
     document.getElementById('sidebarUserRole').innerText   = role;
 }
+
+function buildMoreMenu() {
+    const role = currentUser.role;
+    const items = [{icon:'🚚',label:'Restock',link:'restock.html'}];
+    items.push({icon:'📚',label:'Edukasi & SOP',link:'edukasi.html'});
+    items.push({icon:'🏆',label:'Performa',link:'performa.html'});
+    if (['Senior Staff','SPV','Owner','VIP'].includes(role)) {
+        items.push({icon:'🍱',label:'Produk',link:'produk.html'});
+        items.push({icon:'📈',label:'Rekapan',link:'rekap.html'});
+    }
+    if (['Owner','VIP'].includes(role)) {
+        items.push({icon:'🏷️',label:'Promo',link:'promo.html'});
+        items.push({icon:'🧂',label:'Bahan Baku',link:'bahan_baku.html'});
+        items.push({icon:'🗃️',label:'HPP Produk',link:'hpp_produk.html'});
+        items.push({icon:'🏭',label:'Warehouse',link:'warehouse.html'});
+        items.push({icon:'📝',label:'Belanja',link:'belanja.html'});
+        items.push({icon:'💵',label:'Salary Staff',link:'salary_staff.html'});
+        items.push({icon:'📊',label:'Keuangan',link:'laporan.html'});
+        items.push({icon:'📈',label:'Statistik & Analitik',link:'statistik.html'});
+        items.push({icon:'👨‍👩‍👦',label:'Customer Hoki',link:'customer_hoki.html'});
+        items.push({icon:'📋',label:'Data Pelamar Kerja',link:'pelamar_kerja.html'});
+    }
+    if (['Owner','VIP','Investor'].includes(role)) {
+        items.push({icon:'💹',label:'Omset Cabang',link:'investor_omset.html'});
+        items.push({icon:'💰',label:'Profit Sharing',link:'investor_profit.html'});
+    }
+    if (role === 'VIP') {
+        items.push({icon:'⚙️',label:'Users',link:'user.html'});
+        items.push({icon:'🔑',label:'Login Log',link:'login_history.html'});
+        items.push({icon:'📝',label:'Manajemen Penilaian',link:'manajemen_penilaian.html'});
+        items.push({icon:'🍱',label:'Menu Order',link:'#',action:"window.open('https://order.pos-hokidimsum.com/admin/dashboard.php','_blank')"});
+    }
+    if (['kurniarp','hanazaf'].includes((currentUser.user || '').toLowerCase())) {
+        items.push({icon:'🏢',label:'PT Marajo Barokah',link:'#',action:'bukaMarajo()'});
+    }
+    items.push({icon:'🚪',label:'Logout',link:'#',action:'logout()'});
+    document.getElementById('moreGrid').innerHTML = items.map(i =>
+        `<button class="more-btn" onclick="${i.action||`location.href='${i.link}'`}">
+            <span class="more-btn-icon">${i.icon}</span>
+            <span class="more-btn-label">${i.label}</span>
+        </button>`).join('');
+}
+
+function openSheet(id) { if(id==='moreSheet') buildMoreMenu(); document.getElementById(id).classList.add('open'); }
+function closeSheetOutside(e,id) { if(e.target===document.getElementById(id)) document.getElementById(id).classList.remove('open'); }
 
 function toggleNavGroup(id) {
     const items = document.getElementById('navg-' + id);
