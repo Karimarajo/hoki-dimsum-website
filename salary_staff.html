@@ -669,6 +669,15 @@ if (!['Owner', 'VIP'].includes(currentUser.role)) {
     window.location.href = 'dashboard.html';
 }
 
+// Sama seperti bukaLinkWA() di atas - halaman ini sengaja tidak load config.js,
+// jadi bukaMarajo() (dipakai menu "Lainnya" > PT Marajo Barokah) didefinisikan
+// lokal juga. Lihat versi config.js untuk komentar lengkapnya.
+function bukaMarajo() {
+    const u = encodeURIComponent((currentUser && currentUser.user) || '');
+    const t = encodeURIComponent(localStorage.getItem('sessionToken') || '');
+    window.open(`https://marajo.pos-hokidimsum.com/sso.php?u=${u}&t=${t}`, '_blank');
+}
+
 let activeSalaryConfigs = {};
 let activeHierarchy = [];
 let activeUsersList = [];
