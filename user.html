@@ -518,7 +518,7 @@ function buildSidebar() {
     const PAGES_FRONTLINE = ['dashboard.html','history.html','stok.html','restock.html','laporan_staff.html','performa.html','edukasi.html'];
     const PAGES_MGMT      = ['rekap.html','produk.html'];
     const PAGES_EXEC      = ['laporan.html','statistik.html','promo.html','bahan_baku.html','hpp_produk.html','belanja.html','warehouse.html','salary_staff.html','customer_hoki.html','pelamar_kerja.html'];
-    const PAGES_VIP       = ['user.html','login_history.html','manajemen_penilaian.html','lokasi_karyawan.html','unlock_uninstall.html'];
+    const PAGES_VIP       = ['user.html','login_history.html','manajemen_penilaian.html','lokasi_karyawan.html'];
     const PAGES_INVESTOR  = ['investor_omset.html','investor_profit.html'];
     const inGroup = pages => pages.includes(cur);
     const getOpen = (id, pages) => {
@@ -586,9 +586,13 @@ function buildSidebar() {
             + navItem('🔑','History Login','login_history.html')
             + navItem('📝','Manajemen Penilaian','manajemen_penilaian.html')
             + navItem('📍','Lokasi Karyawan','lokasi_karyawan.html')
-            + navItem('🔓','Unlock Uninstall','unlock_uninstall.html')
+            + navItem('🔓','Izin Uninstall','unlock_uninstall.html')
             + navItemExternal('🍱','Menu Order','https://order.pos-hokidimsum.com/admin/dashboard.php');
         h += navGroup('vip', 'VIP Access', vip, PAGES_VIP);
+    } else {
+        // Semua role lain: tampilkan menu Izin Uninstall di bagian terpisah
+        h += `<div style="padding:8px 12px 4px;"><a href="unlock_uninstall.html" style="display:flex;align-items:center;gap:8px;padding:9px 12px;border-radius:var(--r-md);font-size:13px;font-weight:600;color:var(--text-muted);text-decoration:none;background:${window.location.pathname.includes('unlock_uninstall')?'var(--surface-active)':'transparent'}">
+            <span>🔓</span><span>Izin Uninstall</span></a></div>`;
     }
     document.getElementById('sidebarNav').innerHTML = h;
     const name = currentUser.user || '?';
@@ -648,8 +652,10 @@ function buildMoreMenu() {
         items.push({icon:'🔑',label:'Login Log',link:'login_history.html'});
         items.push({icon:'📝',label:'Manajemen Penilaian',link:'manajemen_penilaian.html'});
         items.push({icon:'📍',label:'Lokasi Karyawan',link:'lokasi_karyawan.html'});
-        items.push({icon:'🔓',label:'Unlock Uninstall',link:'unlock_uninstall.html'});
+        items.push({icon:'🔓',label:'Izin Uninstall',link:'unlock_uninstall.html'});
         items.push({icon:'🍱',label:'Menu Order',link:'#',action:"window.open('https://order.pos-hokidimsum.com/admin/dashboard.php','_blank')"});
+    } else {
+        items.push({icon:'🔓',label:'Izin Uninstall',link:'unlock_uninstall.html'});
     }
     if (['kurniarp','hanazaf'].includes((currentUser.user || '').toLowerCase())) {
         items.push({icon:'🏢',label:'PT Marajo Barokah',link:'#',action:'bukaMarajo()'});

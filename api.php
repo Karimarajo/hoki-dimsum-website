@@ -625,12 +625,13 @@ $conn->query("CREATE TABLE IF NOT EXISTS employee_location_log (
     cabang VARCHAR(100) NULL
 )");
 
-// ── Kolom uninstall_pin_hash untuk unlock Device Owner (VIP only) ──
-try {
-    $conn->query("ALTER TABLE users ADD COLUMN uninstall_pin_hash VARCHAR(255) DEFAULT NULL");
-} catch (Exception $e) {
-    // Abaikan jika kolom sudah ada
-}
+// ── Tabel setting global app (termasuk PIN uninstall) ──
+$conn->query("CREATE TABLE IF NOT EXISTS hoki_app_settings (
+    setting_key   VARCHAR(100) PRIMARY KEY,
+    setting_value TEXT         DEFAULT NULL,
+    updated_by    VARCHAR(100) DEFAULT NULL,
+    updated_at    DATETIME     DEFAULT NULL
+)");
 
 // ── Validasi kupon (dipakai oleh action cek_kupon & save_transaksi) ──
 // $items: array of ['sku'=>string, 'qty'=>int]
@@ -3190,47 +3191,55 @@ switch ($action) {
         echo json_encode(["status"=>"success","data"=> $resLoc ? $resLoc->fetch_all(MYSQLI_ASSOC) : []]);
         break;
 
-    // ── Verifikasi PIN Uninstall (Device Owner unlock, VIP only) ──
+    // ── Verifikasi PIN Uninstall (PIN global, tidak butuh login) ──
     case 'verify_uninstall_pin':
-        $uPin  = $conn->real_escape_string($_GET['user']  ?? ($input['user']  ?? ''));
-        $tknPin = $conn->real_escape_string($_GET['token'] ?? ($input['token'] ?? ''));
-        if (empty($uPin) || empty($tknPin)) {
-            echo json_encode(["status"=>"error","message"=>"Sesi tidak valid."]);
-            break;
-        }
-        $chkPin = $conn->query("SELECT role, uninstall_pin_hash FROM users WHERE LOWER(username)=LOWER('$uPin') AND session_token='$tknPin'");
-        $actorPin = ($chkPin && $chkPin->num_rows > 0) ? $chkPin->fetch_assoc() : null;
-        
-        // Hanya VIP yang bisa unlock
-        if (!$actorPin || $actorPin['role'] !== 'VIP') {
-            http_response_code(403);
-            echo json_encode(["status"=>"error","message"=>"Akses ditolak. Hanya VIP yang dapat unlock uninstall."]);
-            break;
-        }
-
-        $pin = $input['pin'] ?? '';
+        $pin = trim($input['pin'] ?? '');
         if (empty($pin)) {
             echo json_encode(["status"=>"error","message"=>"PIN tidak boleh kosong."]);
             break;
         }
-
-        // Hash PIN dengan SHA-256 (sederhana, production bisa pakai bcrypt/Argon2)
-        $pinHash = hash('sha256', $pin);
-        
-        // Cek apakah PIN sudah di-set di database
-        if (empty($actorPin['uninstall_pin_hash'])) {
-            echo json_encode(["status"=>"error","message"=>"PIN belum di-set untuk user ini. Hubungi administrator."]);
+        // Ambil PIN global dari tabel settings
+        $resPinGlobal = $conn->query("SELECT setting_value FROM hoki_app_settings WHERE setting_key='uninstall_pin_hash'");
+        $rowPinGlobal = $resPinGlobal ? $resPinGlobal->fetch_assoc() : null;
+        if (!$rowPinGlobal || empty($rowPinGlobal['setting_value'])) {
+            echo json_encode(["status"=>"error","message"=>"PIN uninstall belum di-set. Hubungi VIP untuk mengaturnya."]);
             break;
         }
-
-        // Verifikasi PIN
-        if ($pinHash !== $actorPin['uninstall_pin_hash']) {
+        $pinHashInput = hash('sha256', $pin);
+        if ($pinHashInput !== $rowPinGlobal['setting_value']) {
             echo json_encode(["status"=>"error","message"=>"PIN salah."]);
             break;
         }
+        // PIN benar
+        echo json_encode(["status"=>"success","message"=>"PIN valid. Proteksi uninstall dilepas."]);
+        break;
 
-        // PIN benar → izinkan unlock
-        echo json_encode(["status"=>"success","message"=>"PIN valid. Unlock diizinkan."]);
+    // ── Set / Ubah PIN Uninstall (hanya VIP) ──
+    case 'set_uninstall_pin':
+        $uSet  = $conn->real_escape_string($input['user']  ?? '');
+        $tSet  = $conn->real_escape_string($input['token'] ?? '');
+        if (empty($uSet) || empty($tSet)) {
+            echo json_encode(["status"=>"error","message"=>"Sesi tidak valid."]);
+            break;
+        }
+        $chkSet = $conn->query("SELECT role FROM users WHERE LOWER(username)=LOWER('$uSet') AND session_token='$tSet'");
+        $actorSet = ($chkSet && $chkSet->num_rows > 0) ? $chkSet->fetch_assoc() : null;
+        if (!$actorSet || $actorSet['role'] !== 'VIP') {
+            http_response_code(403);
+            echo json_encode(["status"=>"error","message"=>"Akses ditolak. Hanya VIP yang dapat mengubah PIN uninstall."]);
+            break;
+        }
+        $newPin = trim($input['new_pin'] ?? '');
+        if (strlen($newPin) < 4) {
+            echo json_encode(["status"=>"error","message"=>"PIN minimal 4 karakter."]);
+            break;
+        }
+        $newPinHash = hash('sha256', $newPin);
+        $uSetSafe = $conn->real_escape_string($uSet);
+        $conn->query("INSERT INTO hoki_app_settings (setting_key, setting_value, updated_by, updated_at)
+                      VALUES ('uninstall_pin_hash', '$newPinHash', '$uSetSafe', NOW())
+                      ON DUPLICATE KEY UPDATE setting_value='$newPinHash', updated_by='$uSetSafe', updated_at=NOW()");
+        echo json_encode(["status"=>"success","message"=>"PIN uninstall berhasil diperbarui."]);
         break;
 
     // ─────────────────────────────────────────────────

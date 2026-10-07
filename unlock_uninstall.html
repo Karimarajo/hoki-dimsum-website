@@ -3,237 +3,142 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hoki POS - Unlock Uninstall (VIP)</title>
+    <title>Hoki POS - Izin Uninstall</title>
     <link rel="icon" href="Assets/2.png">
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=20260501">
+    <link rel="stylesheet" href="style.css?v=20261007">
     <style>
-        .unlock-container {
-            max-width: 500px;
-            margin: 60px auto;
-            padding: 30px;
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: var(--r-xl);
-            box-shadow: var(--sh-lg);
-        }
-        .unlock-title {
-            font-size: 20px;
-            font-weight: 800;
-            color: var(--red);
-            margin-bottom: 8px;
-            text-align: center;
-        }
-        .unlock-subtitle {
-            font-size: 12px;
-            color: var(--text-muted);
-            text-align: center;
-            margin-bottom: 30px;
-            line-height: 1.6;
-        }
-        .unlock-input {
-            width: 100%;
-            padding: 14px 18px;
-            font-size: 24px;
-            font-family: 'DM Mono', monospace;
-            text-align: center;
-            letter-spacing: 8px;
-            border: 2px solid var(--border);
-            border-radius: var(--r-lg);
-            background: var(--bg);
-            color: var(--text);
-            margin-bottom: 20px;
-        }
-        .unlock-input:focus {
-            border-color: var(--red);
-            outline: none;
-        }
-        .unlock-btn {
-            width: 100%;
-            padding: 16px;
-            font-size: 16px;
-            font-weight: 700;
-            background: var(--red);
-            color: #fff;
-            border: none;
-            border-radius: var(--r-lg);
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-        .unlock-btn:hover {
-            background: #b71c1c;
-        }
-        .unlock-btn:disabled {
-            background: var(--border);
-            cursor: not-allowed;
-        }
-        .unlock-status {
-            margin-top: 20px;
-            padding: 14px 18px;
-            border-radius: var(--r-lg);
-            font-size: 13px;
-            font-weight: 600;
-            text-align: center;
-            display: none;
-        }
-        .unlock-status.success {
-            background: #e8f5e9;
-            color: #2e7d32;
-            border: 1px solid #4caf50;
-            display: block;
-        }
-        .unlock-status.error {
-            background: #ffebee;
-            color: #c62828;
-            border: 1px solid #f44336;
-            display: block;
-        }
-        .device-info {
-            margin-top: 30px;
-            padding: 14px;
-            background: var(--bg);
-            border: 1px solid var(--border);
-            border-radius: var(--r-lg);
-            font-size: 11px;
-            color: var(--text-muted);
-        }
-        .device-info-row {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 6px;
-        }
-        .device-info-row:last-child {
-            margin-bottom: 0;
-        }
-        .device-info-label {
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-        .device-info-value {
-            font-family: 'DM Mono', monospace;
-        }
+        .unlock-container{max-width:440px;margin:48px auto;padding:28px 24px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-xl);box-shadow:var(--sh-lg);}
+        .unlock-title{font-size:19px;font-weight:800;color:var(--red);margin-bottom:6px;text-align:center;}
+        .unlock-subtitle{font-size:12px;color:var(--text-muted);text-align:center;margin-bottom:24px;line-height:1.6;}
+        .pin-input{width:100%;box-sizing:border-box;padding:14px 18px;font-size:26px;text-align:center;letter-spacing:10px;border:2px solid var(--border);border-radius:var(--r-lg);background:var(--bg);color:var(--text);margin-bottom:16px;}
+        .pin-input:focus{border-color:var(--red);outline:none;}
+        .btn-main{width:100%;padding:15px;font-size:15px;font-weight:700;background:var(--red);color:#fff;border:none;border-radius:var(--r-lg);cursor:pointer;}
+        .btn-main:disabled{background:var(--border);cursor:not-allowed;}
+        .status-box{margin-top:18px;padding:13px 16px;border-radius:var(--r-lg);font-size:13px;font-weight:600;text-align:center;}
+        .status-box.success{background:#e8f5e9;color:#2e7d32;border:1px solid #4caf50;}
+        .status-box.error{background:#ffebee;color:#c62828;border:1px solid #f44336;}
+        .vip-section{margin-top:28px;padding-top:20px;border-top:1px dashed var(--border);}
+        .vip-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:4px;}
+        .form-row{margin-bottom:12px;}
+        .form-row label{display:block;font-size:12px;font-weight:700;color:var(--text-muted);margin-bottom:5px;}
+        .form-row input{width:100%;box-sizing:border-box;padding:10px 14px;font-size:14px;border:1.5px solid var(--border);border-radius:var(--r-md);background:var(--bg);color:var(--text);}
+        .form-row input:focus{border-color:var(--red);outline:none;}
+        .btn-vip{width:100%;padding:12px;font-size:14px;font-weight:700;background:#455a64;color:#fff;border:none;border-radius:var(--r-lg);cursor:pointer;margin-top:4px;}
+        .btn-vip:hover{background:#263238;}
+        .admin-badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:4px 10px;border-radius:99px;margin-bottom:18px;}
+        .admin-badge.active{background:#e8f5e9;color:#2e7d32;}
+        .admin-badge.inactive{background:#fff3e0;color:#e65100;}
+        .admin-badge.unknown{background:var(--bg);color:var(--text-muted);}
+        .badge-center{text-align:center;}
     </style>
     <script src="config.js"></script>
 </head>
 <body>
-
 <div class="unlock-container">
-    <div class="unlock-title">🔓 Unlock Uninstall</div>
+    <div class="unlock-title">Izin Uninstall App</div>
     <div class="unlock-subtitle">
-        Fitur ini memungkinkan VIP untuk membuka blokir uninstall sementara (5 menit).<br>
-        Masukkan PIN VIP untuk melanjutkan.
+        Masukkan PIN uninstall untuk melepas proteksi.<br>
+        PIN hanya diketahui oleh VIP/Owner.
     </div>
-
-    <input type="password" id="pinInput" class="unlock-input" maxlength="6" placeholder="• • • • • •" autofocus>
-    <button class="unlock-btn" id="unlockBtn" onclick="doUnlock()">🔓 Unlock Sekarang</button>
-
-    <div class="unlock-status" id="statusMsg"></div>
-
-    <div class="device-info" id="deviceInfo">
-        <div class="device-info-row">
-            <span class="device-info-label">Device Owner</span>
-            <span class="device-info-value" id="infoDeviceOwner">Checking...</span>
+    <div class="badge-center">
+        <span class="admin-badge unknown" id="adminBadge">Mengecek proteksi...</span>
+    </div>
+    <div id="formUnlock">
+        <input type="password" id="pinInput" class="pin-input" maxlength="10" placeholder="PIN" autofocus autocomplete="off">
+        <button class="btn-main" id="btnUnlock" onclick="doUnlock()">Lepas Proteksi &amp; Izinkan Uninstall</button>
+        <div id="statusMsg" class="status-box" style="display:none;"></div>
+    </div>
+    <div class="vip-section" id="vipSection" style="display:none;">
+        <div class="vip-label">Pengaturan PIN (VIP Only)</div>
+        <p style="font-size:12px;color:var(--text-muted);margin:0 0 14px;">Ubah PIN yang harus dimasukkan karyawan untuk mengizinkan uninstall.</p>
+        <div class="form-row">
+            <label>PIN Baru (min. 4 karakter)</label>
+            <input type="password" id="newPin1" placeholder="Masukkan PIN baru" maxlength="10">
         </div>
-        <div class="device-info-row">
-            <span class="device-info-label">Package</span>
-            <span class="device-info-value" id="infoPackage">—</span>
+        <div class="form-row">
+            <label>Konfirmasi PIN Baru</label>
+            <input type="password" id="newPin2" placeholder="Ulangi PIN baru" maxlength="10">
         </div>
-        <div class="device-info-row">
-            <span class="device-info-label">User</span>
-            <span class="device-info-value" id="infoUser">—</span>
-        </div>
+        <button class="btn-vip" onclick="doSetPin()">Simpan PIN Baru</button>
+        <div id="vipStatus" class="status-box" style="display:none; margin-top:12px;"></div>
     </div>
 </div>
-
 <script src="session.js"></script>
 <script src="toast.js"></script>
-
 <script>
-const currentUser = JSON.parse(localStorage.getItem('currentUser'));
-if (!currentUser) window.location.href = 'index.html';
+var currentUser = JSON.parse(localStorage.getItem("currentUser") || "null");
+if (!currentUser) window.location.href = "index.html";
+if (currentUser && currentUser.role === "VIP") document.getElementById("vipSection").style.display = "block";
 
-// Guard: hanya VIP
-if (currentUser.role !== 'VIP') {
-    alert('Akses ditolak. Fitur ini hanya untuk VIP.');
-    window.location.href = 'dashboard.html';
-}
-
-document.getElementById('infoUser').innerText = currentUser.user || '—';
-
-// Cek apakah running di native (Capacitor)
-if (!window.Capacitor || !window.Capacitor.isNativePlatform()) {
-    document.getElementById('statusMsg').className = 'unlock-status error';
-    document.getElementById('statusMsg').innerText = '⚠️ Fitur ini hanya berfungsi di app native (Android), bukan di browser.';
-    document.getElementById('unlockBtn').disabled = true;
-} else {
-    // Cek apakah app adalah Device Owner
-    Capacitor.Plugins.UninstallManager.isDeviceOwner()
-        .then(res => {
-            document.getElementById('infoDeviceOwner').innerText = res.isDeviceOwner ? '✅ Ya' : '❌ Tidak';
-            document.getElementById('infoPackage').innerText = res.packageName || '—';
-            
-            if (!res.isDeviceOwner) {
-                document.getElementById('statusMsg').className = 'unlock-status error';
-                document.getElementById('statusMsg').innerText = '⚠️ App ini bukan Device Owner. Provisioning dulu via adb (lihat dokumentasi).';
-                document.getElementById('unlockBtn').disabled = true;
-            }
-        })
-        .catch(err => {
-            document.getElementById('infoDeviceOwner').innerText = '❌ Error';
-            toast.error('Gagal cek Device Owner', err.message || '');
-        });
-}
-
-async function doUnlock() {
-    const pin = document.getElementById('pinInput').value.trim();
-    if (!pin) {
-        toast.error('PIN kosong', 'Masukkan PIN VIP');
+function checkAdminStatus() {
+    var badge = document.getElementById("adminBadge");
+    if (!window.Capacitor || !window.Capacitor.isNativePlatform()) {
+        badge.className = "admin-badge inactive";
+        badge.textContent = "Hanya berfungsi di app Android";
+        document.getElementById("btnUnlock").disabled = true;
         return;
     }
+    Capacitor.Plugins.UninstallManager.getAdminStatus()
+        .then(function(res) {
+            badge.className = res.isAdmin ? "admin-badge active" : "admin-badge inactive";
+            badge.textContent = res.isAdmin ? "Proteksi Aktif" : "Proteksi Belum Aktif";
+            if (!res.isAdmin) Capacitor.Plugins.UninstallManager.requestAdminActivation().catch(function(){});
+        })
+        .catch(function() { badge.className = "admin-badge unknown"; badge.textContent = "Status tidak diketahui"; });
+}
+checkAdminStatus();
 
-    const btn = document.getElementById('unlockBtn');
-    btn.disabled = true;
-    btn.innerText = '🔄 Verifikasi...';
-
-    const user = currentUser.user;
-    const token = localStorage.getItem('sessionToken') || '';
-    const serverUrl = API_BASE.replace('/api.php', ''); // e.g. https://pos-hokidimsum.com
-
+async function doUnlock() {
+    var pin = document.getElementById("pinInput").value.trim();
+    if (!pin) { toast.error("PIN kosong", "Masukkan PIN uninstall"); return; }
+    if (!window.Capacitor || !window.Capacitor.isNativePlatform()) {
+        showStatus("statusMsg", "error", "Fitur ini hanya berfungsi di app Android native."); return;
+    }
+    var btn = document.getElementById("btnUnlock");
+    btn.disabled = true; btn.textContent = "Memverifikasi..."; hideStatus("statusMsg");
+    var serverUrl = API_BASE.replace("/api.php", "");
     try {
-        const res = await Capacitor.Plugins.UninstallManager.unlockUninstall({
-            user: user,
-            token: token,
-            pin: pin,
-            serverUrl: serverUrl
-        });
-
-        document.getElementById('statusMsg').className = 'unlock-status success';
-        document.getElementById('statusMsg').innerText = '✅ ' + (res.message || 'PIN benar. Uninstall dibuka untuk 5 menit.');
-        toast.success('Unlock berhasil', 'Uninstall dibuka untuk 5 menit');
-        
-        btn.innerText = '✅ Unlock Berhasil';
-        setTimeout(() => {
-            window.location.href = 'dashboard.html';
-        }, 3000);
-
+        var res = await Capacitor.Plugins.UninstallManager.unlockUninstall({ pin: pin, serverUrl: serverUrl });
+        showStatus("statusMsg", "success", res.message || "Proteksi dilepas. Silakan uninstall dari Settings > Aplikasi.");
+        toast.success("Berhasil", "Silakan uninstall dari Settings > Aplikasi");
+        btn.textContent = "Proteksi Dilepas";
+        var b = document.getElementById("adminBadge");
+        b.className = "admin-badge inactive"; b.textContent = "Proteksi Dilepas";
     } catch (err) {
-        document.getElementById('statusMsg').className = 'unlock-status error';
-        document.getElementById('statusMsg').innerText = '❌ ' + (err.message || err);
-        toast.error('Unlock gagal', err.message || err);
-        
-        btn.disabled = false;
-        btn.innerText = '🔓 Unlock Sekarang';
-        document.getElementById('pinInput').value = '';
-        document.getElementById('pinInput').focus();
+        showStatus("statusMsg", "error", err.message || String(err));
+        toast.error("PIN Salah", err.message || String(err));
+        btn.disabled = false; btn.textContent = "Lepas Proteksi & Izinkan Uninstall";
+        document.getElementById("pinInput").value = ""; document.getElementById("pinInput").focus();
     }
 }
 
-// Enter key submit
-document.getElementById('pinInput').addEventListener('keypress', e => {
-    if (e.key === 'Enter') doUnlock();
-});
-</script>
+async function doSetPin() {
+    var p1 = document.getElementById("newPin1").value.trim();
+    var p2 = document.getElementById("newPin2").value.trim();
+    if (p1.length < 4) { showStatus("vipStatus","error","PIN minimal 4 karakter."); return; }
+    if (p1 !== p2) { showStatus("vipStatus","error","Konfirmasi PIN tidak cocok."); return; }
+    var user = currentUser.user || currentUser.username || "";
+    var token = localStorage.getItem("sessionToken") || "";
+    try {
+        var resp = await fetch(API_BASE + "?action=set_uninstall_pin", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ user: user, token: token, new_pin: p1 })
+        });
+        var json = await resp.json();
+        if (json.status === "success") {
+            showStatus("vipStatus","success", json.message);
+            toast.success("PIN Disimpan", json.message);
+            document.getElementById("newPin1").value = ""; document.getElementById("newPin2").value = "";
+        } else { showStatus("vipStatus","error", json.message); toast.error("Gagal", json.message); }
+    } catch (e) { showStatus("vipStatus","error","Gagal: " + e.message); toast.error("Error", e.message); }
+}
 
+function showStatus(id, type, msg) {
+    var el = document.getElementById(id); el.className = "status-box " + type; el.textContent = msg; el.style.display = "block";
+}
+function hideStatus(id) { document.getElementById(id).style.display = "none"; }
+document.getElementById("pinInput").addEventListener("keypress", function(e) { if (e.key === "Enter") doUnlock(); });
+</script>
 </body>
 </html>
