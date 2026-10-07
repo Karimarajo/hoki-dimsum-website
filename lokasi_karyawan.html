@@ -1,9 +1,9 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Hoki POS - Bahan Baku</title>
+    <title>Hoki POS - Lokasi Karyawan</title>
         <link rel="icon" href="Assets/2.png">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#d32f2f">
@@ -15,122 +15,111 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=DM+Mono:wght@400;500&family=Poppins:wght@700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css?v=20260501">
+    <!-- Leaflet CSS (CDN, tanpa API key) -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-    .form-card {
+
+    /* ── MAP ── */
+    #mapContainer {
+        width: 100%;
+        height: calc(100dvh - 170px);
+        min-height: 400px;
+        border-radius: var(--r-lg);
+        border: 1px solid var(--border);
+        box-shadow: var(--sh-sm);
+        overflow: hidden;
+    }
+
+    /* ── FILTER BAR ── */
+    .filter-row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: flex-end;
         background: var(--surface);
         border: 1px solid var(--border);
         border-radius: var(--r-lg);
-        padding: 20px;
+        padding: 14px 18px;
         margin-bottom: 12px;
         box-shadow: var(--sh-sm);
     }
+    .filter-row > * + * { margin-left: 12px; }
 
-    .form-card h3 {
-        margin: 0 0 16px;
-        font-size: 14px;
-        font-weight: 700;
-        color: var(--text);
-    }
-
-    .grid-form {
-        display: grid;
-        grid-template-columns: 2fr 1fr 1fr 1fr 1fr auto;
-        gap: 10px;
-        align-items: end;
-    }
-
-    .input-group {
-        display: flex;
-        flex-direction: column;
-    }
-
-    /* Fallback jarak antar-anak flex (gap tidak didukung Chrome flex < 84) */
-    .input-group > * + * { margin-top: 4px; }
-
-    .input-group label {
+    .filter-row label {
         font-size: 10px;
         font-weight: 700;
         color: var(--text-muted);
         text-transform: uppercase;
         letter-spacing: 0.8px;
+        margin-bottom: 4px;
     }
 
-    .input-group input {
-        margin: 0;
-        padding: 9px 12px;
-        border: 1.5px solid var(--border);
-        border-radius: var(--r-md);
-        font-size: 13px;
-        font-family: 'Nunito', sans-serif;
-        background: var(--surface);
-        color: var(--text);
-        outline: none;
-        transition: border-color 0.2s;
+    .stat-strip {
+        display: flex;
+        flex-wrap: wrap;
+        margin-bottom: 12px;
     }
+    .stat-strip > * + * { margin-left: 10px; }
 
-    .input-group input:focus { border-color: var(--red); }
-    .input-group input[readonly] {
-        background: var(--surface-2);
-        color: var(--red);
-        font-family: 'DM Mono', monospace;
-        font-weight: 700;
-    }
-
-
-    .table-wrap {
+    .stat-chip {
+        display: inline-flex;
+        align-items: center;
         background: var(--surface);
         border: 1px solid var(--border);
-        border-radius: var(--r-lg);
-        overflow: hidden;
-        box-shadow: var(--sh-sm);
-        overflow-x: auto;
-    }
-
-    .table-wrap table {
-        width: 100%;
-        border-collapse: collapse;
-    }
-
-    .table-wrap thead th {
-        background: var(--red);
-        color: white;
-        padding: 10px 14px;
-        font-size: 11px;
-        font-weight: 600;
-        text-transform: uppercase;
-        border: none;
-        text-align: left;
-    }
-
-    .table-wrap tbody td {
-        padding: 10px 14px;
-        border-bottom: 1px solid var(--border);
-        font-size: 13px;
+        border-radius: 99px;
+        padding: 6px 14px;
+        font-size: 12px;
+        font-weight: 700;
         color: var(--text);
-        border-top: none; border-left: none; border-right: none;
+    }
+    .stat-chip > * + * { margin-left: 6px; }
+    .stat-chip .num {
+        font-family: 'DM Mono', monospace;
+        color: var(--red);
     }
 
-    .table-wrap tbody tr:last-child td { border-bottom: none; }
-    .table-wrap tbody tr:hover td { background: var(--red-soft); }
+    /* ── POPUP ── */
+    .leaflet-popup-content {
+        font-family: 'Nunito', sans-serif;
+        font-size: 12px;
+        line-height: 1.5;
+        min-width: 180px;
+    }
+    .popup-name {
+        font-size: 14px;
+        font-weight: 800;
+        color: var(--text);
+        margin-bottom: 2px;
+    }
+    .popup-meta {
+        color: var(--text-muted);
+        font-size: 11px;
+    }
+    .popup-time {
+        font-family: 'DM Mono', monospace;
+        font-size: 11px;
+        color: var(--red);
+        margin-top: 4px;
+    }
 
-    .mono { font-family: 'DM Mono', monospace; font-weight: 700; }
-    .red  { color: var(--red); }
-    .green { color: var(--green); }
-
-
-
+    /* ── MOBILE ── */
     @media (max-width: 844px) {
-        .grid-form { grid-template-columns: 1fr 1fr; }
-        .grid-form button { grid-column: span 2; }
+        .header-page-title { font-size: 13px !important; }
+        #mapContainer { height: calc(100dvh - 240px); min-height: 300px; }
+        .filter-row { flex-direction: column; align-items: stretch; }
+        .filter-row > * + * { margin-left: 0; margin-top: 8px; }
     }
+
     </style>
   <script src="config.js?v=20260927"></script>
 </head>
 <body>
 
+<!-- ── SIDEBAR ── -->
 <aside class="sidebar" id="sidebar">
     <div class="sidebar-brand" onclick="toggleSidebar()">
-        <div class="sidebar-logo"><img src="Assets/3.png" alt="Hoki"></div>
+        <div class="sidebar-logo">
+            <img src="Assets/3.png" alt="Hoki">
+        </div>
         <div class="sidebar-brand-text">
             <div class="sidebar-brand-name">Hoki Dimsum <span class="app-ver">V4.1</span></div>
             <div class="sidebar-brand-sub">POS System <span class="app-ver-lower">v4.1</span></div>
@@ -150,10 +139,12 @@
     </div>
 </aside>
 
+<!-- ── MAIN CONTENT ── -->
 <div class="main-content" id="mainContent">
+
     <header class="top-header">
         <div class="header-left">
-            <div class="header-page-title">🧂 Bahan Baku</div>
+            <div class="header-page-title">📍 Lokasi Karyawan</div>
         </div>
         <div class="header-right">
             <div class="clock-pill">
@@ -164,57 +155,28 @@
     </header>
 
     <div class="page-body">
-        <div class="form-card">
-            <h3>➕ Tambah / Edit Bahan Baku</h3>
-            <div class="grid-form">
-                <div class="input-group">
-                    <label>Nama Bahan</label>
-                    <input type="text" id="bNama" placeholder="Cth: Mentai, Ayam, Tepung...">
-                </div>
-                <div class="input-group">
-                    <label>Harga (Rp)</label>
-                    <input type="number" id="bHarga" placeholder="50000" oninput="hitungHargaSatuan()">
-                </div>
-                <div class="input-group">
-                    <label>Banyak (Qty)</label>
-                    <input type="number" id="bBanyak" placeholder="1000" oninput="hitungHargaSatuan()">
-                </div>
-                <div class="input-group">
-                    <label>Satuan</label>
-                    <input type="text" id="bSatuan" placeholder="gr / ml / pcs">
-                </div>
-                <div class="input-group">
-                    <label>Harga / Satuan</label>
-                    <input type="text" id="bHargaSatuan" readonly placeholder="Auto">
-                </div>
-                <div class="input-group">
-                    <label><input type="checkbox" id="bStokHarian" style="width:auto;"> Audit Stok Harian</label>
-                </div>
-                <button class="btn-simpan" onclick="simpanBahan()">💾 Simpan</button>
+        <!-- Filter -->
+        <div class="filter-row">
+            <div>
+                <label for="filterTanggal">Tanggal</label>
+                <input type="date" id="filterTanggal" style="width:170px;">
             </div>
+            <button class="btn-cari" onclick="loadData()" style="background:#2563EB;color:#fff;padding:10px 18px;">🔍 Cari</button>
+            <button class="btn-hari-ini" onclick="resetHariIni()" style="padding:10px 18px;">Hari Ini</button>
         </div>
 
-        <div class="table-wrap">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Nama Bahan</th>
-                        <th>Harga</th>
-                        <th>Banyak</th>
-                        <th>Satuan</th>
-                        <th>Harga / Satuan</th>
-                        <th>Audit Harian</th>
-                        <th>Aksi</th>
-                    </tr>
-                </thead>
-                <tbody id="tabelBahan">
-                    <tr><td colspan="7" style="text-align:center;padding:32px;color:var(--text-light);">Memuat data...</td></tr>
-                </tbody>
-            </table>
+        <!-- Stats -->
+        <div class="stat-strip" id="statStrip">
+            <div class="stat-chip"><span>👥</span><span>Karyawan:</span><span class="num" id="statTotal">0</span></div>
+            <div class="stat-chip"><span>🟢</span><span>Online (1 jam):</span><span class="num" id="statOnline">0</span></div>
         </div>
+
+        <!-- Map -->
+        <div id="mapContainer"></div>
     </div>
 </div>
 
+<!-- BOTTOM NAV -->
 <nav class="bottom-nav">
     <button class="bn-item" onclick="location.href='dashboard.html'"><span class="bn-icon">🛒</span><span class="bn-label">Kasir</span></button>
     <button class="bn-item" onclick="location.href='history.html'"><span class="bn-icon">📄</span><span class="bn-label">History</span></button>
@@ -223,6 +185,7 @@
     <button class="bn-item active" onclick="openSheet('moreSheet')"><span class="bn-icon">☰</span><span class="bn-label">Lainnya</span></button>
 </nav>
 
+<!-- MORE SHEET -->
 <div class="sheet-overlay" id="moreSheet" onclick="closeSheetOutside(event,'moreSheet')">
     <div class="bottom-sheet" onclick="event.stopPropagation()">
         <div class="sheet-handle"></div>
@@ -231,14 +194,23 @@
     </div>
 </div>
 
+<!-- Leaflet JS (CDN, tanpa API key) -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script src="session.js"></script>
+<script src="toast.js"></script>
+<script src="error-log.js"></script>
+
 <script>
-const currentUser = JSON.parse(localStorage.getItem('currentUser')) || {user:'Guest', role:'Staff'};
-if (!currentUser.user) window.location.href = 'index.html';
-if (!['Owner','VIP'].includes(currentUser.role)) window.location.href = 'dashboard.html';
+const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+if (!currentUser) window.location.href = 'index.html';
 
-let editId = null;
-let allBahan = [];
+// ── GUARD: halaman ini HANYA untuk VIP ──
+if (currentUser.role !== 'VIP') {
+    window.location.href = 'dashboard.html';
+}
 
+/* ── SIDEBAR ── */
 function toggleSidebar() {
     const sb = document.getElementById('sidebar');
     const mc = document.getElementById('mainContent');
@@ -359,6 +331,7 @@ function toggleNavGroup(id) {
     localStorage.setItem('navGroup_' + id, open ? '0' : '1');
 }
 
+/* ── CLOCK ── */
 function updateClock() {
     const now = new Date();
     document.getElementById('realtimeClock').innerText = now.toLocaleTimeString('id-ID');
@@ -366,16 +339,17 @@ function updateClock() {
 }
 setInterval(updateClock, 1000);
 
+/* ── MORE MENU (bottom sheet mobile) ── */
 function buildMoreMenu() {
     const role = currentUser.role;
     const items = [{icon:'🚚',label:'Restock',link:'restock.html'}];
     items.push({icon:'📚',label:'Edukasi & SOP',link:'edukasi.html'});
     items.push({icon:'🏆',label:'Performa',link:'performa.html'});
     if (['Senior Staff','SPV','Owner','VIP'].includes(role)) {
-        items.push({icon:'🍱',label:'Produk',link:'produk.html'});
         items.push({icon:'📈',label:'Rekapan',link:'rekap.html'});
     }
     if (['Owner','VIP'].includes(role)) {
+        items.push({icon:'🍱',label:'Produk',link:'produk.html'});
         items.push({icon:'🏷️',label:'Promo',link:'promo.html'});
         items.push({icon:'🧂',label:'Bahan Baku',link:'bahan_baku.html'});
         items.push({icon:'🗃️',label:'HPP Produk',link:'hpp_produk.html'});
@@ -411,134 +385,7 @@ function buildMoreMenu() {
 }
 
 function openSheet(id) { if(id==='moreSheet') buildMoreMenu(); document.getElementById(id).classList.add('open'); }
-function closeSheetOutside(e,id) { if(e.target===document.getElementById(id)) document.getElementById(id).classList.remove('open'); }
-
-function hitungHargaSatuan() {
-    const harga  = parseFloat(document.getElementById('bHarga').value) || 0;
-    const banyak = parseFloat(document.getElementById('bBanyak').value) || 0;
-    const satuan = document.getElementById('bSatuan').value || '';
-    if (harga > 0 && banyak > 0) {
-        const hs = harga / banyak;
-        document.getElementById('bHargaSatuan').value = `Rp ${hs.toLocaleString('id-ID', {minimumFractionDigits:0, maximumFractionDigits:2})} / ${satuan || 'satuan'}`;
-    } else {
-        document.getElementById('bHargaSatuan').value = '';
-    }
-}
-
-async function muatBahan() {
-    try {
-        const res = await fetch(`${API_BASE}?action=get_bahan_baku`);
-        allBahan  = await res.json();
-        renderTabel();
-    } catch(e) { console.error(e); }
-}
-
-function renderTabel() {
-    const tbody = document.getElementById('tabelBahan');
-    if (!allBahan.length) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:32px;color:var(--text-light);">Belum ada data bahan baku</td></tr>';
-        return;
-    }
-    tbody.innerHTML = allBahan.map(b => {
-        const hs = parseFloat(b.harga_satuan) || 0;
-        const isStokHarian = parseInt(b.is_stok_harian) === 1;
-        return `<tr>
-            <td><b>${b.nama}</b></td>
-            <td class="mono">Rp ${parseFloat(b.harga).toLocaleString('id-ID')}</td>
-            <td class="mono">${parseFloat(b.banyak).toLocaleString('id-ID')}</td>
-            <td>${b.satuan}</td>
-            <td class="mono red">Rp ${hs.toLocaleString('id-ID', {minimumFractionDigits:0, maximumFractionDigits:4})} <small style="color:var(--text-muted);font-weight:400;">/ ${b.satuan}</small></td>
-            <td style="text-align:center;">
-                <input type="checkbox" ${isStokHarian ? 'checked' : ''} onchange="toggleStokHarian(${b.id}, this.checked)" title="Audit Stok Harian">
-            </td>
-            <td>
-                <button class="btn-edit-icon" onclick="siapkanEdit(${b.id})" title="Edit Data">✏️</button>
-                <button class="btn-hapus-icon" onclick="hapusBahan(${b.id})" title="Hapus Data">🗑️</button>
-            </td>
-        </tr>`;
-    }).join('');
-}
-
-function siapkanEdit(id) {
-    const b = allBahan.find(x => x.id == id);
-    if (!b) return;
-    editId = id;
-    document.getElementById('bNama').value   = b.nama;
-    document.getElementById('bHarga').value  = b.harga;
-    document.getElementById('bBanyak').value = b.banyak;
-    document.getElementById('bSatuan').value = b.satuan;
-    document.getElementById('bStokHarian').checked = parseInt(b.is_stok_harian) === 1;
-    hitungHargaSatuan();
-    window.scrollTo({top:0, behavior:'smooth'});
-    document.querySelector('.btn-simpan').innerText = '💾 Update';
-}
-
-async function simpanBahan() {
-    const nama   = document.getElementById('bNama').value.trim();
-    const harga  = parseFloat(document.getElementById('bHarga').value) || 0;
-    const banyak = parseFloat(document.getElementById('bBanyak').value) || 0;
-    const satuan = document.getElementById('bSatuan').value.trim();
-    const isStokHarian = document.getElementById('bStokHarian').checked;
-
-    if (!nama || !harga || !banyak || !satuan) return toast.warning('Lengkapi semua field!');
-
-    const harga_satuan = harga / banyak;
-    const payload = { id: editId, nama, harga, banyak, satuan, harga_satuan, is_stok_harian: isStokHarian ? 1 : 0 };
-
-    try {
-        const res   = await fetch(`${API_BASE}?action=save_bahan_baku`, {
-            method:  'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body:    JSON.stringify(payload)
-        });
-        const hasil = await res.json();
-        if (hasil.status === 'success') {
-            toast.success(editId ? 'Bahan diupdate!' : 'Bahan berhasil ditambah!');
-            editId = null;
-            ['bNama','bHarga','bBanyak','bSatuan','bHargaSatuan'].forEach(id => document.getElementById(id).value = '');
-            document.getElementById('bStokHarian').checked = false;
-            document.querySelector('.btn-simpan').innerText = '💾 Simpan';
-            muatBahan();
-        } else {
-            toast.error('Gagal menyimpan!');
-        }
-    } catch(e) { toast.error('Gagal koneksi server!'); }
-}
-
-async function toggleStokHarian(id, checked) {
-    const b = allBahan.find(x => x.id == id);
-    if (!b) return;
-    const payload = { id: b.id, nama: b.nama, harga: b.harga, banyak: b.banyak, satuan: b.satuan, harga_satuan: b.harga_satuan, is_stok_harian: checked ? 1 : 0 };
-    try {
-        const res   = await fetch(`${API_BASE}?action=save_bahan_baku`, {
-            method:  'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body:    JSON.stringify(payload)
-        });
-        const hasil = await res.json();
-        if (hasil.status === 'success') {
-            b.is_stok_harian = checked ? 1 : 0;
-            toast.success(checked ? `${b.nama} ditambahkan ke Audit Stok Harian` : `${b.nama} dihapus dari Audit Stok Harian`);
-        } else {
-            toast.error('Gagal menyimpan!');
-            muatBahan();
-        }
-    } catch(e) {
-        toast.error('Gagal koneksi server!');
-        muatBahan();
-    }
-}
-
-async function hapusBahan(id) {
-    const ok = await showConfirm('Hapus bahan ini?', 'Ya, Hapus', 'Batal', '🗑️');
-    if (!ok) return;
-    try {
-        await fetch(`${API_BASE}?action=del_bahan_baku&id=${id}`);
-        toast.success('Bahan dihapus!');
-        muatBahan();
-    } catch(e) { toast.error('Gagal menghapus!'); }
-}
-
+function closeSheetOutside(e, id) { if (e.target === document.getElementById(id)) document.getElementById(id).classList.remove('open'); }
 async function logout() {
     const ok = await showConfirm('Logout dari sistem?', 'Ya, Logout', 'Batal', '🚪');
     if (ok) {
@@ -548,10 +395,137 @@ async function logout() {
     }
 }
 
-window.onload = () => { buildSidebar(); updateClock(); muatBahan(); };
-</script>
+/* ═══════════════════════════════════════════════════
+   MAP & DATA
+   ═══════════════════════════════════════════════════ */
 
-<script src="session.js"></script>
-<script src="toast.js"></script>
+// Inisialisasi peta — center di Indonesia
+const map = L.map('mapContainer').setView([-6.2, 106.85], 11);
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    maxZoom: 19
+}).addTo(map);
+
+// Custom icon merah (tema Hoki Dimsum)
+const markerIcon = L.divIcon({
+    className: '',
+    html: `<div style="
+        width:32px;height:32px;border-radius:50% 50% 50% 0;
+        background:#d32f2f;border:3px solid #fff;
+        box-shadow:0 2px 8px rgba(0,0,0,0.3);
+        transform:rotate(-45deg);
+        display:flex;align-items:center;justify-content:center;
+    "><span style="transform:rotate(45deg);font-size:14px;">📍</span></div>`,
+    iconSize: [32, 32],
+    iconAnchor: [16, 32],
+    popupAnchor: [0, -32]
+});
+
+let markers = [];
+
+function clearMarkers() {
+    markers.forEach(m => map.removeLayer(m));
+    markers = [];
+}
+
+function resetHariIni() {
+    document.getElementById('filterTanggal').value = '';
+    loadData();
+}
+
+async function loadData() {
+    const token  = localStorage.getItem('sessionToken') || '';
+    const user   = currentUser.user || '';
+    const tanggal = document.getElementById('filterTanggal').value || '';
+
+    let url = `${API_BASE}?action=get_location_log&user=${encodeURIComponent(user)}&token=${encodeURIComponent(token)}`;
+    if (tanggal) url += `&tanggal=${tanggal}`;
+
+    try {
+        const res  = await fetch(url);
+        const json = await res.json();
+
+        if (json.status !== 'success') {
+            toast.error('Gagal memuat data', json.message || '');
+            return;
+        }
+
+        const data = json.data || [];
+        clearMarkers();
+
+        // Hitung statistik
+        const uniqueUsers = [...new Set(data.map(d => d.user_login))];
+        const now = Date.now();
+        const oneHourAgo = now - (60 * 60 * 1000);
+        const onlineCount = data.filter(d => {
+            const t = new Date(d.waktu).getTime();
+            return t >= oneHourAgo;
+        }).length;
+
+        document.getElementById('statTotal').innerText  = uniqueUsers.length;
+        document.getElementById('statOnline').innerText = onlineCount;
+
+        if (data.length === 0) {
+            toast.info('Tidak ada data lokasi' + (tanggal ? ' untuk tanggal ini' : ''));
+            return;
+        }
+
+        // Tambahkan marker ke peta
+        const bounds = [];
+        data.forEach(d => {
+            const lat = parseFloat(d.lat);
+            const lng = parseFloat(d.lng);
+            if (isNaN(lat) || isNaN(lng)) return;
+
+            const akurasi = d.akurasi_meter ? `± ${parseFloat(d.akurasi_meter).toFixed(0)}m` : '';
+            const cabang  = d.cabang || '-';
+            const waktu   = d.waktu || '-';
+
+            const popup = `
+                <div class="popup-name">${d.user_login}</div>
+                <div class="popup-meta">📌 Cabang: ${cabang}</div>
+                ${akurasi ? `<div class="popup-meta">🎯 Akurasi: ${akurasi}</div>` : ''}
+                <div class="popup-time">🕐 ${waktu}</div>
+            `;
+
+            const marker = L.marker([lat, lng], { icon: markerIcon })
+                .addTo(map)
+                .bindPopup(popup);
+            markers.push(marker);
+            bounds.push([lat, lng]);
+        });
+
+        // Zoom peta ke semua marker
+        if (bounds.length > 0) {
+            if (bounds.length === 1) {
+                map.setView(bounds[0], 15);
+            } else {
+                map.fitBounds(bounds, { padding: [40, 40] });
+            }
+        }
+
+    } catch (err) {
+        toast.error('Gagal koneksi server', err.message || '');
+    }
+}
+
+/* ── INIT ── */
+window.onload = () => {
+    buildSidebar();
+    updateClock();
+    loadData();
+
+    // Invalidate map size after layout settles (sidebar animation)
+    setTimeout(() => map.invalidateSize(), 500);
+};
+
+// Re-invalidate when sidebar toggles (map container width changes)
+const origToggle = toggleSidebar;
+window.toggleSidebar = function() {
+    origToggle();
+    setTimeout(() => map.invalidateSize(), 350);
+};
+</script>
 </body>
 </html>

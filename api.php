@@ -614,6 +614,24 @@ try {
     // Abaikan jika kolom sudah ada
 }
 
+// ── Tabel Lokasi Karyawan (tracking GPS dari app native) ──
+$conn->query("CREATE TABLE IF NOT EXISTS employee_location_log (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_login VARCHAR(100) NOT NULL,
+    lat DECIMAL(10,7) NOT NULL,
+    lng DECIMAL(10,7) NOT NULL,
+    akurasi_meter FLOAT NULL,
+    waktu DATETIME NOT NULL,
+    cabang VARCHAR(100) NULL
+)");
+
+// ── Kolom uninstall_pin_hash untuk unlock Device Owner (VIP only) ──
+try {
+    $conn->query("ALTER TABLE users ADD COLUMN uninstall_pin_hash VARCHAR(255) DEFAULT NULL");
+} catch (Exception $e) {
+    // Abaikan jika kolom sudah ada
+}
+
 // ── Validasi kupon (dipakai oleh action cek_kupon & save_transaksi) ──
 // $items: array of ['sku'=>string, 'qty'=>int]
 function validasi_kupon_internal(mysqli $conn, string $kode, string $cabang, array $items, int $subtotal): array {
@@ -3098,6 +3116,121 @@ switch ($action) {
         } else {
             echo json_encode(["status"=>"error","message"=>$conn->error]);
         }
+        break;
+
+    // ── LOKASI KARYAWAN (tracking GPS dari app native) ─────────
+    case 'save_location_ping':
+        $uPing  = $conn->real_escape_string($input['user'] ?? '');
+        $tknPing = $conn->real_escape_string($input['token'] ?? '');
+        if (empty($uPing) || empty($tknPing)) {
+            echo json_encode(["status"=>"error","message"=>"Sesi tidak valid."]);
+            break;
+        }
+        $chkPing = $conn->query("SELECT username, cabang FROM users WHERE LOWER(username)=LOWER('$uPing') AND session_token='$tknPing'");
+        $actorPing = ($chkPing && $chkPing->num_rows > 0) ? $chkPing->fetch_assoc() : null;
+        if (!$actorPing) {
+            http_response_code(403);
+            echo json_encode(["status"=>"error","message"=>"Sesi tidak valid atau sudah berakhir."]);
+            break;
+        }
+
+        $latPing = $input['lat'] ?? null;
+        $lngPing = $input['lng'] ?? null;
+        if (!is_numeric($latPing) || !is_numeric($lngPing)
+            || (float)$latPing < -90 || (float)$latPing > 90
+            || (float)$lngPing < -180 || (float)$lngPing > 180) {
+            echo json_encode(["status"=>"error","message"=>"Koordinat tidak valid."]);
+            break;
+        }
+
+        $stmtPing = $conn->prepare("INSERT INTO employee_location_log (user_login, lat, lng, akurasi_meter, waktu, cabang) VALUES (?, ?, ?, ?, NOW(), ?)");
+        $akurasiPing = isset($input['akurasi']) && is_numeric($input['akurasi']) ? (float)$input['akurasi'] : null;
+        $cabangPing  = $actorPing['cabang'] ?? null;
+        $userLogin   = $actorPing['username'];
+        $latFloat    = (float)$latPing;
+        $lngFloat    = (float)$lngPing;
+        $stmtPing->bind_param('sddds', $userLogin, $latFloat, $lngFloat, $akurasiPing, $cabangPing);
+        if ($stmtPing->execute()) {
+            echo json_encode(["status"=>"success"]);
+        } else {
+            echo json_encode(["status"=>"error","message"=>$stmtPing->error]);
+        }
+        break;
+
+    case 'get_location_log':
+        $uLoc  = $conn->real_escape_string($_GET['user']  ?? ($input['user']  ?? ''));
+        $tknLoc = $conn->real_escape_string($_GET['token'] ?? ($input['token'] ?? ''));
+        if (empty($uLoc) || empty($tknLoc)) {
+            echo json_encode(["status"=>"error","message"=>"Sesi tidak valid."]);
+            break;
+        }
+        $chkLoc = $conn->query("SELECT role FROM users WHERE LOWER(username)=LOWER('$uLoc') AND session_token='$tknLoc'");
+        $actorLoc = ($chkLoc && $chkLoc->num_rows > 0) ? $chkLoc->fetch_assoc() : null;
+        if (!$actorLoc || $actorLoc['role'] !== 'VIP') {
+            http_response_code(403);
+            echo json_encode(["status"=>"error","message"=>"Akses ditolak! Hanya VIP yang dapat melihat lokasi karyawan."]);
+            break;
+        }
+
+        $tglLoc = isset($_GET['tanggal']) ? $conn->real_escape_string($_GET['tanggal']) : '';
+        if ($tglLoc !== '') {
+            // Histori lengkap per tanggal tertentu
+            $stmtLoc = $conn->prepare("SELECT user_login, lat, lng, akurasi_meter, DATE_FORMAT(waktu,'%Y-%m-%d %H:%i:%s') as waktu, cabang FROM employee_location_log WHERE DATE(waktu) = ? ORDER BY waktu DESC");
+            $stmtLoc->bind_param('s', $tglLoc);
+            $stmtLoc->execute();
+            $resLoc = $stmtLoc->get_result();
+        } else {
+            // Titik terakhir per karyawan (default)
+            $resLoc = $conn->query("SELECT e.user_login, e.lat, e.lng, e.akurasi_meter, DATE_FORMAT(e.waktu,'%Y-%m-%d %H:%i:%s') as waktu, e.cabang
+                FROM employee_location_log e
+                INNER JOIN (SELECT user_login, MAX(id) as max_id FROM employee_location_log GROUP BY user_login) latest
+                ON e.user_login = latest.user_login AND e.id = latest.max_id
+                ORDER BY e.waktu DESC");
+        }
+        echo json_encode(["status"=>"success","data"=> $resLoc ? $resLoc->fetch_all(MYSQLI_ASSOC) : []]);
+        break;
+
+    // ── Verifikasi PIN Uninstall (Device Owner unlock, VIP only) ──
+    case 'verify_uninstall_pin':
+        $uPin  = $conn->real_escape_string($_GET['user']  ?? ($input['user']  ?? ''));
+        $tknPin = $conn->real_escape_string($_GET['token'] ?? ($input['token'] ?? ''));
+        if (empty($uPin) || empty($tknPin)) {
+            echo json_encode(["status"=>"error","message"=>"Sesi tidak valid."]);
+            break;
+        }
+        $chkPin = $conn->query("SELECT role, uninstall_pin_hash FROM users WHERE LOWER(username)=LOWER('$uPin') AND session_token='$tknPin'");
+        $actorPin = ($chkPin && $chkPin->num_rows > 0) ? $chkPin->fetch_assoc() : null;
+        
+        // Hanya VIP yang bisa unlock
+        if (!$actorPin || $actorPin['role'] !== 'VIP') {
+            http_response_code(403);
+            echo json_encode(["status"=>"error","message"=>"Akses ditolak. Hanya VIP yang dapat unlock uninstall."]);
+            break;
+        }
+
+        $pin = $input['pin'] ?? '';
+        if (empty($pin)) {
+            echo json_encode(["status"=>"error","message"=>"PIN tidak boleh kosong."]);
+            break;
+        }
+
+        // Hash PIN dengan SHA-256 (sederhana, production bisa pakai bcrypt/Argon2)
+        $pinHash = hash('sha256', $pin);
+        
+        // Cek apakah PIN sudah di-set di database
+        if (empty($actorPin['uninstall_pin_hash'])) {
+            echo json_encode(["status"=>"error","message"=>"PIN belum di-set untuk user ini. Hubungi administrator."]);
+            break;
+        }
+
+        // Verifikasi PIN
+        if ($pinHash !== $actorPin['uninstall_pin_hash']) {
+            echo json_encode(["status"=>"error","message"=>"PIN salah."]);
+            break;
+        }
+
+        // PIN benar → izinkan unlock
+        echo json_encode(["status"=>"success","message"=>"PIN valid. Unlock diizinkan."]);
         break;
 
     // ─────────────────────────────────────────────────

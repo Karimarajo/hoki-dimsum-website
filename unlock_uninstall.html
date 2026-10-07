@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hoki POS - Unlock Uninstall (VIP)</title>
+    <link rel="icon" href="Assets/2.png">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css?v=20260501">
+    <style>
+        .unlock-container {
+            max-width: 500px;
+            margin: 60px auto;
+            padding: 30px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--r-xl);
+            box-shadow: var(--sh-lg);
+        }
+        .unlock-title {
+            font-size: 20px;
+            font-weight: 800;
+            color: var(--red);
+            margin-bottom: 8px;
+            text-align: center;
+        }
+        .unlock-subtitle {
+            font-size: 12px;
+            color: var(--text-muted);
+            text-align: center;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+        .unlock-input {
+            width: 100%;
+            padding: 14px 18px;
+            font-size: 24px;
+            font-family: 'DM Mono', monospace;
+            text-align: center;
+            letter-spacing: 8px;
+            border: 2px solid var(--border);
+            border-radius: var(--r-lg);
+            background: var(--bg);
+            color: var(--text);
+            margin-bottom: 20px;
+        }
+        .unlock-input:focus {
+            border-color: var(--red);
+            outline: none;
+        }
+        .unlock-btn {
+            width: 100%;
+            padding: 16px;
+            font-size: 16px;
+            font-weight: 700;
+            background: var(--red);
+            color: #fff;
+            border: none;
+            border-radius: var(--r-lg);
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .unlock-btn:hover {
+            background: #b71c1c;
+        }
+        .unlock-btn:disabled {
+            background: var(--border);
+            cursor: not-allowed;
+        }
+        .unlock-status {
+            margin-top: 20px;
+            padding: 14px 18px;
+            border-radius: var(--r-lg);
+            font-size: 13px;
+            font-weight: 600;
+            text-align: center;
+            display: none;
+        }
+        .unlock-status.success {
+            background: #e8f5e9;
+            color: #2e7d32;
+            border: 1px solid #4caf50;
+            display: block;
+        }
+        .unlock-status.error {
+            background: #ffebee;
+            color: #c62828;
+            border: 1px solid #f44336;
+            display: block;
+        }
+        .device-info {
+            margin-top: 30px;
+            padding: 14px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: var(--r-lg);
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+        .device-info-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 6px;
+        }
+        .device-info-row:last-child {
+            margin-bottom: 0;
+        }
+        .device-info-label {
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .device-info-value {
+            font-family: 'DM Mono', monospace;
+        }
+    </style>
+    <script src="config.js"></script>
+</head>
+<body>
+
+<div class="unlock-container">
+    <div class="unlock-title">🔓 Unlock Uninstall</div>
+    <div class="unlock-subtitle">
+        Fitur ini memungkinkan VIP untuk membuka blokir uninstall sementara (5 menit).<br>
+        Masukkan PIN VIP untuk melanjutkan.
+    </div>
+
+    <input type="password" id="pinInput" class="unlock-input" maxlength="6" placeholder="• • • • • •" autofocus>
+    <button class="unlock-btn" id="unlockBtn" onclick="doUnlock()">🔓 Unlock Sekarang</button>
+
+    <div class="unlock-status" id="statusMsg"></div>
+
+    <div class="device-info" id="deviceInfo">
+        <div class="device-info-row">
+            <span class="device-info-label">Device Owner</span>
+            <span class="device-info-value" id="infoDeviceOwner">Checking...</span>
+        </div>
+        <div class="device-info-row">
+            <span class="device-info-label">Package</span>
+            <span class="device-info-value" id="infoPackage">—</span>
+        </div>
+        <div class="device-info-row">
+            <span class="device-info-label">User</span>
+            <span class="device-info-value" id="infoUser">—</span>
+        </div>
+    </div>
+</div>
+
+<script src="session.js"></script>
+<script src="toast.js"></script>
+
+<script>
+const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+if (!currentUser) window.location.href = 'index.html';
+
+// Guard: hanya VIP
+if (currentUser.role !== 'VIP') {
+    alert('Akses ditolak. Fitur ini hanya untuk VIP.');
+    window.location.href = 'dashboard.html';
+}
+
+document.getElementById('infoUser').innerText = currentUser.user || '—';
+
+// Cek apakah running di native (Capacitor)
+if (!window.Capacitor || !window.Capacitor.isNativePlatform()) {
+    document.getElementById('statusMsg').className = 'unlock-status error';
+    document.getElementById('statusMsg').innerText = '⚠️ Fitur ini hanya berfungsi di app native (Android), bukan di browser.';
+    document.getElementById('unlockBtn').disabled = true;
+} else {
+    // Cek apakah app adalah Device Owner
+    Capacitor.Plugins.UninstallManager.isDeviceOwner()
+        .then(res => {
+            document.getElementById('infoDeviceOwner').innerText = res.isDeviceOwner ? '✅ Ya' : '❌ Tidak';
+            document.getElementById('infoPackage').innerText = res.packageName || '—';
+            
+            if (!res.isDeviceOwner) {
+                document.getElementById('statusMsg').className = 'unlock-status error';
+                document.getElementById('statusMsg').innerText = '⚠️ App ini bukan Device Owner. Provisioning dulu via adb (lihat dokumentasi).';
+                document.getElementById('unlockBtn').disabled = true;
+            }
+        })
+        .catch(err => {
+            document.getElementById('infoDeviceOwner').innerText = '❌ Error';
+            toast.error('Gagal cek Device Owner', err.message || '');
+        });
+}
+
+async function doUnlock() {
+    const pin = document.getElementById('pinInput').value.trim();
+    if (!pin) {
+        toast.error('PIN kosong', 'Masukkan PIN VIP');
+        return;
+    }
+
+    const btn = document.getElementById('unlockBtn');
+    btn.disabled = true;
+    btn.innerText = '🔄 Verifikasi...';
+
+    const user = currentUser.user;
+    const token = localStorage.getItem('sessionToken') || '';
+    const serverUrl = API_BASE.replace('/api.php', ''); // e.g. https://pos-hokidimsum.com
+
+    try {
+        const res = await Capacitor.Plugins.UninstallManager.unlockUninstall({
+            user: user,
+            token: token,
+            pin: pin,
+            serverUrl: serverUrl
+        });
+
+        document.getElementById('statusMsg').className = 'unlock-status success';
+        document.getElementById('statusMsg').innerText = '✅ ' + (res.message || 'PIN benar. Uninstall dibuka untuk 5 menit.');
+        toast.success('Unlock berhasil', 'Uninstall dibuka untuk 5 menit');
+        
+        btn.innerText = '✅ Unlock Berhasil';
+        setTimeout(() => {
+            window.location.href = 'dashboard.html';
+        }, 3000);
+
+    } catch (err) {
+        document.getElementById('statusMsg').className = 'unlock-status error';
+        document.getElementById('statusMsg').innerText = '❌ ' + (err.message || err);
+        toast.error('Unlock gagal', err.message || err);
+        
+        btn.disabled = false;
+        btn.innerText = '🔓 Unlock Sekarang';
+        document.getElementById('pinInput').value = '';
+        document.getElementById('pinInput').focus();
+    }
+}
+
+// Enter key submit
+document.getElementById('pinInput').addEventListener('keypress', e => {
+    if (e.key === 'Enter') doUnlock();
+});
+</script>
+
+</body>
+</html>
