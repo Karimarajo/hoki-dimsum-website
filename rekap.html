@@ -455,6 +455,7 @@ async function loadFilterCabang() {
 
 /* ── HITUNG REKAPAN ── */
 let masterProdukCache = [];
+let masterHppCache = [];
 
 async function hitungRekapan() {
     const tglVal = document.getElementById('filterTgl').value;
@@ -468,13 +469,18 @@ async function hitungRekapan() {
 
     try {
         // Fetch paralel: Master Produk, History Transaksi Langsung, dan Buku Kas (Belanja/Pengeluaran)
-        const [resProd, resTrx, resKas] = await Promise.all([
+        const [resProd, resHpp, resTrx, resKas] = await Promise.all([
             masterProdukCache.length ? Promise.resolve({json:()=>masterProdukCache}) : fetch(`${API_BASE}?action=get_produk`),
+            masterHppCache.length ? Promise.resolve({json:()=>masterHppCache}) : fetch(`${API_BASE}?action=get_hpp_produk`),
             fetch(`${API_BASE}?action=get_history&tgl_mulai=${tglVal}&tgl_selesai=${tglVal}`),
             fetch(`${API_BASE}?action=get_kas_data&role=${role}&cabang=${encodeURIComponent(currentUser.cabang||'')}`)
         ]);
 
         if (!masterProdukCache.length) masterProdukCache = await resProd.json();
+        if (!masterHppCache.length) {
+            const hppData = await resHpp.json();
+            masterHppCache = Array.isArray(hppData) ? hppData : [];
+        }
         const transaksi = await resTrx.json();
         const kasData = await resKas.json();
 
@@ -505,10 +511,14 @@ async function hitungRekapan() {
                 // Masukkan ke menu terjual
                 total.menu[nama] = (total.menu[nama] || 0) + qty;
 
-                // Cari kecocokan produk di master untuk hitung pcs dimsum & breakdown
-                const p = masterProdukCache.find(x => x.nama === nama || x.sku === it.sku);
-                if (p) {
-                    const dimsumPerPorsi = parseInt(p.dimsumPcs || 0, 10);
+                // Hitung pcs dimsum dari resep HPP (SUM qty bahan berawalan "Dimsum")
+                const hppResep = it.sku ? masterHppCache.find(x => x.sku === it.sku) : null;
+                if (hppResep) {
+                    let detailBahan = [];
+                    try { detailBahan = typeof hppResep.detail_json === 'string' ? JSON.parse(hppResep.detail_json || '[]') : (hppResep.detail_json || []); } catch(_) { detailBahan = []; }
+                    const dimsumPerPorsi = detailBahan
+                        .filter(b => (b.nama || '').toLowerCase().startsWith('dimsum'))
+                        .reduce((sum, b) => sum + (parseFloat(b.qty) || 0), 0);
                     if (dimsumPerPorsi > 0) {
                         const dimsumQty = dimsumPerPorsi * qty;
                         total.pcs += dimsumQty; // Akumulasi total pcs dimsum terjual
