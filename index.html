@@ -436,9 +436,9 @@
                dropdown dibuka dekat bagian bawah layar, isinya kepotong oleh batas
                .right-panel dan max-height/overflow-y di bawah ini tidak sempat kepakai -
                user cuma lihat 1-2 item pertama tanpa bisa scroll ke sisanya. Dengan fixed,
-               posisinya dihitung via JS dari getBoundingClientRect tombol (lihat
-               toggleCabangDropdown) sehingga lepas dari clipping parent & selalu pas
-               dengan sisa ruang viewport. */
+               posisinya dihitung via JS (lihat posisikanDropdownCabang) sebagai panel yang
+               selalu nempel deket atas layar & lepas dari clipping parent, terlepas dari
+               posisi tombolnya. */
             position: fixed;
             background: var(--surface);
             border: 1.5px solid var(--border);
@@ -651,30 +651,24 @@
     </div>
 
     <script>
-    /* ── CABANG CUSTOM DROPDOWN ── */
+    /* ── CABANG CUSTOM DROPDOWN ──
+       Dropdown selalu dibuka sebagai panel fixed deket atas layar (bukan nempel
+       ke tombol & flip atas/bawah) - lebih simpel & konsisten di semua ukuran
+       layar, dan daftarnya sendiri yang scroll kalau cabangnya banyak. */
     function posisikanDropdownCabang() {
         const wrap     = document.getElementById('wrapCabang');
         const dropdown = document.getElementById('dropdownCabang');
         if (!wrap || !dropdown || !wrap.classList.contains('open')) return;
 
-        const rect       = wrap.getBoundingClientRect();
-        const margin     = 8;
-        const spaceBelow = window.innerHeight - rect.bottom - margin;
-        const spaceAbove = rect.top - margin;
+        const rect   = wrap.getBoundingClientRect();
+        const topPos = Math.min(90, window.innerHeight * 0.12);
+        const bottomMargin = 16;
 
-        dropdown.style.left  = rect.left + 'px';
-        dropdown.style.width = rect.width + 'px';
-
-        // Buka ke bawah kalau ruangnya cukup/lebih luas, kalau tidak flip ke atas
-        if (spaceBelow >= 160 || spaceBelow >= spaceAbove) {
-            dropdown.style.top       = (rect.bottom + 6) + 'px';
-            dropdown.style.bottom    = 'auto';
-            dropdown.style.maxHeight = Math.max(120, Math.min(320, spaceBelow)) + 'px';
-        } else {
-            dropdown.style.bottom    = (window.innerHeight - rect.top + 6) + 'px';
-            dropdown.style.top       = 'auto';
-            dropdown.style.maxHeight = Math.max(120, Math.min(320, spaceAbove)) + 'px';
-        }
+        dropdown.style.left      = rect.left + 'px';
+        dropdown.style.width     = rect.width + 'px';
+        dropdown.style.top       = topPos + 'px';
+        dropdown.style.bottom    = 'auto';
+        dropdown.style.maxHeight = Math.max(160, window.innerHeight - topPos - bottomMargin) + 'px';
     }
 
     function toggleCabangDropdown() {
