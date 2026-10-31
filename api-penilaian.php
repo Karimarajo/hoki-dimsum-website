@@ -544,6 +544,72 @@ switch ($action) {
         respond(['status' => 'success', 'message' => 'Periode ditutup.']);
     }
 
+    // Edit tanggal mulai/selesai sebuah periode (boleh aktif atau sudah tutup).
+    // Validasi sama seperti create: selesai >= mulai.
+    case 'admin_update_periode': {
+        require_vip($conn);
+        $id      = (int)($input['id'] ?? 0);
+        $mulai   = trim($input['tanggal_mulai'] ?? '');
+        $selesai = trim($input['tanggal_selesai'] ?? '');
+
+        if ($id <= 0) respond(['status' => 'error', 'message' => 'ID periode tidak valid.']);
+        if (!$mulai || !$selesai) respond(['status' => 'error', 'message' => 'Tanggal mulai & selesai wajib diisi.']);
+        if ($selesai < $mulai) respond(['status' => 'error', 'message' => 'Tanggal selesai tidak boleh sebelum tanggal mulai.']);
+
+        $chk = $conn->prepare("SELECT id FROM penilaian_periode WHERE id = ?");
+        $chk->bind_param('i', $id);
+        $chk->execute();
+        if ($chk->get_result()->num_rows === 0) respond(['status' => 'error', 'message' => 'Periode tidak ditemukan.']);
+
+        $stmt = $conn->prepare("UPDATE penilaian_periode SET tanggal_mulai = ?, tanggal_selesai = ? WHERE id = ?");
+        $stmt->bind_param('ssi', $mulai, $selesai, $id);
+        $stmt->execute();
+        respond(['status' => 'success', 'message' => 'Periode diperbarui.']);
+    }
+
+    // Hapus permanen sebuah periode + SEMUA data turunannya (submission, detail
+    // jawaban, target omset periode itu). Dipakai VIP untuk bersih-bersih periode
+    // salah/dummy. Tidak ada FK CASCADE di schema, jadi cascade manual di sini,
+    // dibungkus transaction supaya atomic (semua berhasil atau semua batal).
+    case 'admin_delete_periode': {
+        require_vip($conn);
+        $id = (int)($input['id'] ?? 0);
+        if ($id <= 0) respond(['status' => 'error', 'message' => 'ID periode tidak valid.']);
+
+        $chk = $conn->prepare("SELECT id FROM penilaian_periode WHERE id = ?");
+        $chk->bind_param('i', $id);
+        $chk->execute();
+        if ($chk->get_result()->num_rows === 0) respond(['status' => 'error', 'message' => 'Periode tidak ditemukan.']);
+
+        $conn->begin_transaction();
+        try {
+            $delDetail = $conn->prepare("DELETE d FROM penilaian_submission_detail d
+                                          JOIN penilaian_submission s ON s.id = d.submission_id
+                                          WHERE s.periode_id = ?");
+            $delDetail->bind_param('i', $id);
+            $delDetail->execute();
+
+            $delSub = $conn->prepare("DELETE FROM penilaian_submission WHERE periode_id = ?");
+            $delSub->bind_param('i', $id);
+            $delSub->execute();
+
+            $delTarget = $conn->prepare("DELETE FROM penilaian_target_omset WHERE periode_id = ?");
+            $delTarget->bind_param('i', $id);
+            $delTarget->execute();
+
+            $delPeriode = $conn->prepare("DELETE FROM penilaian_periode WHERE id = ?");
+            $delPeriode->bind_param('i', $id);
+            $delPeriode->execute();
+
+            $conn->commit();
+        } catch (Exception $e) {
+            $conn->rollback();
+            respond(['status' => 'error', 'message' => 'Gagal menghapus periode: ' . $e->getMessage()]);
+        }
+
+        respond(['status' => 'success', 'message' => 'Periode & semua data terkait berhasil dihapus.']);
+    }
+
     // Ambil assignment lengkap (dengan nama) - buat tabel manajemen.
     case 'admin_get_assignment': {
         require_vip($conn);

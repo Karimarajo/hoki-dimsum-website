@@ -110,8 +110,8 @@
 
             <div class="table-wrap">
                 <table class="tbl">
-                    <thead><tr><th>Periode</th><th>Status</th><th>Dibuat Oleh</th><th>Dibuat Pada</th></tr></thead>
-                    <tbody id="tabelPeriode"><tr><td colspan="4" class="text-center text-muted">Memuat...</td></tr></tbody>
+                    <thead><tr><th>Periode</th><th>Status</th><th>Dibuat Oleh</th><th>Dibuat Pada</th><th style="width:140px;">Aksi</th></tr></thead>
+                    <tbody id="tabelPeriode"><tr><td colspan="5" class="text-center text-muted">Memuat...</td></tr></tbody>
                 </table>
             </div>
         </div>
@@ -431,7 +431,11 @@ async function loadPeriode() {
             <td><span class="pill-status ${p.status}">${p.status === 'aktif' ? '🟢 Aktif' : '🔒 Tutup'}</span></td>
             <td>${p.dibuat_oleh}</td>
             <td>${fmtDateTime(p.created_at)}</td>
-        </tr>`).join('') : '<tr><td colspan="4" class="text-center text-muted">Belum ada periode.</td></tr>';
+            <td style="white-space:nowrap;">
+                <button class="btn-mini gray" style="padding:4px 8px;font-size:11px;" onclick="editPeriode(${p.id}, '${p.tanggal_mulai}', '${p.tanggal_selesai}')">✏️ Edit</button>
+                <button class="btn-mini red" style="padding:4px 8px;font-size:11px;margin-left:4px;" onclick="hapusPeriode(${p.id})">🗑️ Hapus</button>
+            </td>
+        </tr>`).join('') : '<tr><td colspan="5" class="text-center text-muted">Belum ada periode.</td></tr>';
 
     loadMonitoring(aktif ? aktif.id : null);
     loadTargetOmset();
@@ -456,6 +460,31 @@ async function tutupPeriode(id) {
     if (res.status !== 'success') return toast.error(res.message || 'Gagal menutup periode.');
     toast.success('Periode ditutup.');
     loadPeriode();
+}
+
+async function editPeriode(id, tanggalMulai, tanggalSelesai) {
+    const mulaiBaru = prompt('Tanggal Mulai (YYYY-MM-DD):', tanggalMulai);
+    if (mulaiBaru === null) return;
+    const selesaiBaru = prompt('Tanggal Selesai (YYYY-MM-DD):', tanggalSelesai);
+    if (selesaiBaru === null) return;
+    if (!mulaiBaru || !selesaiBaru) return toast.warning('Tanggal mulai & selesai wajib diisi!');
+    try {
+        const res = await apiPostP('admin_update_periode', { id, tanggal_mulai: mulaiBaru, tanggal_selesai: selesaiBaru });
+        if (res.status !== 'success') return toast.error(res.message || 'Gagal mengubah periode.');
+        toast.success('Periode diperbarui!');
+        loadPeriode();
+    } catch (e) { toast.error('Gagal terhubung ke server.'); }
+}
+
+async function hapusPeriode(id) {
+    const ok = confirm('Hapus periode ini secara PERMANEN? Semua data penilaian (submission, target omset) di periode ini akan ikut terhapus dan TIDAK BISA dikembalikan.');
+    if (!ok) return;
+    try {
+        const res = await apiPostP('admin_delete_periode', { id });
+        if (res.status !== 'success') return toast.error(res.message || 'Gagal menghapus periode.');
+        toast.success('Periode berhasil dihapus.');
+        loadPeriode();
+    } catch (e) { toast.error('Gagal terhubung ke server.'); }
 }
 
 /* ── MAPPING ROLE -> TEMPLATE ── */
