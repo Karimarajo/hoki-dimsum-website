@@ -161,19 +161,6 @@
             </div>
         </div>
 
-        <!-- ── TARGET OMSET ── -->
-        <div class="section-card">
-            <h3>🎯 Target Omset (Periode Aktif)</h3>
-            <p class="text-muted" style="font-size:12px;margin-bottom:14px;">
-                Set target omset per staff untuk periode penilaian yang sedang aktif. Skor Omset di halaman Performa dihitung dari (Omset Aktual ÷ Target) × 25, maksimal 25. Staff yang belum diset targetnya akan tampil sebagai "Target belum diset" di Skor Total.
-            </p>
-            <div class="table-wrap">
-                <table class="tbl">
-                    <thead><tr><th>Staff</th><th>Role</th><th style="width:220px;">Target Omset (Rp)</th><th style="width:90px;"></th></tr></thead>
-                    <tbody id="tabelTargetOmset"><tr><td colspan="4" class="text-center text-muted">Memuat...</td></tr></tbody>
-                </table>
-            </div>
-        </div>
 
         <!-- ── MONITORING ── -->
         <div class="section-card">
@@ -438,7 +425,6 @@ async function loadPeriode() {
         </tr>`).join('') : '<tr><td colspan="5" class="text-center text-muted">Belum ada periode.</td></tr>';
 
     loadMonitoring(aktif ? aktif.id : null);
-    loadTargetOmset();
 }
 
 async function buatPeriode() {
@@ -574,38 +560,6 @@ function renderAssignmentTable() {
             <td><b>${g.nama}</b> <span class="text-muted" style="font-size:11px;">(${g.role})</span></td>
             <td>${g.targets.map(t => `<span class="penilai-tag">${t}</span>`).join('')}</td>
         </tr>`).join('') : '<tr><td colspan="2" class="text-center text-muted">Belum ada assignment.</td></tr>';
-}
-
-/* ── TARGET OMSET ── */
-let targetOmsetPeriodeId = null;
-
-async function loadTargetOmset() {
-    const tbody = document.getElementById('tabelTargetOmset');
-    const res = await apiGetP('admin_get_target_omset');
-    targetOmsetPeriodeId = res.periode_id;
-    if (!targetOmsetPeriodeId) {
-        tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">Tidak ada periode aktif.</td></tr>';
-        return;
-    }
-    const rows = res.data || [];
-    tbody.innerHTML = rows.length ? rows.map(r => `
-        <tr>
-            <td><b>${r.fullName}</b></td>
-            <td>${r.role}</td>
-            <td><input type="number" min="1" step="1" class="penilai-select" style="margin:0;" id="targetInput_${r.user_id}" value="${r.target_nominal > 0 ? r.target_nominal : ''}" placeholder="Belum diset"></td>
-            <td><button class="btn-mini red" style="padding:8px 12px;" onclick="simpanTargetOmset(${r.user_id})">💾</button></td>
-        </tr>`).join('') : '<tr><td colspan="4" class="text-center text-muted">Belum ada staff.</td></tr>';
-}
-
-async function simpanTargetOmset(staffId) {
-    const input = document.getElementById(`targetInput_${staffId}`);
-    const nominal = parseFloat(input.value);
-    if (!nominal || nominal <= 0) return toast.warning('Isi target nominal lebih dari 0!');
-    try {
-        const res = await apiPostP('admin_save_target_omset', { staff_id: staffId, periode_id: targetOmsetPeriodeId, target_nominal: nominal });
-        if (res.status !== 'success') return toast.error(res.message || 'Gagal menyimpan target.');
-        toast.success('Target omset disimpan!');
-    } catch (e) { toast.error('Gagal terhubung ke server.'); }
 }
 
 /* ── MONITORING ── */

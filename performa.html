@@ -823,7 +823,7 @@ function skorTotalKomponenRow(d) {
     return `
         <div style="display:flex; gap:18px; flex-wrap:wrap; margin-top:10px; font-size:12.5px; color:var(--text);">
             <span>📅 Absensi (30%): <b>${d.skor_absensi}</b> <span class="text-muted-inline">(${d.hari_kerja_aktual}/${d.hari_kalender_periode} hari)</span></span>
-            <span>💰 Omset (25%): ${d.skor_omset_status === 'ok' ? `<b>${d.skor_omset}</b>` : '<span class="text-muted-inline"><i>Target belum diset</i></span>'}</span>
+            <span>💰 Omset (25%): ${d.skor_omset_status === 'ok' ? `<b>${d.skor_omset}</b>` : '<span class="text-muted-inline"><i>Belum ada omset tercatat</i></span>'}</span>
             <span>🤝 Peer Review (45%): ${d.skor_peer_status === 'ok' ? `<b>${d.skor_peer}</b> <span class="text-muted-inline">(${d.jumlah_penilai} penilai)</span>` : '<span class="text-muted-inline"><i>Belum ada data</i></span>'}</span>
         </div>`;
 }
@@ -844,7 +844,7 @@ function renderSkorTotalTabel(data) {
             <td><b>${d.fullName}</b></td>
             <td>${d.role}</td>
             <td>${d.skor_absensi}</td>
-            <td>${d.skor_omset_status === 'ok' ? d.skor_omset : '<span class="text-muted-inline">Target belum diset</span>'}</td>
+            <td>${d.skor_omset_status === 'ok' ? d.skor_omset : '<span class="text-muted-inline">Belum ada omset</span>'}</td>
             <td>${d.skor_peer_status === 'ok' ? d.skor_peer : '<span class="text-muted-inline">Belum ada data</span>'}</td>
             <td>${d.status === 'lengkap' ? `<b style="color:var(--red);">${d.skor_total}</b>` : '<span class="pill-belum-lengkap">⏳ Data belum lengkap</span>'}</td>
         </tr>`).join('');

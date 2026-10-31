@@ -218,13 +218,16 @@ function hitung_absensi_omset_periode(mysqli $conn, array $periode, array $users
 /**
  * Skor Total 1 staff = Absensi (30%) + Omset (25%) + Peer Review (45%).
  * Absensi selalu lengkap (data kehadiran selalu ada sebagai angka nyata,
- * minimal 0). Omset butuh target_nominal > 0 di penilaian_target_omset
- * utk periode ini, kalau belum diset -> status 'target_belum_diset'. Peer
+ * minimal 0). Omset dihitung RELATIF terhadap staff dengan omset TERTINGGI
+ * di periode ini (bukan target manual lagi) - staff top performer otomatis
+ * dapat skor 25 penuh, staff lain proporsional: 25 x (omset dia / omset
+ * tertinggi). Kalau belum ada satupun staff yang punya omset tercatat di
+ * periode ini (omset tertinggi = 0) -> status 'belum_ada_omset'. Peer
  * butuh minimal 1 submission, kalau belum -> 'belum_ada_data'. Skor Total
  * HANYA dijumlah kalau Omset & Peer keduanya lengkap - tidak ada penjumlahan
  * parsial (sesuai spec), tapi komponen yang SUDAH ada tetap ditampilkan.
  */
-function hitung_skor_total_staff(mysqli $conn, array $periode, array $staff, array $absensiOmsetMap): array
+function hitung_skor_total_staff(mysqli $conn, array $periode, array $staff, array $absensiOmsetMap, float $omsetTertinggi): array
 {
     $uid = (int)$staff['id'];
     $hariKalender = ((strtotime($periode['tanggal_selesai']) - strtotime($periode['tanggal_mulai'])) / 86400) + 1;
@@ -233,18 +236,12 @@ function hitung_skor_total_staff(mysqli $conn, array $periode, array $staff, arr
 
     $skorAbsensi = $hariKalender > 0 ? round(min(30, ($hariKerja / $hariKalender) * 30), 2) : 0;
 
-    $stmtT = $conn->prepare("SELECT target_nominal FROM penilaian_target_omset WHERE staff_id=? AND periode_id=?");
-    $stmtT->bind_param('ii', $uid, $periode['id']);
-    $stmtT->execute();
-    $rowT = $stmtT->get_result()->fetch_assoc();
-    $targetNominal = $rowT ? (float)$rowT['target_nominal'] : 0.0;
-
-    if ($targetNominal <= 0) {
-        $skorOmsetStatus = 'target_belum_diset';
+    if ($omsetTertinggi <= 0) {
+        $skorOmsetStatus = 'belum_ada_omset';
         $skorOmset = null;
     } else {
         $skorOmsetStatus = 'ok';
-        $skorOmset = round(min(25, ($omsetAktual / $targetNominal) * 25), 2);
+        $skorOmset = round(min(25, ($omsetAktual / $omsetTertinggi) * 25), 2);
     }
 
     $skorPeerData   = hitung_skor_peer($conn, (int)$periode['id'], $uid);
@@ -265,7 +262,7 @@ function hitung_skor_total_staff(mysqli $conn, array $periode, array $staff, arr
         'skor_omset'            => $skorOmset,
         'skor_omset_status'     => $skorOmsetStatus,
         'omset_aktual'          => $omsetAktual,
-        'target_nominal'        => $targetNominal,
+        'omset_tertinggi'       => $omsetTertinggi,
         'skor_peer'             => $skorPeer,
         'skor_peer_status'      => $skorPeerStatus,
         'jumlah_penilai'        => $skorPeerData['jumlah_penilai'] ?? 0,
@@ -754,82 +751,30 @@ switch ($action) {
         respond(['status' => 'success', 'message' => 'Submission dihapus.']);
     }
 
-    // Target omset per staff per periode (dasar hitung Skor Omset) - VIP only.
-    case 'admin_get_target_omset': {
-        require_vip($conn);
-        $periodeId = (int)($_GET['periode_id'] ?? 0);
-        if ($periodeId <= 0) {
-            $p = get_periode_aktif($conn);
-            $periodeId = $p ? (int)$p['id'] : 0;
-        }
-        if ($periodeId <= 0) respond(['status' => 'success', 'periode_id' => null, 'data' => []]);
-
-        $staff = get_staff_pool($conn);
-        $stmt = $conn->prepare("SELECT staff_id, target_nominal FROM penilaian_target_omset WHERE periode_id=?");
-        $stmt->bind_param('i', $periodeId);
-        $stmt->execute();
-        $map = [];
-        foreach ($stmt->get_result()->fetch_all(MYSQLI_ASSOC) as $r) {
-            $map[(int)$r['staff_id']] = (float)$r['target_nominal'];
-        }
-
-        $data = [];
-        foreach ($staff as $u) {
-            $uid = (int)$u['id'];
-            $data[] = [
-                'user_id'        => $uid,
-                'username'       => $u['username'],
-                'fullName'       => $u['fullName'],
-                'role'           => $u['role'],
-                'target_nominal' => $map[$uid] ?? 0,
-            ];
-        }
-        respond(['status' => 'success', 'periode_id' => $periodeId, 'data' => $data]);
-    }
-
-    case 'admin_save_target_omset': {
-        require_vip($conn);
-        $staffId       = (int)($input['staff_id'] ?? 0);
-        $periodeId     = (int)($input['periode_id'] ?? 0);
-        $targetNominal = (float)($input['target_nominal'] ?? 0);
-
-        if ($staffId <= 0) respond(['status' => 'error', 'message' => 'Staff tidak valid.']);
-        if ($periodeId <= 0) {
-            $p = get_periode_aktif($conn);
-            $periodeId = $p ? (int)$p['id'] : 0;
-        }
-        if ($periodeId <= 0) respond(['status' => 'error', 'message' => 'Tidak ada periode aktif.']);
-        if ($targetNominal <= 0) respond(['status' => 'error', 'message' => 'Target nominal harus lebih dari 0.']);
-
-        $chk = $conn->prepare("SELECT id FROM users WHERE id=? AND role IN ('Staff','Senior Staff','SPV')");
-        $chk->bind_param('i', $staffId);
-        $chk->execute();
-        if ($chk->get_result()->num_rows === 0) respond(['status' => 'error', 'message' => 'Staff tidak ditemukan / bukan target penilaian.']);
-
-        $stmt = $conn->prepare("INSERT INTO penilaian_target_omset (staff_id, periode_id, target_nominal) VALUES (?,?,?)
-                                 ON DUPLICATE KEY UPDATE target_nominal = VALUES(target_nominal)");
-        $stmt->bind_param('iid', $staffId, $periodeId, $targetNominal);
-        $stmt->execute();
-        respond(['status' => 'success', 'message' => 'Target omset disimpan.']);
-    }
-
     // Skor Total = Absensi (30%) + Omset (25%) + Peer Review (45%), periode_aktif saja.
     // Owner/VIP lihat SEMUA staff (sorted desc, incomplete di bawah). Role lain HANYA
     // lihat milik sendiri - user_id diambil dari actor session, TIDAK PERNAH dari
-    // parameter client, supaya tidak bisa lihat skor orang lain.
+    // parameter client, supaya tidak bisa lihat skor orang lain. Omset tertinggi SELALU
+    // dihitung dari SEMUA staff pool (bukan cuma yg ditampilkan), supaya skala relatif
+    // konsisten baik dilihat dari sisi VIP (semua) maupun staff (diri sendiri).
     case 'get_skor_total': {
         $actor   = require_actor($conn);
         $periode = get_periode_aktif($conn);
         if (!$periode) respond(['status' => 'success', 'periode_aktif' => null, 'data' => []]);
 
-        $isAdmin = is_admin_role($actor['role']);
-        $staffList = $isAdmin ? get_staff_pool($conn) : [$actor];
+        $isAdmin   = is_admin_role($actor['role']);
+        $staffPool = get_staff_pool($conn);
+        $staffList = $isAdmin ? $staffPool : [$actor];
 
-        $absOmsetMap = hitung_absensi_omset_periode($conn, $periode, $staffList);
+        $absOmsetMap = hitung_absensi_omset_periode($conn, $periode, $staffPool);
+        $omsetTertinggi = 0.0;
+        foreach ($absOmsetMap as $v) {
+            $omsetTertinggi = max($omsetTertinggi, (float)($v['omset'] ?? 0));
+        }
 
         $data = [];
         foreach ($staffList as $s) {
-            $data[] = hitung_skor_total_staff($conn, $periode, $s, $absOmsetMap);
+            $data[] = hitung_skor_total_staff($conn, $periode, $s, $absOmsetMap, $omsetTertinggi);
         }
 
         if ($isAdmin) {
