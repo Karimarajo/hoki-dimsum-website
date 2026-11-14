@@ -680,7 +680,10 @@ async function loadProdukList() {
 
         // Saring daftar bahan baku agar tidak ganda dengan barang di stok gudang/logistik manual
         const invNames = invList.map(i => i.nama_barang.toLowerCase());
-        list = list.filter(p => !invNames.includes(p.nama.toLowerCase()));
+        // Hanya buang entri tanpa bahan_id (sisa ledger Stok Gudang). Bahan baku asli (punya
+        // bahan_id, mis. Lunch Box S/M (New)) tetap tampil walau namanya sama dgn barang gudang -
+        // pencatatannya terpisah dari Stok Gudang.
+        list = list.filter(p => p.bahan_id || !invNames.includes(p.nama.toLowerCase()));
 
         warehouseItems = list;
 
