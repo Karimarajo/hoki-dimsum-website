@@ -1915,6 +1915,7 @@ switch ($action) {
             $stmtDelLedger->bind_param('ss', $cb, $rid);
             $stmtDelLedger->execute();
 
+            [, $inventoryNamesLaporan] = ambil_konteks_normalisasi_bahan($conn);
             foreach ($au_data as $item) {
                 $laku = (float)($item['laku'] ?? 0);
                 if ($laku > 0) {
@@ -1927,7 +1928,9 @@ switch ($action) {
                     // sku tetap kolom display/snapshot histori - utk item master format
                     // "Nama (Satuan)" dipertahankan spy histori lama & baru konsisten, item
                     // custom apa adanya (tidak pernah punya satuan terpisah).
-                    $skuDisplay = ($bahanIdItem > 0 && $satuanRaw !== '')
+                    // Pengecualian: bahan baku yg namanya sama dgn barang Stok Gudang (mis. Lunch Box
+                    // S/M (New)) pakai nama polos tanpa "(satuan)" supaya satu ledger dgn Stok Gudang.
+                    $skuDisplay = ($bahanIdItem > 0 && $satuanRaw !== '' && !isset($inventoryNamesLaporan[strtolower($namaRaw)]))
                         ? "$namaRaw ($satuanRaw)"
                         : $namaRaw;
                     $namaItem = $conn->real_escape_string($skuDisplay);
@@ -2120,6 +2123,10 @@ switch ($action) {
         $res = $conn->query("SELECT *, DATE_FORMAT(tgl, '%d/%m/%Y') as waktu_tampil
                              FROM warehouse_ledger
                              WHERE sku='$namaItem'
+                                OR (bahan_id IS NOT NULL AND bahan_id IN (
+                                      SELECT b.id FROM bahan_baku b
+                                      JOIN inventory i ON LOWER(TRIM(i.nama_barang)) = LOWER(TRIM(b.nama))
+                                      WHERE LOWER(TRIM(b.nama)) = LOWER(TRIM('$namaItem'))))
                              ORDER BY tgl ASC, created_at ASC, id ASC");
         
         $history = [];
@@ -2162,7 +2169,7 @@ switch ($action) {
                              FROM warehouse_ledger
                              GROUP BY bahan_id, sku");
         [$bahanSatuanSet, $inventoryNameSet] = ambil_konteks_normalisasi_bahan($conn);
-        [, $bahanByNama, $ambiguous] = ambil_bahan_baku_lookup($conn);
+        [$bahanById, $bahanByNama, $ambiguous] = ambil_bahan_baku_lookup($conn);
         $stokMap = [];
         if ($res) {
             while ($row = $res->fetch_assoc()) {
@@ -2171,6 +2178,13 @@ switch ($action) {
                 $key = $resolvedId !== null
                     ? 'bid:' . $resolvedId
                     : 'sku:' . normalisasi_nama_bahan($row['sku'], $bahanSatuanSet, $inventoryNameSet);
+                // Bahan baku yg namanya SAMA dgn barang Stok Gudang (mis. Lunch Box S/M (New)) itu
+                // satu barang fisik yg sama: masuk lewat Stok Gudang, keluar lewat Laporan
+                // Penjualan. Gabung ke key 'sku:<nama>' supaya kartu di kedua tab konsisten.
+                if ($resolvedId !== null && isset($bahanById[$resolvedId])
+                    && isset($inventoryNameSet[strtolower(trim($bahanById[$resolvedId]['nama']))])) {
+                    $key = 'sku:' . strtolower(trim($bahanById[$resolvedId]['nama']));
+                }
                 $stokMap[$key] = ($stokMap[$key] ?? 0) + (float)$row['sisa'];
             }
         }
@@ -3264,8 +3278,16 @@ switch ($action) {
         if ($resMaster) {
             while ($r = $resMaster->fetch_assoc()) {
                 $key = 'bid:' . $r['id'];
+                $skuLedger = null;
+                // Nama sama dgn barang Stok Gudang -> satu stok fisik yg sama (lihat catatan di
+                // get_warehouse_stok_semua): pakai key & sku ledger milik Stok Gudang.
+                $namaLower = strtolower(trim($r['nama']));
+                if (isset($inventoryNameSet[$namaLower])) {
+                    $key = 'sku:' . $namaLower;
+                    $skuLedger = trim($r['nama']);
+                }
                 $seenKeys[$key] = true;
-                $output[] = ["key" => $key, "bahan_id" => (int)$r['id'], "nama" => $r['nama'], "satuan" => $r['satuan']];
+                $output[] = ["key" => $key, "bahan_id" => (int)$r['id'], "nama" => $r['nama'], "satuan" => $r['satuan'], "stok_harian" => true, "sku" => $skuLedger];
             }
         }
 
@@ -3290,6 +3312,9 @@ switch ($action) {
 
                 if ($resolvedId !== null) {
                     $key = 'bid:' . $resolvedId;
+                    if (isset($bahanById[$resolvedId]) && isset($inventoryNameSet[strtolower(trim($bahanById[$resolvedId]['nama']))])) {
+                        $key = 'sku:' . strtolower(trim($bahanById[$resolvedId]['nama']));
+                    }
                     if (isset($seenKeys[$key])) continue;
                     $seenKeys[$key] = true;
                     // Kalau row bahan_baku-nya sudah dihapus (bisa terjadi utk bahan_id yg
