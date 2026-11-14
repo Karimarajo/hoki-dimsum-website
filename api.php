@@ -2117,15 +2117,32 @@ switch ($action) {
         // PERBAIKAN: Ambil dari kolom 'tgl' dan urutkan berdasarkan 'tgl'.
         // Tie-breaker 'id' di posisi terakhir supaya urutan pemrosesan saldo kumulatif
         // selalu deterministik walau ada baris dengan tgl/created_at yang sama persis.
+        // bahan_id (opsional) dikirim kartu Bahan Baku (otomatis). Pencatatan Bahan Baku dan
+        // Stok Gudang itu TERPISAH walau namanya bisa sama (mis. Lunch Box S (New)):
+        //  - dgn bahan_id : baris milik bahan_id itu + baris lama tanpa bahan_id yg sku-nya persis sama
+        //  - tanpa bahan_id (Stok Gudang): baris sku itu, KECUALI baris milik bahan baku
+        //    (bahan_id terisi & namanya sama dgn sku) - itu catatan penjualan Bahan Baku.
+        // Filter dilakukan di PHP, bukan subquery SQL, supaya tidak bergantung collation antar tabel.
+        $bahanIdReq = (int)($_GET['bahan_id'] ?? 0);
+        $skuNorm = strtolower(trim($_GET['sku'] ?? ''));
+        [$bahanByIdL] = ambil_bahan_baku_lookup($conn);
+        $whereSql = $bahanIdReq > 0 ? "sku='$namaItem' OR bahan_id=$bahanIdReq" : "sku='$namaItem'";
         $res = $conn->query("SELECT *, DATE_FORMAT(tgl, '%d/%m/%Y') as waktu_tampil
                              FROM warehouse_ledger
-                             WHERE sku='$namaItem'
+                             WHERE $whereSql
                              ORDER BY tgl ASC, created_at ASC, id ASC");
         
         $history = [];
         $saldo = 0;
         if ($res) {
             while ($row = $res->fetch_assoc()) {
+                $rowBid = !empty($row['bahan_id']) ? (int)$row['bahan_id'] : 0;
+                if ($bahanIdReq > 0) {
+                    if (!($rowBid === $bahanIdReq || ($rowBid === 0 && $row['sku'] === $_GET['sku']))) continue;
+                } else {
+                    if ($rowBid > 0 && isset($bahanByIdL[$rowBid])
+                        && strtolower(trim($bahanByIdL[$rowBid]['nama'])) === $skuNorm) continue;
+                }
                 $masuk  = (float)$row['masuk'];
                 $keluar = (float)$row['keluar'];
                 $saldo  = $saldo + $masuk - $keluar;

@@ -758,15 +758,15 @@ function onProdukChange(id, bahanId = null) {
     document.getElementById('formCard').style.display  = '';
     document.getElementById('tableCard').style.display = '';
 
-    loadLedger(id);
+    loadLedger(id, selectedBahanId);
 }
 
-async function loadLedger(namaItem) {
+async function loadLedger(namaItem, bahanId = null) {
     const tbody = document.getElementById('ledgerTbody');
     tbody.innerHTML = `<tr><td class="wh-empty-td" colspan="6">⏳ Memuat...</td></tr>`;
 
     try {
-        const res = await fetch(`${API_BASE}?action=get_warehouse_ledger&sku=${encodeURIComponent(namaItem)}`);
+        const res = await fetch(`${API_BASE}?action=get_warehouse_ledger&sku=${encodeURIComponent(namaItem)}${bahanId ? '&bahan_id=' + bahanId : ''}`);
         const list = await res.json().catch(() => []);
 
         document.getElementById('ledgerCount').textContent = list.length > 0 ? `${list.length} entri` : '';
@@ -815,7 +815,7 @@ async function hapusLedger(id) {
         const hasil = await res.json();
         if (hasil.status === 'success') {
             toast.success('Data berhasil dihapus');
-            loadLedger(selectedSKU); // Refresh tabel
+            loadLedger(selectedSKU, selectedBahanId); // Refresh tabel
             loadProdukList(); // Perbarui sisa stok di grid kartu secara langsung
         } else {
             toast.error('Gagal menghapus: ' + (hasil.message || 'error'));
@@ -856,7 +856,7 @@ async function tambahMasuk() {
             toast.success(`Transaksi ${mode} untuk ${selectedSKU} berhasil disimpan!`);
             document.getElementById('masukQty').value     = '';
             document.getElementById('masukCatatan').value = '';
-            loadLedger(selectedSKU);
+            loadLedger(selectedSKU, selectedBahanId);
             
             // Refresh kedua grid list agar data terbaru ter-render
             loadProdukList();
@@ -1007,7 +1007,7 @@ window.onload = () => {
     updateClock();
     loadProdukList();
     loadLogistikList(); // Load daftar stok logistik/gudang manual
-    setInterval(() => { if (selectedSKU) loadLedger(selectedSKU); }, 30000);
+    setInterval(() => { if (selectedSKU) loadLedger(selectedSKU, selectedBahanId); }, 30000);
 };
 </script>
 
