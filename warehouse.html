@@ -633,6 +633,10 @@ let selectedSKU = null;
 // Dikirim balik ke save_warehouse_masuk supaya baris baru konsisten dgn key 'bid:<id>' yang
 // dipakai kartu grid (lihat get_warehouse_stok_semua) - tanpa ini kartu & histori bisa beda.
 let selectedBahanId = null;
+// 'bahan' = Bahan Baku (warehouse_ledger, kunci bahan_id); 'gudang' = Stok Gudang manual
+// (stok_gudang_ledger, kunci inventory_id). Dua pencatatan TERPISAH.
+let selectedTipe = 'bahan';
+let selectedInvId = null;
 
 /* ── GRID CARD SELECTION ── */
 function sisaClass(sisa) {
@@ -651,39 +655,21 @@ function sisaClassLogistik(sisa) {
 // Menyimpan cache item list gudang
 let warehouseItems = [];
 
-// Samakan dgn normalisasi_nama_bahan() di api.php - dipakai utk cocokkan item Logistik
-// Manual (selalu bahan_id NULL) ke key stokMap baru ('sku:<normalized>'). nama_barang di
-// sini SELALU persis nama yang terdaftar di tabel `inventory` (lihat kutipan guard #1 di
-// normalisasi_nama_bahan()), jadi JANGAN pernah buang "(...)" di akhirnya - kurung itu
-// bagian dari nama asli barang (mis. "Plastik Frozen (Roll)"), bukan suffix satuan. Versi
-// lama fungsi ini asal strip kurung tanpa cek itu, bikin kartu Logistik nyasar ke key yang
-// salah utk barang bernama demikian (lihat insiden di komentar normalisasi_nama_bahan()).
-function normalizeSkuKey(sku) {
-    return 'sku:' + String(sku || '').trim().toLowerCase();
-}
-
 async function loadProdukList() {
     const gridContainer = document.getElementById('whGridContainer');
     try {
         // Tarik daftar item + ringkasan sisa stok SEMUA sku dalam 1 query (get_warehouse_stok_semua),
         // BUKAN fetch get_warehouse_ledger satu-satu per item - dulu bisa puluhan request paralel
         // sekaligus dan gampang kehabisan slot koneksi MySQL di shared hosting.
-        const [resMaster, resInv, resStok] = await Promise.all([
+        const [resMaster, resStok] = await Promise.all([
             fetch(`${API_BASE}?action=get_audit_items_master`),
-            fetch(`${API_BASE}?action=get_inventory`),
             fetch(`${API_BASE}?action=get_warehouse_stok_semua`)
         ]);
         let list = await resMaster.json().catch(() => []);
-        const invList = await resInv.json().catch(() => []);
         let stokMap = await resStok.json().catch(() => ({}));
         if (!stokMap || typeof stokMap !== 'object' || Array.isArray(stokMap)) stokMap = {};
 
-        // Saring daftar bahan baku agar tidak ganda dengan barang di stok gudang/logistik manual
-        const invNames = invList.map(i => i.nama_barang.toLowerCase());
-        // Hanya buang entri tanpa bahan_id (sisa ledger Stok Gudang). Bahan baku asli (punya
-        // bahan_id, mis. Lunch Box S/M (New)) tetap tampil walau namanya sama dgn barang gudang -
-        // pencatatannya terpisah dari Stok Gudang.
-        list = list.filter(p => p.bahan_id || !invNames.includes(p.nama.toLowerCase()));
+        // Daftar = bahan baku yang dicentang "Audit Stok Harian" (sumber: menu Bahan Baku).
 
         warehouseItems = list;
 
@@ -711,7 +697,7 @@ async function loadProdukList() {
             const card = document.createElement('div');
             card.className = `wh-item-card ${selectedSKU === skuText ? 'active' : ''}`;
             card.id = `card-${skuText.replace(/\s+/g, '-')}`;
-            card.onclick = () => onProdukChange(skuText, p.bahan_id || null);
+            card.onclick = () => onProdukChange(skuText, p.bahan_id, 'bahan', null);
 
             card.innerHTML = `
                 <h4 class="wh-item-card-name">${p.nama}</h4>
@@ -728,10 +714,11 @@ async function loadProdukList() {
     }
 }
 
-function onProdukChange(id, bahanId = null) {
+function onProdukChange(id, bahanId = null, tipe = 'bahan', invId = null) {
     if (!id) {
         selectedSKU = null;
         selectedBahanId = null;
+        selectedInvId = null;
         document.getElementById('formCard').style.display  = 'none';
         document.getElementById('tableCard').style.display = 'none';
         return;
@@ -739,6 +726,8 @@ function onProdukChange(id, bahanId = null) {
 
     selectedSKU = id;
     selectedBahanId = bahanId || null;
+    selectedTipe = tipe;
+    selectedInvId = invId || null;
 
     // Perbarui status aktif pada deretan kartu (baik Bahan Baku maupun Logistik)
     document.querySelectorAll('.wh-item-card').forEach(card => {
@@ -758,15 +747,18 @@ function onProdukChange(id, bahanId = null) {
     document.getElementById('formCard').style.display  = '';
     document.getElementById('tableCard').style.display = '';
 
-    loadLedger(id, selectedBahanId);
+    loadLedger();
 }
 
-async function loadLedger(namaItem, bahanId = null) {
+async function loadLedger() {
     const tbody = document.getElementById('ledgerTbody');
     tbody.innerHTML = `<tr><td class="wh-empty-td" colspan="6">⏳ Memuat...</td></tr>`;
 
     try {
-        const res = await fetch(`${API_BASE}?action=get_warehouse_ledger&sku=${encodeURIComponent(namaItem)}${bahanId ? '&bahan_id=' + bahanId : ''}`);
+        const url = selectedTipe === 'gudang'
+            ? `${API_BASE}?action=get_gudang_ledger&inventory_id=${selectedInvId}`
+            : `${API_BASE}?action=get_warehouse_ledger&bahan_id=${selectedBahanId}`;
+        const res = await fetch(url);
         const list = await res.json().catch(() => []);
 
         document.getElementById('ledgerCount').textContent = list.length > 0 ? `${list.length} entri` : '';
@@ -806,7 +798,7 @@ async function hapusLedger(id) {
     if (!ok) return;
 
     try {
-        const res = await fetch(`${API_BASE}?action=delete_warehouse_ledger`, {
+        const res = await fetch(`${API_BASE}?action=${selectedTipe === 'gudang' ? 'delete_gudang_ledger' : 'delete_warehouse_ledger'}`, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({ id: id })
@@ -815,8 +807,8 @@ async function hapusLedger(id) {
         const hasil = await res.json();
         if (hasil.status === 'success') {
             toast.success('Data berhasil dihapus');
-            loadLedger(selectedSKU, selectedBahanId); // Refresh tabel
-            loadProdukList(); // Perbarui sisa stok di grid kartu secara langsung
+            loadLedger(); // Refresh tabel
+            loadProdukList(); loadLogistikList(); // Perbarui sisa stok di grid kartu
         } else {
             toast.error('Gagal menghapus: ' + (hasil.message || 'error'));
         }
@@ -840,13 +832,14 @@ async function tambahMasuk() {
         const payload = {
             sku: selectedSKU,
             bahan_id: selectedBahanId,
+            inventory_id: selectedInvId,
             tgl: tgl,
             masuk: mode === 'masuk' ? qty : 0,
             keluar: mode === 'keluar' ? qty : 0,
             catatan: catatan || `Input (${mode === 'masuk' ? 'Masuk' : 'Keluar'})`
         };
 
-        const res = await fetch(`${API_BASE}?action=save_warehouse_masuk`, {
+        const res = await fetch(`${API_BASE}?action=${selectedTipe === 'gudang' ? 'save_gudang_ledger' : 'save_warehouse_masuk'}`, {
             method:  'POST',
             headers: {'Content-Type':'application/json'},
             body:    JSON.stringify(payload)
@@ -856,7 +849,7 @@ async function tambahMasuk() {
             toast.success(`Transaksi ${mode} untuk ${selectedSKU} berhasil disimpan!`);
             document.getElementById('masukQty').value     = '';
             document.getElementById('masukCatatan').value = '';
-            loadLedger(selectedSKU, selectedBahanId);
+            loadLedger();
             
             // Refresh kedua grid list agar data terbaru ter-render
             loadProdukList();
@@ -877,7 +870,7 @@ async function loadLogistikList() {
         // fetch get_warehouse_ledger satu-satu per item (lihat catatan di loadProdukList).
         const [res, resStok] = await Promise.all([
             fetch(`${API_BASE}?action=get_inventory`),
-            fetch(`${API_BASE}?action=get_warehouse_stok_semua`)
+            fetch(`${API_BASE}?action=get_gudang_stok_semua`)
         ]);
         const list = await res.json().catch(() => []);
         let stokMap = await resStok.json().catch(() => ({}));
@@ -892,9 +885,8 @@ async function loadLogistikList() {
 
         // Urutan kartu tetap sesuai daftar array (A-Z)
         const cards = list.map((p) => {
-            // Barang logistik manual selalu bahan_id NULL di ledger, jadi stokMap-nya
-            // di-key pakai fallback 'sku:<normalized>' (lihat get_warehouse_stok_semua).
-            const sisaStok = parseFloat(stokMap[normalizeSkuKey(p.nama_barang)]) || 0;
+            // Stok Gudang: tabel stok_gudang_ledger, key 'inv:<inventory_id>' (get_gudang_stok_semua).
+            const sisaStok = parseFloat(stokMap['inv:' + p.id]) || 0;
 
             const cSisa = sisaClassLogistik(sisaStok);
             const unit = ' ' + p.satuan;
@@ -903,7 +895,7 @@ async function loadLogistikList() {
             card.className = `wh-item-card ${selectedSKU === p.nama_barang ? 'active' : ''}`;
             card.id = `card-logistik-${p.nama_barang.replace(/\s+/g, '-')}`;
             card.onclick = () => {
-                onProdukChange(p.nama_barang);
+                onProdukChange(p.nama_barang, null, 'gudang', p.id);
             };
 
             card.innerHTML = `
@@ -943,7 +935,7 @@ function closeDaftarBarangModalOutside(e) {
 
 async function hapusLogistik(e, id, nama) {
     e.stopPropagation();
-    const ok = await showConfirm(`Yakin ingin menghapus ${nama} dari daftar logistik? Data ledger untuk barang ini tidak akan terhapus.`, 'Ya, Hapus', 'Batal', '🗑️');
+    const ok = await showConfirm(`Yakin ingin menghapus ${nama} dari Stok Gudang? Seluruh riwayat stok barang ini IKUT TERHAPUS permanen.`, 'Ya, Hapus', 'Batal', '🗑️');
     if (!ok) return;
 
     try {
@@ -1007,7 +999,7 @@ window.onload = () => {
     updateClock();
     loadProdukList();
     loadLogistikList(); // Load daftar stok logistik/gudang manual
-    setInterval(() => { if (selectedSKU) loadLedger(selectedSKU, selectedBahanId); }, 30000);
+    setInterval(() => { if (selectedSKU) loadLedger(); }, 30000);
 };
 </script>
 

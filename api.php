@@ -411,6 +411,22 @@ if ($checkBahanId && $checkBahanId->num_rows === 0) {
     $conn->query("ALTER TABLE warehouse_ledger ADD INDEX idx_bahan_id (bahan_id)");
 }
 
+// Pencatatan MANUAL Stok Gudang - tabel TERPISAH dari warehouse_ledger (yang khusus Bahan
+// Baku). Kunci = inventory_id, bukan tebakan nama. Jika barang gudang dihapus, baris
+// ledger-nya ikut dihapus (lihat del_inventory).
+$conn->query("CREATE TABLE IF NOT EXISTS stok_gudang_ledger (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    tgl DATE NOT NULL,
+    inventory_id INT NOT NULL,
+    nama_barang VARCHAR(255) NOT NULL,
+    masuk FLOAT DEFAULT 0,
+    keluar FLOAT DEFAULT 0,
+    catatan VARCHAR(255) DEFAULT '',
+    created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_inv (inventory_id),
+    INDEX idx_tgl (tgl)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
 // Buat tabel inventory jika belum ada (untuk Stok Gudang / Logistik)
 $conn->query("CREATE TABLE IF NOT EXISTS inventory (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -721,118 +737,8 @@ function validasi_kupon_internal(mysqli $conn, string $kode, string $cabang, arr
     ];
 }
 
-// ── Helper warehouse_ledger: normalisasi teks sku lama (tanpa bahan_id) jadi key
-// grouping yang stabil - trim, lowercase, buang suffix "(satuan)" di akhir - TAPI HANYA
-// kalau suffix itu memang terbukti satuan tempelan sistem (format "Nama (Satuan)" dari
-// save_laporan), bukan bagian dari nama asli barang.
-//
-// Dua pengaman wajib (lihat insiden: ledger "Plastik Frozen (Roll)" milik barang Stok
-// Gudang/inventory ke-backfill salah ke bahan_baku "Plastik Frozen" / satuan "cm", krn versi
-// lama fungsi ini asal strip APA PUN di dalam kurung):
-//   1. Kalau nama (APA ADANYA, kurung-nya pun ikut) persis terdaftar di tabel `inventory`,
-//      JANGAN PERNAH dianggap match ke bahan_baku manapun - itu barang Stok Gudang, bukan
-//      bahan baku resep, meski kebetulan nama/kurungnya mirip (mis. "Sticker Bulat" ada
-//      identik persis di bahan_baku DAN inventory).
-//   2. Kurung di akhir cuma boleh dibuang kalau isinya (lowercase+trim) memang cocok ke
-//      salah satu nilai `satuan` yang benar2 dipakai di bahan_baku - kalau tidak ketemu,
-//      kurung itu bagian dari nama asli barang, JANGAN di-strip.
-// $bahanSatuanSet & $inventoryNameSet: lihat ambil_konteks_normalisasi_bahan(). ──
-function normalisasi_nama_bahan(string $s, array $bahanSatuanSet = [], array $inventoryNameSet = []): string {
-    $s = trim($s);
-    $lower = strtolower($s);
-
-    if (isset($inventoryNameSet[$lower])) {
-        return $lower;
-    }
-
-    if (preg_match('/^(.*?)\s*\(([^)]*)\)\s*$/', $s, $m)) {
-        $isiKurung = strtolower(trim($m[2]));
-        if (isset($bahanSatuanSet[$isiKurung])) {
-            $s = trim($m[1]);
-        }
-    }
-
-    return strtolower(trim($s));
-}
-
-// Siapkan konteks utk normalisasi_nama_bahan(): daftar satuan resmi dari bahan_baku, dan
-// daftar nama barang di inventory (Stok Gudang/Logistik manual) - keduanya lowercase+trim
-// supaya lookup O(1) case-insensitive.
-function ambil_konteks_normalisasi_bahan(mysqli $conn): array {
-    $bahanSatuanSet = [];
-    $res = $conn->query("SELECT DISTINCT satuan FROM bahan_baku WHERE satuan IS NOT NULL AND TRIM(satuan) <> ''");
-    if ($res) {
-        while ($r = $res->fetch_assoc()) {
-            $bahanSatuanSet[strtolower(trim($r['satuan']))] = true;
-        }
-    }
-
-    $inventoryNameSet = [];
-    $res2 = $conn->query("SELECT DISTINCT nama_barang FROM inventory");
-    if ($res2) {
-        while ($r = $res2->fetch_assoc()) {
-            $inventoryNameSet[strtolower(trim($r['nama_barang']))] = true;
-        }
-    }
-
-    return [$bahanSatuanSet, $inventoryNameSet];
-}
-
-// Ambil seluruh bahan_baku jadi 2 peta: by-id (nama/satuan canonical utk tampilan) dan
-// by-nama-ternormalisasi (utk live-resolve baris warehouse_ledger lama yg bahan_id-nya
-// masih NULL - legacy dari sblm kolom ini ada, atau sisa dari bug save_warehouse_masuk yg
-// dulu tidak pernah mengisi bahan_id). Tanpa live-resolve ini, baris begitu nongol sbg
-// "kartu hantu" terpisah dgn nama mentah "Nama (Satuan)" di get_audit_items_master, DAN
-// sisa stoknya ke-split dari total yang seharusnya di get_warehouse_stok_semua (lihat bug:
-// "Dimsum Shaomai (pcs)" muncul sbg kartu ganda padahal "Dimsum Shaomai" sudah ada).
-// Nama ternormalisasi yg nabrak (≥2 bahan_baku beda id) ditandai $ambiguous & TIDAK PERNAH
-// ditebak - prinsip sama persis dgn migrate_backfill_warehouse_bahan_id.php.
-function ambil_bahan_baku_lookup(mysqli $conn): array {
-    $byId = [];
-    $byNama = [];
-    $ambiguous = [];
-    $res = $conn->query("SELECT id, nama, satuan FROM bahan_baku");
-    if ($res) {
-        while ($row = $res->fetch_assoc()) {
-            $id = (int)$row['id'];
-            $byId[$id] = ['nama' => $row['nama'], 'satuan' => $row['satuan']];
-
-            $norm = strtolower(trim($row['nama']));
-            if ($norm === '') continue;
-            if (isset($byNama[$norm]) && $byNama[$norm]['id'] !== $id) {
-                $ambiguous[$norm] = true;
-            }
-            $byNama[$norm] = ['id' => $id, 'satuan' => strtolower(trim($row['satuan'] ?? ''))];
-        }
-    }
-    return [$byId, $byNama, $ambiguous];
-}
-
-// Resolve 1 baris warehouse_ledger (bahan_id boleh NULL) ke bahan_id definitif. Kalau
-// kolomnya sudah terisi, pakai itu apa adanya. Kalau NULL, coba cocokkan teks sku ke
-// bahan_baku: exact match nama ke `inventory` SELALU menang (brarti barang Stok Gudang/
-// Logistik, bukan resep - lihat insiden "Plastik Frozen (Roll)"), baru exact nama atau pola
-// "Nama (Satuan)" ke bahan_baku - nama ambigu tidak pernah ditebak, balik null (fallback
-// sku-text spt biasa).
-function resolve_bahan_id_ledger(?int $bahanId, string $sku, array $byNama, array $ambiguous, array $inventoryNameSet): ?int {
-    if (!empty($bahanId)) return $bahanId;
-
-    $sku = trim($sku);
-    $lower = strtolower($sku);
-    if ($sku === '' || isset($inventoryNameSet[$lower])) return null;
-
-    if (isset($byNama[$lower]) && !isset($ambiguous[$lower])) {
-        return $byNama[$lower]['id'];
-    }
-    if (preg_match('/^(.*?)\s*\(([^)]*)\)\s*$/', $sku, $m)) {
-        $before    = strtolower(trim($m[1]));
-        $isiKurung = strtolower(trim($m[2]));
-        if (isset($byNama[$before]) && !isset($ambiguous[$before]) && $byNama[$before]['satuan'] === $isiKurung) {
-            return $byNama[$before]['id'];
-        }
-    }
-    return null;
-}
+// (Helper tebak-nama warehouse_ledger sudah dihapus: Stok Gudang kini punya tabel sendiri
+//  stok_gudang_ledger, Bahan Baku memakai warehouse_ledger dgn bahan_id wajib.)
 
 // ── Helper log login: IP, device, lokasi (dipakai action add_log) ──
 function get_client_ip(): string {
@@ -1643,6 +1549,9 @@ switch ($action) {
     case 'del_inventory':
         $id = (int)($_GET['id'] ?? 0);
         if ($id > 0) {
+            // Keputusan: barang gudang yang dihapus -> riwayat ledger-nya ikut hilang,
+            // supaya tidak ada data yatim yang nyangkut di Marajo / laporan lain.
+            $conn->query("DELETE FROM stok_gudang_ledger WHERE inventory_id=$id");
             $conn->query("DELETE FROM inventory WHERE id=$id");
         }
         echo json_encode(["status"=>"success"]);
@@ -1915,31 +1824,27 @@ switch ($action) {
             $stmtDelLedger->bind_param('ss', $cb, $rid);
             $stmtDelLedger->execute();
 
+            // Keputusan: semua item audit HARUS dari menu Bahan Baku (punya bahanId). Item custom
+            // tanpa bahanId tidak lagi ditulis ke ledger - dicatat di $dilewati & dilaporkan balik.
+            $dilewati = [];
             foreach ($au_data as $item) {
                 $laku = (float)($item['laku'] ?? 0);
                 if ($laku > 0) {
-                    // Item default dari master bahan_baku bawa bahanId (presisi, imun ke rename/
-                    // casing). Item custom (ditambah manual via auditNamaBaru) tidak punya
-                    // bahanId - tetap fallback ke sku teks seperti sebelumnya.
                     $bahanIdItem = (int)($item['bahanId'] ?? 0);
                     $namaRaw     = trim($item['nama'] ?? '');
-                    $satuanRaw   = trim($item['satuan'] ?? '');
-                    // sku tetap kolom display/snapshot histori - utk item master format
-                    // "Nama (Satuan)" dipertahankan spy histori lama & baru konsisten, item
-                    // custom apa adanya (tidak pernah punya satuan terpisah).
-                    $skuDisplay = ($bahanIdItem > 0 && $satuanRaw !== '')
-                        ? "$namaRaw ($satuanRaw)"
-                        : $namaRaw;
+                    $rbb = $bahanIdItem > 0 ? $conn->query("SELECT nama, satuan FROM bahan_baku WHERE id=$bahanIdItem") : null;
+                    $bbRow = $rbb ? $rbb->fetch_assoc() : null;
+                    if (!$bbRow) { $dilewati[] = $namaRaw; continue; }
+                    $satuanRaw = trim($bbRow['satuan'] ?? '');
+                    $skuDisplay = $satuanRaw !== '' ? "{$bbRow['nama']} ($satuanRaw)" : $bbRow['nama'];
                     $namaItem = $conn->real_escape_string($skuDisplay);
                     $ket = "Laporan $cb ($rid)";
-                    $bahanIdSql = $bahanIdItem > 0 ? $bahanIdItem : 'NULL';
 
-                    // PERBAIKAN: Gunakan '$tglOnly', bukan CURDATE()
                     $conn->query("INSERT INTO warehouse_ledger (tgl, sku, bahan_id, masuk, keluar, cabang, catatan)
-                                  VALUES ('$tglOnly', '$namaItem', $bahanIdSql, 0, $laku, '$cb', '$ket')");
+                                  VALUES ('$tglOnly', '$namaItem', $bahanIdItem, 0, $laku, '$cb', '$ket')");
                 }
             }
-            echo json_encode(["status" => "success"]);
+            echo json_encode(["status" => "success", "dilewati" => $dilewati]);
         }
         break;
 
@@ -2109,47 +2014,25 @@ switch ($action) {
         echo json_encode($ok ? ["status"=>"success"] : ["status"=>"error","message"=>$conn->error]);
         break;
 
-    // ── WAREHOUSE LEDGER ──────────────────────────────
+    // ── WAREHOUSE LEDGER: BAHAN BAKU (tabel warehouse_ledger, kunci bahan_id) ──
+    // Stok Gudang manual TIDAK ada di sini - lihat *_gudang_* di bawah.
     case 'get_warehouse_ledger':
-        $namaItem = $conn->real_escape_string($_GET['sku'] ?? '');
-        if (!$namaItem) { echo json_encode([]); break; }
-
-        // PERBAIKAN: Ambil dari kolom 'tgl' dan urutkan berdasarkan 'tgl'.
-        // Tie-breaker 'id' di posisi terakhir supaya urutan pemrosesan saldo kumulatif
-        // selalu deterministik walau ada baris dengan tgl/created_at yang sama persis.
-        // bahan_id (opsional) dikirim kartu Bahan Baku (otomatis). Pencatatan Bahan Baku dan
-        // Stok Gudang itu TERPISAH walau namanya bisa sama (mis. Lunch Box S (New)):
-        //  - dgn bahan_id : baris milik bahan_id itu + baris lama tanpa bahan_id yg sku-nya persis sama
-        //  - tanpa bahan_id (Stok Gudang): baris sku itu, KECUALI baris milik bahan baku
-        //    (bahan_id terisi & namanya sama dgn sku) - itu catatan penjualan Bahan Baku.
-        // Filter dilakukan di PHP, bukan subquery SQL, supaya tidak bergantung collation antar tabel.
         $bahanIdReq = (int)($_GET['bahan_id'] ?? 0);
-        $skuNorm = strtolower(trim($_GET['sku'] ?? ''));
-        [$bahanByIdL] = ambil_bahan_baku_lookup($conn);
-        $whereSql = $bahanIdReq > 0 ? "sku='$namaItem' OR bahan_id=$bahanIdReq" : "sku='$namaItem'";
+        if ($bahanIdReq <= 0) { echo json_encode([]); break; }
         $res = $conn->query("SELECT *, DATE_FORMAT(tgl, '%d/%m/%Y') as waktu_tampil
                              FROM warehouse_ledger
-                             WHERE $whereSql
+                             WHERE bahan_id=$bahanIdReq
                              ORDER BY tgl ASC, created_at ASC, id ASC");
-        
         $history = [];
         $saldo = 0;
         if ($res) {
             while ($row = $res->fetch_assoc()) {
-                $rowBid = !empty($row['bahan_id']) ? (int)$row['bahan_id'] : 0;
-                if ($bahanIdReq > 0) {
-                    if (!($rowBid === $bahanIdReq || ($rowBid === 0 && $row['sku'] === $_GET['sku']))) continue;
-                } else {
-                    if ($rowBid > 0 && isset($bahanByIdL[$rowBid])
-                        && strtolower(trim($bahanByIdL[$rowBid]['nama'])) === $skuNorm) continue;
-                }
                 $masuk  = (float)$row['masuk'];
                 $keluar = (float)$row['keluar'];
                 $saldo  = $saldo + $masuk - $keluar;
-                
                 $history[] = [
                     'id'      => $row['id'],
-                    'tgl'     => $row['waktu_tampil'], // Menampilkan tanggal transaksi asli
+                    'tgl'     => $row['waktu_tampil'],
                     'catatan' => $row['catatan'] ?: ($masuk > 0 ? 'Input Manual' : 'Penjualan'),
                     'masuk'   => $masuk,
                     'keluar'  => $keluar,
@@ -2160,83 +2043,107 @@ switch ($action) {
         echo json_encode(array_reverse($history));
         break;
 
-    // Ringkasan sisa stok SEMUA sku sekaligus dalam 1 query - dipakai oleh grid
-    // Bahan Baku & Stok Gudang di warehouse.html, supaya render grid tidak perlu
-    // fetch get_warehouse_ledger satu-satu per item (dulu bisa 50 request paralel
-    // sekaligus, gampang kehabisan slot koneksi MySQL di shared hosting - lihat
-    // riwayat commit soal bug "kartu stok gudang tidak sesuai riwayat").
-    // Saldo akhir = SUM(masuk) - SUM(keluar) per sku: sah secara matematis sama
-    // dengan hasil loop kumulatif di atas krn penjumlahan bersifat asosiatif/
-    // komutatif - urutan baris tidak mempengaruhi TOTAL akhirnya.
+    // Sisa stok SEMUA bahan baku sekaligus: {"bid:<id>": sisa}. Murni per bahan_id.
     case 'get_warehouse_stok_semua':
-        // Grouping sekarang per (bahan_id, sku) dulu di SQL, baru digabung ulang di PHP per
-        // bahan_id (kalau ada ATAU berhasil di-resolve live dari sku legacy - lihat
-        // resolve_bahan_id_ledger) atau per sku ternormalisasi (fallback kalau tetap tidak
-        // ketemu pasangannya). Tidak bisa langsung GROUP BY bahan_id di SQL krn baris NULL
-        // tidak boleh digabung jadi satu bucket (NULL != NULL secara identitas disini) -
-        // harus di-split lagi per sku.
-        $res = $conn->query("SELECT bahan_id, sku, COALESCE(SUM(masuk),0) - COALESCE(SUM(keluar),0) AS sisa
-                             FROM warehouse_ledger
-                             GROUP BY bahan_id, sku");
-        [$bahanSatuanSet, $inventoryNameSet] = ambil_konteks_normalisasi_bahan($conn);
-        [, $bahanByNama, $ambiguous] = ambil_bahan_baku_lookup($conn);
+        $res = $conn->query("SELECT bahan_id, COALESCE(SUM(masuk),0) - COALESCE(SUM(keluar),0) AS sisa
+                             FROM warehouse_ledger WHERE bahan_id > 0 GROUP BY bahan_id");
         $stokMap = [];
         if ($res) {
-            while ($row = $res->fetch_assoc()) {
-                $rawBahanId = !empty($row['bahan_id']) ? (int)$row['bahan_id'] : null;
-                $resolvedId = resolve_bahan_id_ledger($rawBahanId, (string)$row['sku'], $bahanByNama, $ambiguous, $inventoryNameSet);
-                $key = $resolvedId !== null
-                    ? 'bid:' . $resolvedId
-                    : 'sku:' . normalisasi_nama_bahan($row['sku'], $bahanSatuanSet, $inventoryNameSet);
-                $stokMap[$key] = ($stokMap[$key] ?? 0) + (float)$row['sisa'];
-            }
+            while ($row = $res->fetch_assoc()) $stokMap['bid:' . (int)$row['bahan_id']] = (float)$row['sisa'];
         }
         echo json_encode($stokMap);
         break;
 
     case 'delete_warehouse_ledger':
         $data = json_decode(file_get_contents('php://input'), true);
-        $id = $data['id'] ?? null;
-    
-        if (!$id) {
+        $id = (int)($data['id'] ?? 0);
+        if ($id <= 0) {
             echo json_encode(['status' => 'error', 'message' => 'ID tidak ditemukan di server']);
             break;
         }
-    
-        // Ambil SKU/Nama sebelum dihapus untuk hitung ulang nanti
-        $stmt = $conn->query("SELECT sku FROM warehouse_ledger WHERE id = '$id'");
-        $row = $stmt->fetch_assoc();
-    
-        if ($row) {
-            $sku = $row['sku'];
-            // Hapus datanya
-            $conn->query("DELETE FROM warehouse_ledger WHERE id = '$id'");
-            
-            // Logika Re-calculate (Opsional, tapi bagus agar sisa stok di database sinkron)
-            // Karena di fungsi 'get' Mas sudah menghitung saldo secara LIVE (looping), 
-            // sebenarnya menghapus saja sudah cukup untuk memperbaiki tampilan di browser.
-            
-            echo json_encode(['status' => 'success', 'message' => 'Data berhasil dihapus']);
-        } else {
-            echo json_encode(['status' => 'error', 'message' => 'Data sudah tidak ada']);
-        }
-        break;        
+        $conn->query("DELETE FROM warehouse_ledger WHERE id = $id");
+        echo json_encode($conn->affected_rows > 0
+            ? ['status' => 'success', 'message' => 'Data berhasil dihapus']
+            : ['status' => 'error', 'message' => 'Data sudah tidak ada']);
+        break;
 
     case 'save_warehouse_masuk':
-        $sku     = $conn->real_escape_string($input['sku']     ?? '');
         $bahanId = (int)($input['bahan_id'] ?? 0);
         $masuk   = (float)($input['masuk']   ?? 0);
         $keluar  = (float)($input['keluar']  ?? 0);
         $catatan = $conn->real_escape_string($input['catatan'] ?? '');
         $tgl     = $conn->real_escape_string($input['tgl']     ?? date('Y-m-d'));
-        if (!$sku || ($masuk <= 0 && $keluar <= 0)) { echo json_encode(['status'=>'error','message'=>'Data tidak valid']); break; }
-        // WAJIB ikut isi bahan_id kalau item-nya punya (lihat save_laporan) - kalau tidak,
-        // baris ini jatuh ke grouping sku-text di get_warehouse_stok_semua sementara kartu
-        // grid mencari via key 'bid:<id>', bikin kartu nunjukin 0 padahal histori ada isinya
-        // (bug: Cup Saus/Saus Hot Lava sisa > 0 di histori tapi 0 di kartu).
-        $bahanIdSql = $bahanId > 0 ? $bahanId : 'NULL';
-        $ok = $conn->query("INSERT INTO warehouse_ledger (tgl, sku, bahan_id, masuk, keluar, catatan) VALUES ('$tgl','$sku',$bahanIdSql,$masuk,$keluar,'$catatan')");
+        if ($bahanId <= 0 || ($masuk <= 0 && $keluar <= 0)) { echo json_encode(['status'=>'error','message'=>'Data tidak valid (bahan baku wajib dipilih dari menu Bahan Baku)']); break; }
+        $rb = $conn->query("SELECT nama, satuan FROM bahan_baku WHERE id=$bahanId");
+        $bb = $rb ? $rb->fetch_assoc() : null;
+        if (!$bb) { echo json_encode(['status'=>'error','message'=>'Bahan baku tidak ditemukan']); break; }
+        $skuDisp = $conn->real_escape_string($bb['satuan'] !== '' && $bb['satuan'] !== null ? "{$bb['nama']} ({$bb['satuan']})" : $bb['nama']);
+        $ok = $conn->query("INSERT INTO warehouse_ledger (tgl, sku, bahan_id, masuk, keluar, catatan) VALUES ('$tgl','$skuDisp',$bahanId,$masuk,$keluar,'$catatan')");
         echo json_encode($ok ? ['status'=>'success'] : ['status'=>'error','message'=>$conn->error]);
+        break;
+
+    // ── STOK GUDANG MANUAL (tabel stok_gudang_ledger, kunci inventory_id) ──
+    case 'get_gudang_ledger':
+        $invId = (int)($_GET['inventory_id'] ?? 0);
+        if ($invId <= 0) { echo json_encode([]); break; }
+        $res = $conn->query("SELECT *, DATE_FORMAT(tgl, '%d/%m/%Y') as waktu_tampil
+                             FROM stok_gudang_ledger
+                             WHERE inventory_id=$invId
+                             ORDER BY tgl ASC, created_at ASC, id ASC");
+        $history = [];
+        $saldo = 0;
+        if ($res) {
+            while ($row = $res->fetch_assoc()) {
+                $masuk  = (float)$row['masuk'];
+                $keluar = (float)$row['keluar'];
+                $saldo  = $saldo + $masuk - $keluar;
+                $history[] = [
+                    'id'      => $row['id'],
+                    'tgl'     => $row['waktu_tampil'],
+                    'catatan' => $row['catatan'] ?: ($masuk > 0 ? 'Input Manual' : 'Penjualan'),
+                    'masuk'   => $masuk,
+                    'keluar'  => $keluar,
+                    'sisa'    => $saldo
+                ];
+            }
+        }
+        echo json_encode(array_reverse($history));
+        break;
+
+    // {"inv:<inventory_id>": sisa}
+    case 'get_gudang_stok_semua':
+        $res = $conn->query("SELECT inventory_id, COALESCE(SUM(masuk),0) - COALESCE(SUM(keluar),0) AS sisa
+                             FROM stok_gudang_ledger GROUP BY inventory_id");
+        $stokMap = [];
+        if ($res) {
+            while ($row = $res->fetch_assoc()) $stokMap['inv:' . (int)$row['inventory_id']] = (float)$row['sisa'];
+        }
+        echo json_encode($stokMap);
+        break;
+
+    case 'save_gudang_ledger':
+        $invId   = (int)($input['inventory_id'] ?? 0);
+        $masuk   = (float)($input['masuk']  ?? 0);
+        $keluar  = (float)($input['keluar'] ?? 0);
+        $catatan = $conn->real_escape_string($input['catatan'] ?? '');
+        $tgl     = $conn->real_escape_string($input['tgl'] ?? date('Y-m-d'));
+        if ($invId <= 0 || ($masuk <= 0 && $keluar <= 0)) { echo json_encode(['status'=>'error','message'=>'Data tidak valid']); break; }
+        $ri = $conn->query("SELECT nama_barang FROM inventory WHERE id=$invId");
+        $iv = $ri ? $ri->fetch_assoc() : null;
+        if (!$iv) { echo json_encode(['status'=>'error','message'=>'Barang gudang tidak ditemukan']); break; }
+        $nm = $conn->real_escape_string($iv['nama_barang']);
+        $ok = $conn->query("INSERT INTO stok_gudang_ledger (tgl, inventory_id, nama_barang, masuk, keluar, catatan) VALUES ('$tgl',$invId,'$nm',$masuk,$keluar,'$catatan')");
+        echo json_encode($ok ? ['status'=>'success'] : ['status'=>'error','message'=>$conn->error]);
+        break;
+
+    case 'delete_gudang_ledger':
+        $data = json_decode(file_get_contents('php://input'), true);
+        $id = (int)($data['id'] ?? 0);
+        if ($id <= 0) { echo json_encode(['status' => 'error', 'message' => 'ID tidak ditemukan di server']); break; }
+        $conn->query("DELETE FROM stok_gudang_ledger WHERE id = $id");
+        echo json_encode($conn->affected_rows > 0
+            ? ['status' => 'success', 'message' => 'Data berhasil dihapus']
+            : ['status' => 'error', 'message' => 'Data sudah tidak ada']);
         break;
 
 
@@ -3267,69 +3174,17 @@ switch ($action) {
         
     // ── AUDIT ITEM ──────────────────────────────
     case 'get_audit_items_master':
-        // Dipakai grid "Bahan Baku (Otomatis)" di warehouse.html. Key dibentuk sama persis
-        // dgn get_warehouse_stok_semua ('bid:<id>' / 'sku:<normalized>') spy FE bisa join
-        // nilai sisa stok ke item yang benar.
-        $seenKeys = [];
-        $output   = [];
-        [$bahanSatuanSet, $inventoryNameSet] = ambil_konteks_normalisasi_bahan($conn);
-        [$bahanById, $bahanByNama, $ambiguous] = ambil_bahan_baku_lookup($conn);
-
-        // 1. Master item "Audit Stok Harian" dari bahan_baku - sumber kebenaran skrg (live,
-        //    bukan hardcode). Nama & satuan selalu versi terkini, bukan snapshot ledger lama.
+        // Dipakai grid "Bahan Baku (Otomatis)" di warehouse.html. HANYA bahan baku yang
+        // dicentang "Audit Stok Harian" (bahan_baku.is_stok_harian=1). Item yang centangnya
+        // dimatikan disembunyikan, tapi riwayat ledger-nya tetap tersimpan di DB.
+        $output = [];
         $resMaster = $conn->query("SELECT id, nama, satuan FROM bahan_baku WHERE is_stok_harian = 1 ORDER BY nama ASC");
         if ($resMaster) {
             while ($r = $resMaster->fetch_assoc()) {
-                $key = 'bid:' . $r['id'];
-                $seenKeys[$key] = true;
-                $output[] = ["key" => $key, "bahan_id" => (int)$r['id'], "nama" => $r['nama'], "satuan" => $r['satuan']];
+                $output[] = ["key" => 'bid:' . $r['id'], "bahan_id" => (int)$r['id'], "nama" => $r['nama'], "satuan" => $r['satuan']];
             }
         }
-
-        // 2. Item lain yang PERNAH tercatat di ledger - termasuk bahan_id yang sudah
-        //    di-backfill tapi flag is_stok_harian-nya kebetulan sedang off, maupun item
-        //    custom lama tanpa bahan_id sama sekali (diketik manual via auditNamaBaru) -
-        //    supaya histori lama tidak hilang begitu saja dari grid. bahan_id NULL di-resolve
-        //    live dulu via resolve_bahan_id_ledger() sebelum dicek - kalau tidak, baris lama
-        //    (co. sisa dari sebelum save_warehouse_masuk mengisi bahan_id) nongol sbg "kartu
-        //    hantu" terpisah dgn nama mentah "Nama (Satuan)" walau item aslinya sudah ada di
-        //    langkah 1 (bug: "Dimsum Shaomai (pcs)" duplikat dari "Dimsum Shaomai").
-        $resLedgerItems = $conn->query("
-            SELECT wl.bahan_id, wl.sku
-            FROM warehouse_ledger wl
-            GROUP BY wl.bahan_id, wl.sku
-        ");
-        if ($resLedgerItems) {
-            while ($r = $resLedgerItems->fetch_assoc()) {
-                $sku = trim($r['sku']);
-                $rawBahanId = !empty($r['bahan_id']) ? (int)$r['bahan_id'] : null;
-                $resolvedId = resolve_bahan_id_ledger($rawBahanId, $sku, $bahanByNama, $ambiguous, $inventoryNameSet);
-
-                if ($resolvedId !== null) {
-                    $key = 'bid:' . $resolvedId;
-                    if (isset($seenKeys[$key])) continue;
-                    $seenKeys[$key] = true;
-                    // Kalau row bahan_baku-nya sudah dihapus (bisa terjadi utk bahan_id yg
-                    // asli tersimpan di kolom, bukan hasil resolve), fallback ke sku historis.
-                    $info = $bahanById[$resolvedId] ?? null;
-                    $output[] = [
-                        "key" => $key,
-                        "bahan_id" => $resolvedId,
-                        "nama" => $info['nama'] ?? $sku,
-                        "satuan" => $info['satuan'] ?? ""
-                    ];
-                } else {
-                    if ($sku === '') continue;
-                    $key = 'sku:' . normalisasi_nama_bahan($sku, $bahanSatuanSet, $inventoryNameSet);
-                    if (isset($seenKeys[$key])) continue;
-                    $seenKeys[$key] = true;
-                    $output[] = ["key" => $key, "bahan_id" => null, "nama" => $sku, "satuan" => ""];
-                }
-            }
-        }
-
-        usort($output, function($a, $b) { return strcasecmp($a['nama'], $b['nama']); });
-        echo json_encode(array_values($output));
+        echo json_encode($output);
         break;
 }
 

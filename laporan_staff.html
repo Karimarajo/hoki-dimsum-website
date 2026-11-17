@@ -455,11 +455,8 @@
                 </div>
 
                 <div class="section-title">📉 Audit Stok</div>
-                <div class="exp-input-row" style="grid-template-columns: 1fr auto;">
-                    <input type="text" id="auditNamaBaru" placeholder="Ketik Nama Item (Contoh: Nasi)">
-                    <button class="btn-add-exp" onclick="addAuditItem()">Tambah Item</button>
-                </div>
-                
+                <p style="font-size:11px;color:var(--text-muted);margin:0 0 8px;">Daftar item audit diatur di menu Bahan Baku (centang "Audit Stok Harian").</p>
+
                 <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
                 <table id="tableAudit">
                     <thead>
@@ -606,8 +603,9 @@ let pengeluaran         = [];
 let cacheHistoryLaporan = [];
 let omzetPerMetode      = {};
 let currentDetailID     = null;
-let savedCustomItems = JSON.parse(localStorage.getItem('hoki_custom_audit')) || [];
-let auditItems = [...savedCustomItems];
+// Item custom (ketik manual) sudah dilarang: semua item audit berasal dari menu Bahan Baku.
+localStorage.removeItem('hoki_custom_audit');
+let auditItems = [];
 
 /* Daftar item audit stok harian sekarang dikonfigurasi lewat bahan_baku.html (checkbox
    "Audit Stok Harian"), bukan hardcode di sini. bahan_id disimpan supaya matching "laku"
@@ -619,7 +617,7 @@ async function loadDefaultAudit() {
         const defaultAudit = allBahan
             .filter(b => parseInt(b.is_stok_harian) === 1)
             .map(b => ({ id: b.nama, bahanId: parseInt(b.id), matchNama: b.nama, nama: b.nama, satuan: b.satuan, awal: 0, laku: 0, sisa: 0, isDefault: true }));
-        auditItems = [...defaultAudit, ...savedCustomItems];
+        auditItems = defaultAudit;
     } catch (e) {
         console.error('Gagal memuat daftar audit stok harian dari bahan_baku', e);
     }
@@ -1294,63 +1292,6 @@ function updateInfoBar() {
 }
 
 /* ── AUDIT ITEM (PERBAIKAN SINKRONISASI SERVER) ── */
-async function addAuditItem() {
-    const nama = document.getElementById('auditNamaBaru').value.trim();
-    if (!nama) return toast.warning('Nama item harus diisi!');
-    
-    // Cek duplikasi di lokal frontend
-    if (auditItems.find(x => x.nama.toLowerCase() === nama.toLowerCase())) {
-        return toast.warning('Item sudah ada dalam daftar!');
-    }
-
-    // Buat objek item baru
-    const newItem = {
-        id: 'custom_' + Date.now(),
-        matchNama: nama,
-        nama: nama,
-        awal: 0,
-        laku: 0,
-        sisa: 0,
-        isDefault: false
-    };
-
-    // ── LINK KE SERVER: Kirim transaksi bayangan agar terbaca di Warehouse Ledger ──
-    try {
-        const tglLaporan = document.getElementById('filterTanggal').value;
-        const dataLog = {
-            sku: nama,
-            tgl: tglLaporan,
-            masuk: 0, // 0 sebagai inisialisasi master barang baru di gudang
-            catatan: 'Inisialisasi Master Gudang via Laporan'
-        };
-
-        // Daftarkan nama item baru ini ke database ledger server
-        await fetch(`${API_BASE}?action=save_warehouse_masuk`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(dataLog)
-        });
-    } catch (err) {
-        console.error("Gagal sinkronisasi master item ke server gudang:", err);
-    }
-
-    auditItems.push(newItem);
-    
-    // Simpan ke localStorage agar jadi item tetap di halaman laporan staff
-    saveAuditToLocal();
-    
-    document.getElementById('auditNamaBaru').value = '';
-    
-    // Hitung ulang laku harian dan render tabel harian
-    fetchLaporanData(); 
-    toast.success(`Item "${nama}" berhasil didaftarkan ke Warehouse server!`);
-}
-
-function saveAuditToLocal() {
-    const customOnly = auditItems.filter(it => !it.isDefault);
-    localStorage.setItem('hoki_custom_audit', JSON.stringify(customOnly));
-}
-
 function renderAuditTable() {
     const tbody = document.getElementById('auditBody');
     tbody.innerHTML = auditItems.map((it, idx) => `
@@ -1366,7 +1307,7 @@ function renderAuditTable() {
             <!-- Tambahkan ID unik di sini untuk update otomatis -->
             <td><b id="sisa-${idx}" style="color:${it.sisa < 0 ? 'var(--red)' : 'inherit'}">${it.sisa}</b></td>
             <td>
-                ${it.isDefault ? '' : `<span onclick="removeAuditItem(${idx})" style="color:var(--red); cursor:pointer; font-weight:bold; padding:0 5px;">×</span>`}
+
             </td>
         </tr>
     `).join('');
@@ -1387,16 +1328,6 @@ function updateAuditAwal(idx, val) {
         elSisa.style.color = sisa < 0 ? 'var(--red)' : 'inherit';
     }
 
-    // Simpan ke localStorage (Jangan panggil renderAuditTable di dalam fungsi ini)
-    const customOnly = auditItems.filter(it => !it.isDefault);
-    localStorage.setItem('hoki_custom_audit', JSON.stringify(customOnly));
-}
-
-function removeAuditItem(idx) {
-    if(confirm('Hapus item ini dari daftar tetap?')) {
-        auditItems.splice(idx, 1);
-        saveAuditToLocal();
-    }
 }
 
 window.onload = async function() {

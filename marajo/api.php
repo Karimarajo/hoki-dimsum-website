@@ -33,47 +33,55 @@ function latest_barang(PDO $pdo, string $nama): ?array
 }
 
 /**
- * Daftar nama barang dari Stock Gudang (Warehouse) sistem utama Hoki Dimsum —
- * jadi sumber Dropdown Nama Barang di Input Barang, dan juga acuan pencocokan
- * nama barang untuk Data Stock Barang. Dibaca langsung dari tabel
- * warehouse_ledger di database utama (read-only, tidak pernah ditulis dari sini).
+ * Daftar nama barang Stok Gudang AKTIF = tabel `inventory` sistem utama (read-only).
+ * Sumber Dropdown Nama Barang di Input Barang. Barang yang dihapus dari Stok Gudang
+ * otomatis hilang dari sini (riwayat ledger-nya pun ikut terhapus di sistem utama).
  */
 function warehouse_nama_list(): array
 {
-    $rows = main_db()->query('SELECT DISTINCT sku FROM warehouse_ledger ORDER BY sku ASC')->fetchAll();
-    return array_column($rows, 'sku');
+    $rows = main_db()->query('SELECT nama_barang FROM inventory ORDER BY nama_barang ASC')->fetchAll();
+    return array_column($rows, 'nama_barang');
 }
 
 /**
- * Sisa stock semua item Stock Gudang saat ini (SUM masuk - SUM keluar per
- * sku) — persis sama caranya dengan action get_warehouse_stok_semua di
- * api.php pos-hokidimsum.com, supaya angkanya selalu identik dengan yang
- * ditampilkan di menu Warehouse / Bahan Baku.
+ * Nama barang di List Track Barang Marajo yang MASIH ada di Stok Gudang. Nama yang
+ * sudah dihapus dari Stok Gudang (atau memang bahan baku) tidak dihitung.
+ */
+function marajo_tracked_names(PDO $pdo): array
+{
+    $rows  = $pdo->query('SELECT DISTINCT nama_barang FROM marajo_barang_masuk ORDER BY nama_barang ASC')->fetchAll();
+    $valid = array_flip(warehouse_nama_list());
+    return array_values(array_filter(array_column($rows, 'nama_barang'), fn($n) => isset($valid[$n])));
+}
+
+/**
+ * Sisa stock tiap barang Stok Gudang: SUM(masuk - keluar) dari stok_gudang_ledger
+ * (tabel khusus Stok Gudang manual, TERPISAH dari ledger Bahan Baku). Key = nama barang.
  */
 function warehouse_stock_map(): array
 {
-    $rows = main_db()->query("SELECT sku, COALESCE(SUM(masuk),0) - COALESCE(SUM(keluar),0) AS sisa
-                               FROM warehouse_ledger GROUP BY sku")->fetchAll();
+    $rows = main_db()->query("SELECT i.nama_barang AS sku, COALESCE(SUM(l.masuk),0) - COALESCE(SUM(l.keluar),0) AS sisa
+                               FROM inventory i LEFT JOIN stok_gudang_ledger l ON l.inventory_id = i.id
+                               GROUP BY i.id, i.nama_barang")->fetchAll();
     $map = [];
     foreach ($rows as $r) $map[$r['sku']] = (float)$r['sisa'];
     return $map;
 }
 
 /**
- * History Penjualan dihitung langsung dari baris "keluar" di warehouse_ledger
- * (Riwayat Stock) untuk item yang ada di List Track Barang Marajo — bukan
+ * History Penjualan dihitung langsung dari baris "keluar" di stok_gudang_ledger
+ * (Riwayat Stock Stok Gudang) untuk item yang ada di List Track Barang Marajo — bukan
  * dicatat manual. Profit & omset per baris pakai harga jual/modal satuan
  * terakhir dari List Track Barang untuk item tsb.
  */
 function computed_penjualan(PDO $pdo): array
 {
-    $namaRows = $pdo->query('SELECT DISTINCT nama_barang FROM marajo_barang_masuk')->fetchAll();
-    $names = array_column($namaRows, 'nama_barang');
+    $names = marajo_tracked_names($pdo);
     if (!$names) return [];
 
     $placeholders = implode(',', array_fill(0, count($names), '?'));
-    $stmt = main_db()->prepare("SELECT sku, tgl, keluar, catatan FROM warehouse_ledger
-                                 WHERE sku IN ($placeholders) AND keluar > 0
+    $stmt = main_db()->prepare("SELECT nama_barang AS sku, tgl, keluar, catatan FROM stok_gudang_ledger
+                                 WHERE nama_barang IN ($placeholders) AND keluar > 0
                                  ORDER BY tgl DESC, id DESC");
     $stmt->execute($names);
     $rows = $stmt->fetchAll();
@@ -188,11 +196,9 @@ switch ($action) {
     // Estimasi Profit dihitung dari harga modal/jual terakhir di List Track
     // Barang dikali Stock Qty tsb.
     case 'stock_list': {
-        $namaRows = $pdo->query('SELECT DISTINCT nama_barang FROM marajo_barang_masuk ORDER BY nama_barang ASC')->fetchAll();
         $whStock  = warehouse_stock_map();
         $data = [];
-        foreach ($namaRows as $r) {
-            $nama  = $r['nama_barang'];
+        foreach (marajo_tracked_names($pdo) as $nama) {
             $stock = $whStock[$nama] ?? 0;
             $lb    = latest_barang($pdo, $nama);
             $hJual = $lb ? (float)$lb['harga_jual_satuan'] : 0;
@@ -209,17 +215,18 @@ switch ($action) {
         respond(['status' => 'success', 'data' => $data]);
     }
 
-    // Riwayat Stock = cerminan langsung data Warehouse (warehouse_ledger) untuk
+    // Riwayat Stock = cerminan langsung Stok Gudang (stok_gudang_ledger) untuk
     // item tsb — bukan ledger internal Marajo lagi. Sisa dihitung kumulatif
     // persis seperti action get_warehouse_ledger di api.php pos-hokidimsum.com.
     case 'stock_riwayat': {
         $nama = trim($_GET['nama_barang'] ?? '');
         if ($nama === '') respond(['status' => 'error', 'message' => 'Nama barang wajib diisi.']);
 
-        $stmt = main_db()->prepare("SELECT *, DATE_FORMAT(tgl, '%Y-%m-%d') AS tgl_fmt
-                                     FROM warehouse_ledger
-                                     WHERE sku = ?
-                                     ORDER BY tgl ASC, created_at ASC, id ASC");
+        $stmt = main_db()->prepare("SELECT l.*, DATE_FORMAT(l.tgl, '%Y-%m-%d') AS tgl_fmt
+                                     FROM stok_gudang_ledger l
+                                     INNER JOIN inventory i ON i.id = l.inventory_id
+                                     WHERE i.nama_barang = ?
+                                     ORDER BY l.tgl ASC, l.created_at ASC, l.id ASC");
         $stmt->execute([$nama]);
 
         $out   = [];
@@ -295,13 +302,11 @@ switch ($action) {
         // Saldo Total = Transaksi (Kredit - Debit) + nilai harga jual History Penjualan (omset)
         $saldoTotal = ($totalKredit - $totalDebit) + $totalOmsetPenjualan;
 
-        $namaRows = $pdo->query('SELECT DISTINCT nama_barang FROM marajo_barang_masuk')->fetchAll();
         $whStock  = warehouse_stock_map();
         $totalEstimasiHarga  = 0;
         $totalEstimasiProfit = 0;
         $diagramStok = [];
-        foreach ($namaRows as $r) {
-            $nama  = $r['nama_barang'];
+        foreach (marajo_tracked_names($pdo) as $nama) {
             $stock = $whStock[$nama] ?? 0;
             $lb    = latest_barang($pdo, $nama);
             $hJual = $lb ? (float)$lb['harga_jual_satuan'] : 0;
